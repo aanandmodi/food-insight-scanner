@@ -231,7 +231,7 @@ sequenceDiagram
     participant U as 👤 User
     participant BS as 📷 BarcodeScanner
     participant PS as 🔍 ProductService
-    participant OFF as 🌍 Open Food Facts
+    participant OFFacts as 🌍 Open Food Facts
     participant FS as 🗄️ Firestore
     participant GS as 🤖 GroqService
     participant PD as 📊 ProductDetails
@@ -249,8 +249,8 @@ sequenceDiagram
     end
     
     BS->>PS: "getProductByBarcode(code)"
-    PS->>OFF: "GET /api/v2/product/{code}.json"
-    OFF-->>PS: "Product data (nutrition, ingredients, allergens)"
+    PS->>OFFacts: "GET /api/v2/product/{code}.json"
+    OFFacts-->>PS: "Product data (nutrition, ingredients, allergens)"
     PS->>PS: "Parse & normalize data"
     PS->>FS: "cacheProduct(barcode, data)"
     PS->>PS: "saveToScanHistory(product)"
