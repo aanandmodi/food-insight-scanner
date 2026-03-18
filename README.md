@@ -236,32 +236,32 @@ sequenceDiagram
     participant GS as 🤖 GroqService
     participant PD as 📊 ProductDetails
 
-    U->>BS: Opens scanner
-    BS->>BS: Request camera permission
-    BS->>BS: Initialize ML Kit
+    U->>BS: "Opens scanner"
+    BS->>BS: "Request camera permission"
+    BS->>BS: "Initialize ML Kit"
     
     alt Camera Scan
-        U->>BS: Points camera at barcode
-        BS->>BS: Barcode detected ✅
-        BS->>BS: Haptic feedback + Success flash
+        U->>BS: "Points camera at barcode"
+        BS->>BS: "Barcode detected ✅"
+        BS->>BS: "Haptic feedback + Success flash"
     else Manual Input
-        U->>BS: Types barcode manually
+        U->>BS: "Types barcode manually"
     end
     
-    BS->>PS: getProductByBarcode(code)
-    PS->>OFF: GET /api/v2/product/{code}.json
-    OFF-->>PS: Product data (nutrition, ingredients, allergens)
-    PS->>PS: Parse & normalize data
-    PS->>FS: cacheProduct(barcode, data)
-    PS->>PS: saveToScanHistory(product)
-    PS-->>BS: Return product map
+    BS->>PS: "getProductByBarcode(code)"
+    PS->>OFF: "GET /api/v2/product/{code}.json"
+    OFF-->>PS: "Product data (nutrition, ingredients, allergens)"
+    PS->>PS: "Parse & normalize data"
+    PS->>FS: "cacheProduct(barcode, data)"
+    PS->>PS: "saveToScanHistory(product)"
+    PS-->>BS: "Return product map"
     
-    BS->>PD: Navigate with product data
-    PD->>GS: analyzeProduct(product, userProfile)
-    GS-->>PD: AI health analysis
-    PD->>GS: getHealthyAlternatives(product)
-    GS-->>PD: Alternative suggestions
-    PD-->>U: Display full product view
+    BS->>PD: "Navigate with product data"
+    PD->>GS: "analyzeProduct(product, userProfile)"
+    GS-->>PD: "AI health analysis"
+    PD->>GS: "getHealthyAlternatives(product)"
+    GS-->>PD: "Alternative suggestions"
+    PD-->>U: "Display full product view"
 ```
 
 ### AI Chat Flow
@@ -271,28 +271,28 @@ sequenceDiagram
     participant U as 👤 User
     participant AC as 🤖 AiChatAssistant
     participant GS as GroqService
-    participant API as Groq API (Kimi K2)
+    participant API as "Groq API (Kimi K2)"
 
-    U->>AC: Opens AI Chat
-    AC->>AC: Load user profile from args
-    AC->>GS: generateQuickReplies(lastMsg, profile)
-    GS->>API: POST /chat/completions
-    API-->>GS: 4 quick reply suggestions
-    GS-->>AC: Display quick replies
+    U->>AC: "Opens AI Chat"
+    AC->>AC: "Load user profile from args"
+    AC->>GS: "generateQuickReplies(lastMsg, profile)"
+    GS->>API: "POST /chat/completions"
+    API-->>GS: "4 quick reply suggestions"
+    GS-->>AC: "Display quick replies"
     
-    U->>AC: Sends message or taps quick reply
-    AC->>AC: Show typing indicator
-    AC->>GS: generateResponse(msg, history, profile)
+    U->>AC: "Sends message or taps quick reply"
+    AC->>AC: "Show typing indicator"
+    AC->>GS: "generateResponse(msg, history, profile)"
     
-    Note over GS,API: System prompt includes user's<br/>name, allergies, diet, goals
+    Note over GS,API: System prompt includes user's name, allergies, diet, goals
     
-    GS->>API: POST /chat/completions<br/>with full conversation history
-    API-->>GS: Markdown response
-    GS-->>AC: Return AI response
-    AC->>AC: Render markdown bubble
-    AC->>GS: generateQuickReplies(response)
-    GS-->>AC: Update quick replies
-    AC-->>U: Display response + new suggestions
+    GS->>API: "POST /chat/completions with full conversation history"
+    API-->>GS: "Markdown response"
+    GS-->>AC: "Return AI response"
+    AC->>AC: "Render markdown bubble"
+    AC->>GS: "generateQuickReplies(response)"
+    GS-->>AC: "Update quick replies"
+    AC-->>U: "Display response + new suggestions"
 ```
 
 ---
@@ -428,7 +428,7 @@ erDiagram
 | Collection | Path | Description | Access Rule |
 |---|---|---|---|
 | **Users** | `users/{userId}` | User profiles with health data | Owner read/write only |
- | **Products** | `products/{barcode}` | Cached product data (shared) | Authenticated read/write |
+| **Products** | `products/{barcode}` | Cached product data (shared) | Authenticated read/write |
 | **Scan History** | `scan_history/{userId}/scans/{scanId}` | Per-user scan records | Owner read/write only |
 | **Diet Log** | `diet_log/{userId}/entries/{entryId}` | Per-user daily intake | Owner read/write only |
 
@@ -554,7 +554,7 @@ Edit both `env.json` files with your keys:
 
 ```json
 {
-    "GROQ_API_KEY": "gsk_your_actual_groq_key_here"
+    "GROQ_API_KEY": "your_groq_api_key_here"
 }
 ```
 
