@@ -4,6 +4,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../core/services/product_service.dart';
+import '../../core/services/firestore_service.dart';
 import './widgets/diet_log_preview.dart';
 import './widgets/greeting_header.dart';
 import './widgets/nutrition_summary_card.dart';
@@ -27,6 +28,7 @@ class _HomeDashboardState extends State<HomeDashboard>
   List<String> _userAllergies = [];
   String? _userHealthGoal;
   List<String> _userDietaryPrefs = [];
+  int _userAge = 25;
 
   // Nutrition data (will be computed from scan history in production)
   final Map<String, dynamic> _nutritionData = {
@@ -58,12 +60,64 @@ class _HomeDashboardState extends State<HomeDashboard>
       final prefs = await SharedPreferences.getInstance();
       final scanHistory = await ProductService().getScanHistory();
 
+      // Load Diet Log for today from Firestore
+      final dateString = "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
+      List<Map<String, dynamic>> entries = [];
+      try {
+        entries = await FirestoreService().getDietLog(dateString);
+      } catch(e) {
+        debugPrint('Error pulling home diet log from Firestore: $e');
+      }
+
+      // Default goals
+      int calGoal = 2000;
+      int proteinGoal = 150;
+      final healthGoal = prefs.getString('user_health_goal');
+      if (healthGoal == 'Lose Weight') calGoal = 1800;
+      if (healthGoal == 'Build Muscle') {
+        calGoal = 2500;
+        proteinGoal = 180;
+      }
+
+      // Calculate totals
+      int totalCals = 0;
+      double totalProtein = 0;
+      double totalSugar = 0;
+      for (var entry in entries) {
+        totalCals += (entry['calories'] as num?)?.toInt() ?? 0;
+        totalProtein += (entry['protein'] as num?)?.toDouble() ?? 0;
+        totalSugar += (entry['sugar'] as num?)?.toDouble() ?? 0;
+      }
+
       setState(() {
         _userName = prefs.getString('user_name') ?? 'User';
         _userAllergies = prefs.getStringList('user_allergies') ?? [];
-        _userHealthGoal = prefs.getString('user_health_goal');
+        _userHealthGoal = healthGoal;
         _userDietaryPrefs =
             prefs.getStringList('user_dietary_preferences') ?? [];
+        
+        final dobStr = prefs.getString('user_dob');
+        if (dobStr != null) {
+          try {
+            final dob = DateTime.parse(dobStr);
+            final now = DateTime.now();
+            int age = now.year - dob.year;
+            if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+              age--;
+            }
+            _userAge = age;
+          } catch (_) {}
+        }
+            
+        _nutritionData['calories'] = totalCals;
+        _nutritionData['caloriesGoal'] = calGoal;
+        _nutritionData['protein'] = totalProtein.round();
+        _nutritionData['proteinGoal'] = proteinGoal;
+        _nutritionData['sugar'] = totalSugar.round();
+        _nutritionData['sugarGoal'] = 50;
+
+        _dietLogEntries.clear();
+        _dietLogEntries.addAll(entries);
 
         // Transform scan history into recent scans format
         _recentScans = scanHistory.take(10).map((scan) {
@@ -124,7 +178,7 @@ class _HomeDashboardState extends State<HomeDashboard>
     });
   }
 
-  void _onBottomNavTap(int index) {
+  Future<void> _onBottomNavTap(int index) async {
     setState(() {
       _currentIndex = index;
     });
@@ -133,19 +187,22 @@ class _HomeDashboardState extends State<HomeDashboard>
       case 0:
         break;
       case 1:
-        Navigator.pushNamed(context, '/barcode-scanner');
+        await Navigator.pushNamed(context, '/barcode-scanner');
+        _loadUserData();
         break;
       case 2:
-        _navigateToAIChat();
+        await _navigateToAIChat();
+        _loadUserData();
         break;
       case 3:
-        Navigator.pushNamed(context, '/profile');
+        await Navigator.pushNamed(context, '/profile');
+        _loadUserData();
         break;
     }
   }
 
-  void _navigateToAIChat() {
-    Navigator.pushNamed(
+  Future<void> _navigateToAIChat() async {
+    await Navigator.pushNamed(
       context,
       '/ai-chat-assistant',
       arguments: {
@@ -153,7 +210,7 @@ class _HomeDashboardState extends State<HomeDashboard>
         'allergies': _userAllergies,
         'dietaryPreferences': _userDietaryPrefs.join(', '),
         'healthGoals': _userHealthGoal ?? 'general wellness',
-        'age': 25,
+        'age': _userAge,
         'activityLevel': 'moderate',
       },
     );
@@ -169,7 +226,7 @@ class _HomeDashboardState extends State<HomeDashboard>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.lightTheme.colorScheme.primary.withOpacity(0.05),
+              AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.05),
               AppTheme.lightTheme.scaffoldBackgroundColor,
             ],
           ),
@@ -196,13 +253,18 @@ class _HomeDashboardState extends State<HomeDashboard>
                       ),
                       SizedBox(height: 2.h),
                       QuickActionsSection(
-                        onScanBarcode: () {
-                          Navigator.pushNamed(context, '/barcode-scanner');
+                        onScanBarcode: () async {
+                          await Navigator.pushNamed(context, '/barcode-scanner');
+                          _loadUserData();
                         },
-                        onUploadImage: () {
-                          Navigator.pushNamed(context, '/barcode-scanner');
+                        onUploadImage: () async {
+                          await Navigator.pushNamed(context, '/barcode-scanner');
+                          _loadUserData();
                         },
-                        onChatWithAI: _navigateToAIChat,
+                        onChatWithAI: () async {
+                          await _navigateToAIChat();
+                          _loadUserData();
+                        },
                       ),
                       SizedBox(height: 2.h),
                       RecentScansSection(
@@ -214,8 +276,9 @@ class _HomeDashboardState extends State<HomeDashboard>
                       SizedBox(height: 2.h),
                       DietLogPreview(
                         recentEntries: _dietLogEntries,
-                        onViewAll: () {
-                           Navigator.pushNamed(context, '/diet-log');
+                        onViewAll: () async {
+                           await Navigator.pushNamed(context, '/diet-log');
+                           _loadUserData();
                         },
                       ),
                       SizedBox(height: 10.h),
@@ -228,8 +291,9 @@ class _HomeDashboardState extends State<HomeDashboard>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, '/barcode-scanner');
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/barcode-scanner');
+          _loadUserData();
         },
         backgroundColor: AppTheme.lightTheme.colorScheme.primary,
         foregroundColor: AppTheme.lightTheme.colorScheme.onPrimary,
@@ -254,13 +318,13 @@ class _HomeDashboardState extends State<HomeDashboard>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.lightTheme.colorScheme.surface.withOpacity(0.9),
+              AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
               AppTheme.lightTheme.colorScheme.surface,
             ],
           ),
           border: Border(
             top: BorderSide(
-              color: AppTheme.lightTheme.colorScheme.outline.withOpacity(0.2),
+              color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
               width: 1,
             ),
           ),

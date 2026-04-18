@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../../core/services/auth_service.dart';
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -83,75 +83,82 @@ class _SplashScreenState extends State<SplashScreen>
       // Simulate app initialization tasks
       await Future.delayed(const Duration(milliseconds: 500));
 
+      if (!mounted) return;
       setState(() {
         _loadingText = 'Step 1/4: Checking services...';
       });
 
       // ──────────────────────────────────────────────────────────────────────
-      // SAFE CHECK: Ensure Firebase is actually initialized before using it.
+      // Firebase check — non-blocking. If Firebase isn't ready, continue.
       // ──────────────────────────────────────────────────────────────────────
-      int retries = 0;
-      while (Firebase.apps.isEmpty && retries < 5) {
-        await Future.delayed(const Duration(seconds: 1));
-        retries++;
+      bool firebaseReady = Firebase.apps.isNotEmpty;
+      if (!firebaseReady) {
+        // Wait a bit in case it's still initializing
+        await Future.delayed(const Duration(seconds: 2));
+        firebaseReady = Firebase.apps.isNotEmpty;
       }
 
-      if (Firebase.apps.isEmpty) {
-        throw Exception('Firebase not initialized. Please restart the app.');
-      }
-
+      if (!mounted) return;
       setState(() {
         _loadingText = 'Step 2/4: Authenticating...';
       });
 
-      // Check if user is already logged in
-      User? user = FirebaseAuth.instance.currentUser;
-      
-      if (user == null) {
-        // User not logged in, wait for navigation to Login Screen
-        // We do nothing here, the navigation logic below handles it
+      // Check if user is logged in (only if Firebase is ready)
+      User? user;
+      if (firebaseReady) {
+        try {
+          user = FirebaseAuth.instance.currentUser;
+        } catch (e) {
+          debugPrint('Auth check failed: $e');
+        }
       }
 
+      if (!mounted) return;
       setState(() {
         _loadingText = 'Step 3/4: Loading profile...';
       });
 
-      // Check user profile existence with timeout
+      // Check user profile — from local cache first, cloud if available
       final hasProfile = await _checkUserProfile().timeout(
         const Duration(seconds: 5),
         onTimeout: () => false,
       );
       
-      if (mounted) {
-        setState(() {
-          _loadingText = 'Step 4/4: Ready...';
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _loadingText = 'Step 4/4: Ready...';
+      });
 
       // Initialize ML Kit for scanning
       await _initializeMLKit();
 
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isInitialized = true;
+      });
 
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Navigate based on user profile status
-      if (mounted) {
-        _navigateToNextScreen(hasProfile, user);
-      }
+      if (!mounted) return;
+      _navigateToNextScreen(hasProfile, user);
     } catch (e) {
-      // Handle initialization errors
+      // On any error, still navigate — don't block the user
       debugPrint('Initialization error: $e');
-      if (mounted) {
-         setState(() {
-           _loadingText = 'Connection Error: \n${e.toString().replaceAll("Exception: ", "")}';
-         });
+      if (!mounted) return;
+      // Fall back to checking local SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      final hasLocalProfile = prefs.getBool('profile_completed') ?? false;
+      if (hasLocalProfile) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
+        }
+      } else {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
+        }
       }
-      _showRetryOption();
     }
   }
 
@@ -171,77 +178,23 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 400));
   }
 
-  Future<void> _cacheNutritionData() async {
-    // Simulate caching nutrition data
-    await Future.delayed(const Duration(milliseconds: 300));
-  }
-
   void _navigateToNextScreen(bool hasProfile, User? user) {
-    if (user == null) {
-      // Not logged in — go to login screen
-      Navigator.pushReplacementNamed(context, '/login');
+    if (!mounted) return;
+
+    // If profile is complete (from local cache), go to home regardless of auth
+    if (hasProfile) {
+      Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
       return;
     }
 
-    if (user.isAnonymous && !hasProfile) {
-      // Anonymous users should probably set up a profile too for better AI results
-      Navigator.pushReplacementNamed(context, '/profile-setup');
-    } else if (hasProfile) {
-      // Logged in with complete profile — go to home dashboard
-      Navigator.pushReplacementNamed(context, '/home-dashboard');
-    } else {
-      // Logged in but no profile — go to profile setup
-      Navigator.pushReplacementNamed(context, '/profile-setup');
+    if (user == null) {
+      // Not logged in and no profile — go to login screen
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      return;
     }
-  }
 
-  void _showRetryOption() {
-    setState(() {
-      _loadingText = 'Connection timeout';
-    });
-
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: Text(
-              'Connection Error',
-              style: AppTheme.lightTheme.textTheme.titleLarge,
-            ),
-            content: Text(
-              'Unable to connect to the server. You can retry or continue offline.',
-              style: AppTheme.lightTheme.textTheme.bodyMedium,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _retryInitialization();
-                },
-                child: const Text('Retry'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.pushReplacementNamed(context, '/home-dashboard');
-                },
-                child: const Text('Continue Offline'),
-              ),
-            ],
-          ),
-        );
-      }
-    });
-  }
-
-  void _retryInitialization() {
-    setState(() {
-      _isInitialized = false;
-      _loadingText = 'Retrying...';
-    });
-    _initializeApp();
+    // Logged in but no profile — go to profile setup
+    Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
   }
 
   @override

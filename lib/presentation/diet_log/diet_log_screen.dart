@@ -41,17 +41,31 @@ class _DietLogScreenState extends State<DietLogScreen> {
     setState(() => _isLoading = true);
     try {
       final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final entries = await FirestoreService().getDietLog(dateString);
-      
-      // Load user profile for goals
-      final profile = await FirestoreService().getUserProfile();
       final prefs = await SharedPreferences.getInstance();
+
+      // Fetch entries directly from Firestore (supports offline persistence natively)
+      List<Map<String, dynamic>> entries = [];
+      try {
+        entries = await FirestoreService().getDietLog(dateString);
+      } catch (e) {
+        debugPrint('Firestore diet log failed: $e');
+      }
+
+      // Load user profile for goals
+      Map<String, dynamic>? profile;
+      try {
+        profile = await FirestoreService().getUserProfile().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+      } catch (e) {
+        debugPrint('Firestore profile failed: $e');
+      }
       
       // Default goals if not set
       int calGoal = 2000;
       int proteinGoal = 150;
       
-      // Simple logic to adjust goals based on profile (could be more complex)
       final healthGoal = profile?['healthGoal'] as String? ?? prefs.getString('user_health_goal');
       if (healthGoal == 'Lose Weight') calGoal = 1800;
       if (healthGoal == 'Build Muscle') {
@@ -84,7 +98,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
             'protein': totalProtein.round(),
             'proteinGoal': proteinGoal,
             'sugar': totalSugar.round(),
-            'sugarGoal': 50, // Fixed sugar goal for now
+            'sugarGoal': 50,
           };
         });
       }
@@ -105,17 +119,209 @@ class _DietLogScreenState extends State<DietLogScreen> {
   Future<void> _deleteEntry(String id) async {
     try {
       await FirestoreService().deleteDietEntry(id);
-      _loadData(); // Refresh
+      _loadData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Entry deleted')),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting entry: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting entry: $e')),
+        );
+      }
     }
+  }
+
+  Future<void> _addManualEntry() async {
+    final inputController = TextEditingController();
+    final caloriesController = TextEditingController();
+    final proteinController = TextEditingController();
+    final sugarController = TextEditingController();
+    String selectedType = 'Breakfast';
+    bool isAnalyzing = false;
+    bool showManualFields = false;
+    String? errorMessage;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Add Meal'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  decoration: const InputDecoration(labelText: 'Meal Type'),
+                  items: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() => selectedType = v ?? 'Breakfast'),
+                ),
+                const SizedBox(height: 12),
+                if (isAnalyzing) ...[
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('AI is estimating nutrition facts...'),
+                ] else ...[
+                  TextField(
+                    controller: inputController,
+                    decoration: const InputDecoration(
+                      labelText: 'What did you eat?',
+                      hintText: 'e.g., 2 masala dosas and chai',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ],
+                  if (showManualFields) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Enter nutrition manually:',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: caloriesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Calories (kcal)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: proteinController,
+                      decoration: const InputDecoration(
+                        labelText: 'Protein (g)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: sugarController,
+                      decoration: const InputDecoration(
+                        labelText: 'Sugar (g)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            if (!isAnalyzing)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+            if (!isAnalyzing && showManualFields)
+              ElevatedButton(
+                onPressed: () async {
+                  final text = inputController.text.trim();
+                  if (text.isEmpty) return;
+
+                  final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
+                  final entry = {
+                    'name': text,
+                    'mealType': selectedType,
+                    'calories': int.tryParse(caloriesController.text.trim()) ?? 0,
+                    'protein': double.tryParse(proteinController.text.trim()) ?? 0.0,
+                    'sugar': double.tryParse(sugarController.text.trim()) ?? 0.0,
+                    'fat': 0.0,
+                    'carbs': 0.0,
+                    'brand': 'Manual Entry',
+                    'time': DateFormat('HH:mm').format(DateTime.now()),
+                    'date': dateString,
+                  };
+
+                  await FirestoreService().saveDietEntry(entry);
+                  if (ctx.mounted && Navigator.canPop(ctx)) {
+                    Navigator.pop(ctx);
+                  }
+                  _loadData();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                ),
+                child: const Text('Save Manual'),
+              ),
+            if (!isAnalyzing && !showManualFields)
+              ElevatedButton(
+                onPressed: () async {
+                  final text = inputController.text.trim();
+                  if (text.isEmpty) return;
+
+                  setDialogState(() {
+                    isAnalyzing = true;
+                    errorMessage = null;
+                  });
+
+                  try {
+                    final macros = await GroqService().parseMeal(text);
+                    if (macros != null) {
+                      final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
+                      final entry = {
+                        'name': macros['name'] ?? text,
+                        'mealType': selectedType,
+                        'calories': macros['calories'] ?? 0,
+                        'protein': macros['protein'] ?? 0.0,
+                        'sugar': macros['sugar'] ?? 0.0,
+                        'fat': macros['fat'] ?? 0.0,
+                        'carbs': macros['carbs'] ?? 0.0,
+                        'brand': 'AI Estimate',
+                        'time': DateFormat('HH:mm').format(DateTime.now()),
+                        'date': dateString,
+                      };
+                      
+                      await FirestoreService().saveDietEntry(entry);
+                      if (ctx.mounted && Navigator.canPop(ctx)) {
+                        Navigator.pop(ctx);
+                      }
+                      _loadData();
+                    } else {
+                      setDialogState(() {
+                        isAnalyzing = false;
+                        errorMessage = 'AI could not parse the meal. Enter nutrition manually.';
+                        showManualFields = true;
+                      });
+                    }
+                  } catch (e) {
+                    debugPrint('Error with AI meal parsing: $e');
+                    setDialogState(() {
+                      isAnalyzing = false;
+                      errorMessage = 'AI unavailable. Enter nutrition manually.';
+                      showManualFields = true;
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                ),
+                child: const Text('Add'),
+              ),
+          ],
+        ),
+      ),
+    );
+    inputController.dispose();
+    caloriesController.dispose();
+    proteinController.dispose();
+    sugarController.dispose();
   }
 
   Future<void> _generatePlanForTomorrow() async {
@@ -240,7 +446,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
                      );
                    }),
                    
-                   if (_dietEntries.isEmpty)
+                   if (_dietEntries.isEmpty) ...[
                      Padding(
                        padding: EdgeInsets.only(top: 5.h),
                        child: Column(
@@ -251,25 +457,39 @@ class _DietLogScreenState extends State<DietLogScreen> {
                              'No meals logged for this day.',
                              style: TextStyle(color: Colors.grey[500]),
                            ),
+                           SizedBox(height: 2.h),
+                           OutlinedButton.icon(
+                             onPressed: _addManualEntry,
+                             icon: const Icon(Icons.add),
+                             label: const Text('Add Your First Meal'),
+                             style: OutlinedButton.styleFrom(
+                               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+                             ),
+                           ),
                          ],
                        ),
                      ),
+                   ],
                    
                    SizedBox(height: 10.h),
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-           Navigator.pushNamed(context, '/barcode-scanner');
-        },
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addManualEntry,
         backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Meal'),
       ),
     );
   }
 
   Widget _buildMealTile(Map<String, dynamic> meal) {
+    final protein = (meal['protein'] as num?)?.toDouble() ?? 0;
+    final sugar = (meal['sugar'] as num?)?.toDouble() ?? 0;
+    final calories = (meal['calories'] as num?)?.toInt() ?? 0;
+
     return Dismissible(
       key: Key(meal['id'] ?? UniqueKey().toString()),
       direction: DismissDirection.endToStart,
@@ -294,7 +514,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(
-            '${meal['brand'] ?? 'Unknown'} • ${meal['calories']} kcal',
+            '${meal['brand'] ?? ''} • $calories kcal',
             style: TextStyle(color: Colors.grey[600]),
           ),
           trailing: Column(
@@ -302,11 +522,11 @@ class _DietLogScreenState extends State<DietLogScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${(meal['protein'] as num).toStringAsFixed(1)}g P',
+                '${protein.toStringAsFixed(1)}g P',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               Text(
-                '${(meal['sugar'] as num).toStringAsFixed(1)}g S',
+                '${sugar.toStringAsFixed(1)}g S',
                 style: const TextStyle(fontSize: 12, color: Colors.orange),
               ),
             ],
@@ -359,10 +579,12 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -401,7 +623,25 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? Center(child: Text('Error: $_error'))
+                      ? Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(4.w),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.error_outline, size: 12.w, color: Colors.orange),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  _error!.contains('GROQ_API_KEY')
+                                      ? 'AI plan requires a Groq API key.\nAdd it in assets/env.json'
+                                      : 'Could not generate plan.\nPlease check your internet connection.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
                       : ListView(
                           controller: controller,
                           children: [
@@ -411,6 +651,7 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
                              ),
                              SizedBox(height: 2.h),
                              ...(_plan?['meals'] as List? ?? []).map((meal) {
+                               final mealType = (meal['type'] as String?) ?? 'Meal';
                                return Card(
                                  margin: EdgeInsets.only(bottom: 2.h),
                                  color: Colors.green[50],
@@ -418,12 +659,12 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
                                    leading: CircleAvatar(
                                      backgroundColor: Colors.white,
                                      child: Text(
-                                       (meal['type'] as String)[0],
+                                       mealType.isNotEmpty ? mealType[0] : 'M',
                                        style: TextStyle(color: Colors.green[800]),
                                      ),
                                    ),
                                    title: Text(
-                                     meal['type'] ?? 'Meal',
+                                     mealType,
                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                    ),
                                    subtitle: Column(
@@ -437,7 +678,7 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
                                      ],
                                    ),
                                    trailing: Text(
-                                     '${meal['calories']} kcal',
+                                     '${meal['calories'] ?? 0} kcal',
                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                    ),
                                  ),
@@ -453,8 +694,8 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
                                child: Row(
                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                                  children: [
-                                   Text('Total Calories: ${_plan?['totalCalories']}'),
-                                   Text('Protein: ${_plan?['totalProtein']}g'),
+                                   Text('Total Calories: ${_plan?['totalCalories'] ?? 0}'),
+                                   Text('Protein: ${_plan?['totalProtein'] ?? 0}g'),
                                  ],
                                ),
                              )

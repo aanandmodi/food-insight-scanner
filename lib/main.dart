@@ -16,23 +16,46 @@ import 'widgets/custom_error_widget.dart';
 // For now, we will keep it but it's a good practice to refactor this later.
 Map<String, dynamic> env = {};
 
+String? firebaseInitError;
+
+/// Attempt to initialize Firebase. Can be called again from the login screen.
+Future<bool> retryFirebaseInit() async {
+  try {
+    // If already initialized, just return true
+    if (Firebase.apps.isNotEmpty) {
+      firebaseInitError = null;
+      return true;
+    }
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    firebaseInitError = null;
+    debugPrint('Firebase initialized successfully.');
+    return true;
+  } catch (e) {
+    firebaseInitError = e.toString();
+    debugPrint('Firebase initialization failed: $e');
+    return false;
+  }
+}
+
 Future<void> main() async {
   try {
     // Ensure that the Flutter binding is initialized before calling any Flutter APIs.
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Initialize Firebase with a timeout to prevent hang
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      ).timeout(const Duration(seconds: 15));
-    } catch (e) {
-      debugPrint("Firebase initialization failed or timed out: $e");
-      // We continue here so the app still launches. 
-      // Services depending on Firebase should handle the uninitialized state.
+    // Initialize Firebase with retry (up to 3 attempts)
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      final success = await retryFirebaseInit();
+      if (success) break;
+      if (attempt < 3) {
+        debugPrint('Firebase init attempt $attempt failed, retrying...');
+        await Future.delayed(const Duration(seconds: 1));
+      }
     }
 
     // It's better to manage this state within a state management solution
+
     // to avoid global variables.
     bool hasShownError = false;
 

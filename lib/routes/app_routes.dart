@@ -1,6 +1,9 @@
+// lib/routes/app_routes.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../presentation/auth/login_screen.dart';
+import '../presentation/auth/signup_screen.dart';
 import '../presentation/profile_setup/profile_setup.dart';
 import '../presentation/splash_screen/splash_screen.dart';
 import '../presentation/home_dashboard/home_dashboard.dart';
@@ -11,10 +14,13 @@ import '../models/user_profile.dart';
 import '../presentation/scan_history/scan_history_screen.dart';
 import '../presentation/profile/profile_screen.dart';
 import '../presentation/diet_log/diet_log_screen.dart';
+import '../presentation/settings/settings_screen.dart';
+import '../presentation/shopping_list/shopping_list_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
   static const String login = '/login';
+  static const String signup = '/signup';
   static const String profileSetup = '/profile-setup';
   static const String splash = '/splash-screen';
   static const String homeDashboard = '/home-dashboard';
@@ -24,10 +30,13 @@ class AppRoutes {
   static const String scanHistory = '/scan-history';
   static const String dietLog = '/diet-log';
   static const String profile = '/profile';
+  static const String settings = '/settings';
+  static const String shoppingList = '/shopping-list';
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const SplashScreen(),
     login: (context) => const LoginScreen(),
+    signup: (context) => const SignupScreen(),
     profileSetup: (context) => const ProfileSetup(),
     splash: (context) => const SplashScreen(),
     homeDashboard: (context) => const HomeDashboard(),
@@ -36,6 +45,8 @@ class AppRoutes {
     scanHistory: (context) => const ScanHistoryScreen(),
     dietLog: (context) => const DietLogScreen(),
     profile: (context) => const ProfileScreen(),
+    settings: (context) => const SettingsScreen(),
+    shoppingList: (context) => const ShoppingListScreen(),
   };
 
   /// Use onGenerateRoute for routes that need dynamic arguments.
@@ -73,13 +84,27 @@ class AppRoutes {
 
   static Future<UserProfile> _loadUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    int userAge = 25;
+    final dobStr = prefs.getString('user_dob');
+    if (dobStr != null) {
+      try {
+        final dob = DateTime.parse(dobStr);
+        final now = DateTime.now();
+        userAge = now.year - dob.year;
+        if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+          userAge--;
+        }
+      } catch (_) {}
+    }
+
     return UserProfile(
       name: prefs.getString('user_name') ?? 'User',
       allergies: prefs.getStringList('user_allergies') ?? [],
       dietaryPreferences:
           (prefs.getStringList('user_dietary_preferences') ?? []).join(', '),
       healthGoals: prefs.getString('user_health_goal') ?? 'general wellness',
-      age: 25,
+      age: userAge,
       activityLevel: 'moderate',
     );
   }

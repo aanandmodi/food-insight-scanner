@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../core/app_export.dart';
 import '../../core/services/groq_service.dart';
 import '../../core/services/firestore_service.dart';
-import '../../models/user_profile.dart';
 import './widgets/action_bar_widget.dart';
 import './widgets/alternatives_widget.dart';
 import './widgets/ingredients_widget.dart';
@@ -141,21 +140,26 @@ class _ProductDetailsState extends State<ProductDetails> {
         'fat': (productData['nutrition']?['fat'] as num?)?.toDouble() ?? 0.0,
         'carbs': (productData['nutrition']?['carbs'] as num?)?.toDouble() ?? 0.0,
         'serving': productData['serving_size'] ?? '1 serving',
-        'mealType': 'Snack', // Default for now, could add a dialog to selection
+        'mealType': 'Snack',
         'date': dateString,
-        'timestamp': FieldValue.serverTimestamp(),
+        'time': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       };
 
-      await FirestoreService().saveDietEntry(entryData);
+      final savedToCloud = await FirestoreService().saveDietEntry(entryData);
 
       if (mounted) {
+        final message = savedToCloud
+            ? '${productData['name']} added to diet log!'
+            : '${productData['name']} saved locally to diet log!';
+        final icon = savedToCloud ? Icons.cloud_done : Icons.save;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
+                Icon(icon, color: Colors.white),
                 SizedBox(width: 2.w),
-                Expanded(child: Text('${productData['name']} added to diet log!')),
+                Expanded(child: Text(message)),
               ],
             ),
             behavior: SnackBarBehavior.floating,
@@ -163,12 +167,14 @@ class _ProductDetailsState extends State<ProductDetails> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
+        // Pop context to return to previous screen
+        Navigator.pop(context);
       }
     } catch (e) {
       debugPrint('Error saving diet entry: $e');
        if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add to diet log. Check connection.')),
+          const SnackBar(content: Text('Failed to add to diet log. Please try again.')),
         );
       }
     }
@@ -229,7 +235,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                 end: Alignment.bottomCenter,
                 colors: [
                   AppTheme.lightTheme.colorScheme.primary
-                      .withOpacity(0.05),
+                      .withValues(alpha: 0.05),
                   AppTheme.lightTheme.scaffoldBackgroundColor,
                 ],
               ),
@@ -249,12 +255,12 @@ class _ProductDetailsState extends State<ProductDetails> {
                 decoration: BoxDecoration(
                   color: _isScrolled
                       ? AppTheme.lightTheme.colorScheme.surface
-                          .withOpacity(0.95)
+                          .withValues(alpha: 0.95)
                       : Colors.transparent,
                   boxShadow: _isScrolled
                       ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           ),
@@ -269,11 +275,11 @@ class _ProductDetailsState extends State<ProductDetails> {
                         padding: EdgeInsets.all(2.w),
                         decoration: BoxDecoration(
                           color: AppTheme.lightTheme.colorScheme.surface
-                              .withOpacity(0.9),
+                              .withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: AppTheme.lightTheme.colorScheme.outline
-                                .withOpacity(0.2),
+                                .withValues(alpha: 0.2),
                           ),
                         ),
                         child: CustomIconWidget(
@@ -324,11 +330,11 @@ class _ProductDetailsState extends State<ProductDetails> {
                         padding: EdgeInsets.all(2.w),
                         decoration: BoxDecoration(
                           color: AppTheme.lightTheme.colorScheme.surface
-                              .withOpacity(0.9),
+                              .withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: AppTheme.lightTheme.colorScheme.outline
-                                .withOpacity(0.2),
+                                .withValues(alpha: 0.2),
                           ),
                         ),
                         child: CustomIconWidget(

@@ -1,9 +1,12 @@
 // lib/presentation/ai_chat_assistant/ai_chat_assistant.dart
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/services/groq_service.dart';
+import '../../core/services/firestore_service.dart';
 import '../../models/user_profile.dart'; // Import the UserProfile model
 import './widgets/chat_header_widget.dart';
 import './widgets/chat_input_widget.dart';
@@ -64,10 +67,42 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       });
       _updateQuickReplies();
     } catch (e) {
+      final errorStr = e.toString();
+      final isApiKeyMissing = errorStr.contains('GROQ_API_KEY') ||
+          errorStr.contains('not found') ||
+          errorStr.contains('not set');
+
       setState(() {
-        _errorMessage = 'Failed to initialize AI service. Please check your API key and internet connection.';
         _isLoading = false;
         _showTypingIndicator = false;
+
+        if (isApiKeyMissing) {
+          // Show a helpful welcome message with setup instructions
+          _messages.add({
+            "id": 1,
+            "message":
+                "👋 Hi ${widget.userProfile.name}! I'm NutriBot, your AI nutrition assistant.\n\n"
+                "⚠️ **Setup Required:** To enable AI features, you need a free Groq API key.\n\n"
+                "**Steps:**\n"
+                "1. Go to **console.groq.com**\n"
+                "2. Sign up and copy your API key\n"
+                "3. Open `assets/env.json` in the project\n"
+                "4. Replace `your-groq-api-key-here` with your key\n"
+                "5. Rebuild the app\n\n"
+                "In the meantime, you can still scan products, track nutrition, and manage your shopping list! 🛒",
+            "isUser": false,
+            "timestamp": DateTime.now(),
+          });
+          _errorMessage = null; // Don't show the red error banner
+        } else {
+          _messages.add({
+            "id": 1,
+            "message": "Hi ${widget.userProfile.name}! I'm having trouble connecting right now. Please check your internet and try again.",
+            "isUser": false,
+            "timestamp": DateTime.now(),
+          });
+          _errorMessage = 'Connection issue. Please check your internet.';
+        }
       });
     }
   }
@@ -139,12 +174,44 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
         // FIX: Use the user profile from the widget
         userProfile: widget.userProfile.toMap(),
       );
-      
+
+      String displayMessage = aiResponse;
+
+      // Extract conversational auto-log intent
+      final logMatch = RegExp(r'\[LOG_MEAL:\s*({.*?})\s*\]', dotAll: true).firstMatch(displayMessage);
+      if (logMatch != null) {
+        try {
+          final jsonStr = logMatch.group(1)!;
+          final macros = jsonDecode(jsonStr);
+          
+          final dateString = DateFormat('yyyy-MM-dd').format(DateTime.now());
+          final entry = {
+            'name': macros['name'] ?? 'AI Logged Meal',
+            'mealType': 'Snack',
+            'calories': macros['calories'] ?? 0,
+            'protein': (macros['protein'] ?? 0).toDouble(),
+            'sugar': (macros['sugar'] ?? 0).toDouble(),
+            'fat': (macros['fat'] ?? 0).toDouble(),
+            'carbs': (macros['carbs'] ?? 0).toDouble(),
+            'brand': 'Conversational AI',
+            'time': DateFormat('HH:mm').format(DateTime.now()),
+            'date': dateString,
+          };
+          
+          FirestoreService().saveDietEntry(entry);
+          
+          // Remove the tag from the UI message smoothly
+          displayMessage = displayMessage.replaceAll(logMatch.group(0)!, '').trim();
+        } catch (e) {
+          debugPrint('Failed to parse AI log intent: $e');
+        }
+      }
+
       if(mounted) {
         setState(() {
           _messages.add({
             "id": _messages.length + 1,
-            "message": aiResponse,
+            "message": displayMessage,
             "isUser": false,
             "timestamp": DateTime.now(),
           });
@@ -160,7 +227,13 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
             "isUser": false,
             "timestamp": DateTime.now(),
           });
-          _errorMessage = 'Error communicating with AI: ${e.toString()}';
+          
+          final errorString = e.toString();
+          if (errorString.contains('401')) {
+            _errorMessage = 'Invalid API Key. Please enter a valid Groq API key in assets/env.json and rebuild the app.';
+          } else {
+            _errorMessage = 'Error communicating with AI: $errorString';
+          }
         });
       }
     }
@@ -207,9 +280,9 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               padding: EdgeInsets.all(3.w),
               margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -221,6 +294,21 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                       style: TextStyle(color: Colors.red.shade800, fontSize: 12.sp),
                     ),
                   ),
+                  if (_errorMessage!.contains('internet') || _errorMessage!.contains('communicating'))
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() => _errorMessage = null);
+                        if (_messages.length <= 1) {
+                            _initializeChat();
+                        } else {
+                            // Retry the last message by sending it again
+                            // Could implement a resend feature, but basic init works too
+                            _initializeChat();
+                        }
+                      },
+                      icon: const Icon(Icons.refresh, color: Colors.red, size: 16),
+                      label: const Text('Retry', style: TextStyle(color: Colors.red)),
+                    ),
                   IconButton(
                     onPressed: () => setState(() => _errorMessage = null),
                     icon: Icon(Icons.close, color: Colors.red, size: 4.w),
@@ -236,7 +324,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                   end: Alignment.bottomCenter,
                   colors: [
                     AppTheme.lightTheme.scaffoldBackgroundColor,
-                    AppTheme.lightTheme.colorScheme.surface.withOpacity(0.5),
+                    AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.5),
                   ],
                 ),
               ),

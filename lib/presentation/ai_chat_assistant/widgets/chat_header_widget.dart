@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -19,7 +19,7 @@ class ChatHeaderWidget extends StatelessWidget {
         color: AppTheme.lightTheme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -91,7 +91,7 @@ class ChatHeaderWidget extends StatelessWidget {
                         style:
                             AppTheme.lightTheme.textTheme.labelSmall?.copyWith(
                           color: AppTheme.lightTheme.colorScheme.onSurface
-                              .withOpacity(0.7),
+                              .withValues(alpha: 0.7),
                         ),
                       ),
                     ],

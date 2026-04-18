@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'firestore_service.dart';
 
 /// Service that fetches real product data from the Open Food Facts API.
 /// This is a free, open-source database with millions of food products.
@@ -99,17 +100,19 @@ class ProductService {
     };
   }
 
-  /// Saves a scanned product to local history.
+  /// Saves a scanned product to local history AND Firestore.
   Future<void> saveToScanHistory(Map<String, dynamic> product) async {
     try {
+      final entryWithTimestamp = {
+        ...product,
+        'scannedAt': DateTime.now().toIso8601String(),
+      };
+
+      // Save to local SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final history = prefs.getStringList('scan_history') ?? [];
 
-      // Add to front of list, limit to 50 entries
-      final entry = jsonEncode({
-        ...product,
-        'scannedAt': DateTime.now().toIso8601String(),
-      });
+      final entry = jsonEncode(entryWithTimestamp);
 
       history.insert(0, entry);
       if (history.length > 50) {
@@ -117,13 +120,43 @@ class ProductService {
       }
 
       await prefs.setStringList('scan_history', history);
+
+      // Also save to Firestore for cloud sync
+      try {
+        await FirestoreService().saveScan(product);
+      } catch (e) {
+        debugPrint('Firestore scan save failed (offline?): $e');
+      }
+
+      // Cache product data in Firestore
+      try {
+        final barcode = product['barcode'] as String?;
+        if (barcode != null && barcode.isNotEmpty) {
+          await FirestoreService().cacheProduct(barcode, product);
+        }
+      } catch (e) {
+        debugPrint('Firestore product cache failed: $e');
+      }
     } catch (e) {
       debugPrint('Error saving scan history: $e');
     }
   }
 
-  /// Gets the scan history from local storage.
+  /// Gets the scan history — tries Firestore first, falls back to local.
   Future<List<Map<String, dynamic>>> getScanHistory() async {
+    // Try Firestore first for logged-in users
+    try {
+      final firestoreHistory = await FirestoreService()
+          .getScanHistory()
+          .timeout(const Duration(seconds: 4));
+      if (firestoreHistory.isNotEmpty) {
+        return firestoreHistory;
+      }
+    } catch (e) {
+      debugPrint('Firestore scan history unavailable: $e');
+    }
+
+    // Fall back to local storage
     try {
       final prefs = await SharedPreferences.getInstance();
       final history = prefs.getStringList('scan_history') ?? [];
@@ -132,8 +165,18 @@ class ProductService {
           .map((e) => jsonDecode(e) as Map<String, dynamic>)
           .toList();
     } catch (e) {
-      debugPrint('Error loading scan history: $e');
+      debugPrint('Error loading local scan history: $e');
       return [];
+    }
+  }
+
+  /// Clears local-only scan history (used on sign-out).
+  Future<void> clearLocalHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('scan_history');
+    } catch (e) {
+      debugPrint('Error clearing local history: $e');
     }
   }
 }

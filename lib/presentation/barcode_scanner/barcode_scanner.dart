@@ -150,13 +150,14 @@ class _BarcodeScannerState extends State<BarcodeScanner>
       // Save to scan history
       await _productService.saveToScanHistory(product);
 
+      if (!mounted) return;
       // Navigate to product details
       Navigator.pushNamed(
         context,
         '/product-details',
         arguments: product,
       ).then((_) {
-        _resetScanner();
+        if (mounted) _resetScanner();
       });
     } else if (mounted) {
       // Product not found
@@ -212,12 +213,13 @@ class _BarcodeScannerState extends State<BarcodeScanner>
     if (product != null && mounted) {
       await _productService.saveToScanHistory(product);
 
+      if (!mounted) return;
       Navigator.pushNamed(
         context,
         '/product-details',
         arguments: product,
       ).then((_) {
-        _resetScanner();
+        if (mounted) _resetScanner();
       });
     } else if (mounted) {
       setState(() {
@@ -271,7 +273,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
                   children: [
                     CustomIconWidget(
                       iconName: 'camera_alt',
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       size: 64,
                     ),
                     SizedBox(height: 2.h),

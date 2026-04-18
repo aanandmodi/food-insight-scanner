@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../main.dart' as main_app;
 
 /// Service to interact with the Groq API for AI chat functionality.
-/// Uses Llama 3.3 70B model for high-quality nutrition advice.
+/// Uses Meta Llama 4 Scout model for high-quality nutrition advice.
 class GroqService {
   static final GroqService _instance = GroqService._internal();
   factory GroqService() => _instance;
@@ -15,7 +15,7 @@ class GroqService {
 
   static const String _baseUrl =
       'https://api.groq.com/openai/v1/chat/completions';
-  static const String _model = 'moonshotai/kimi-k2-instruct';
+  static const String _model = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
   /// Initializes the service by reading the API key from the global env.
   Future<void> initialize() async {
@@ -36,6 +36,61 @@ class GroqService {
     } catch (e) {
       throw Exception('Failed to initialize Groq service: $e');
     }
+  }
+
+  /// Resets initialization so the service can be re-initialized with a new key.
+  void reset() {
+    _isInitialized = false;
+    _apiKey = null;
+  }
+
+  /// Makes an API call with retry logic for transient errors.
+  Future<http.Response> _callApi(Map<String, dynamic> body, {int retries = 2}) async {
+    for (int attempt = 0; attempt <= retries; attempt++) {
+      try {
+        final response = await http.post(
+          Uri.parse(_baseUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_apiKey',
+          },
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 30));
+
+        // Success or non-retryable error
+        if (response.statusCode == 200 ||
+            response.statusCode == 401 ||
+            response.statusCode == 403 ||
+            response.statusCode == 400) {
+          return response;
+        }
+
+        // Rate limited — wait and retry
+        if (response.statusCode == 429 && attempt < retries) {
+          final waitMs = (attempt + 1) * 2000;
+          debugPrint('Rate limited, waiting ${waitMs}ms before retry...');
+          await Future.delayed(Duration(milliseconds: waitMs));
+          continue;
+        }
+
+        // Server error — retry
+        if (response.statusCode >= 500 && attempt < retries) {
+          final waitMs = (attempt + 1) * 1000;
+          debugPrint('Server error ${response.statusCode}, retrying in ${waitMs}ms...');
+          await Future.delayed(Duration(milliseconds: waitMs));
+          continue;
+        }
+
+        return response;
+      } catch (e) {
+        if (attempt == retries) rethrow;
+        final waitMs = (attempt + 1) * 1000;
+        debugPrint('Network error, retrying in ${waitMs}ms: $e');
+        await Future.delayed(Duration(milliseconds: waitMs));
+      }
+    }
+
+    throw Exception('All API call attempts failed');
   }
 
   /// Generates a response from Groq API.
@@ -68,20 +123,13 @@ class GroqService {
       // Current user message
       messages.add({'role': 'user', 'content': userMessage});
 
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': messages,
-          'temperature': 0.7,
-          'max_tokens': 1024,
-          'top_p': 0.95,
-        }),
-      );
+      final response = await _callApi({
+        'model': _model,
+        'messages': messages,
+        'temperature': 0.7,
+        'max_tokens': 1024,
+        'top_p': 0.95,
+      });
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -91,6 +139,14 @@ class GroqService {
           return message['content'] as String? ??
               'I apologize, but I could not generate a response.';
         }
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Invalid API key (401). Please check your Groq API key in assets/env.json.');
+      }
+
+      if (response.statusCode == 429) {
+        throw Exception('Rate limited (429). Please wait a moment and try again.');
       }
 
       debugPrint('Groq API error: ${response.statusCode} - ${response.body}');
@@ -115,26 +171,19 @@ class GroqService {
           'Generate 4 short, actionable quick-reply suggestions.\n'
           'Return ONLY the suggestions, one per line, without numbering or bullets.';
 
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You are a helpful nutrition assistant. Respond with only 4 suggestions, one per line.'
-            },
-            {'role': 'user', 'content': prompt},
-          ],
-          'temperature': 0.8,
-          'max_tokens': 256,
-        }),
-      );
+      final response = await _callApi({
+        'model': _model,
+        'messages': [
+          {
+            'role': 'system',
+            'content':
+                'You are a helpful nutrition assistant. Respond with only 4 suggestions, one per line.'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.8,
+        'max_tokens': 256,
+      }, retries: 1);
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -162,32 +211,24 @@ class GroqService {
     required Map<String, dynamic> productData,
     Map<String, dynamic>? userProfile,
   }) async {
-    // ... existing implementation ...
     if (!_isInitialized) await initialize();
 
     try {
       final prompt = _buildProductAnalysisPrompt(productData, userProfile);
 
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You are an expert nutritionist analyzing food products. Provide concise, helpful advice.'
-            },
-            {'role': 'user', 'content': prompt},
-          ],
-          'temperature': 0.5,
-          'max_tokens': 512,
-        }),
-      );
+      final response = await _callApi({
+        'model': _model,
+        'messages': [
+          {
+            'role': 'system',
+            'content':
+                'You are an expert nutritionist analyzing food products. Provide concise, helpful advice.'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.5,
+        'max_tokens': 512,
+      });
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -205,7 +246,6 @@ class GroqService {
   }
 
   /// Generates a list of healthy alternatives for a given product.
-  /// Returns a list of maps, where each map represents a product.
   Future<List<Map<String, dynamic>>> getHealthyAlternatives({
     required Map<String, dynamic> productData,
     Map<String, dynamic>? userProfile,
@@ -215,27 +255,19 @@ class GroqService {
     try {
       final prompt = _buildAlternativesPrompt(productData, userProfile);
 
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You are a nutritionist. Suggest healthier food alternatives as a strict JSON array. Do not include markdown formatting or explanations outside the JSON.'
-            },
-            {'role': 'user', 'content': prompt},
-          ],
-          'temperature': 0.6,
-          'max_tokens': 1024,
-          'response_format': {'type': 'json_object'}, // Valid for some models, but safe to omit if prompt is strong
-        }),
-      );
+      final response = await _callApi({
+        'model': _model,
+        'messages': [
+          {
+            'role': 'system',
+            'content':
+                'You are a nutritionist. Suggest healthier food alternatives as a strict JSON array. Do not include markdown formatting or explanations outside the JSON.'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.6,
+        'max_tokens': 1024,
+      });
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -249,7 +281,6 @@ class GroqService {
           
           try {
              // Expecting {"alternatives": [...]} or just [...]
-             // Let's parse it broadly
              if (content.startsWith('{')) {
                final data = jsonDecode(content);
                if (data['alternatives'] is List) {
@@ -272,18 +303,18 @@ class GroqService {
 
   String _buildAlternativesPrompt(Map<String, dynamic> productData, Map<String, dynamic>? userProfile) {
     return '''
-    Based on this product: "${productData['name']}" (Brand: ${productData['brand']}), suggest 3 healthier alternatives.
+    Based on this product: "${productData['name']}" (Brand: ${productData['brand']}), suggest 3 healthier alternatives specifically available in the **Indian Market**.
     
     User Context:
     ${userProfile != null ? jsonEncode(userProfile) : 'None'}
     
     Output strictly a JSON array of objects. Each object must have:
-    - "name": string
-    - "brand": string (make up a generic one if unknown)
-    - "image": string (use a placeholder URL like "https://placehold.co/200x200?text=Healthy+Option")
+    - "name": string (Indian product name)
+    - "brand": string (Popular Indian brands like Amul, Britannia, Tata Sampann, Yoga Bar, etc.)
+    - "image": string (use a placeholder URL like "https://placehold.co/200x200?text=Healthy+Choice")
     - "isBetterChoice": boolean (always true)
     - "healthScore": number (80-100)
-    - "price": string (estimate, e.g. "\$4.99")
+    - "price": string (estimate realistic price in INR, e.g. "₹45.00" or "Rs. 150")
     
     Example format:
     {
@@ -304,27 +335,19 @@ class GroqService {
     try {
       final prompt = _buildDietPlanPrompt(dailySummary, userProfile);
 
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You are a nutritionist. Create a meal plan for the next day. Output strictly valid JSON.'
-            },
-            {'role': 'user', 'content': prompt},
-          ],
-          'temperature': 0.7,
-          'max_tokens': 1500,
-          'response_format': {'type': 'json_object'},
-        }),
-      );
+      final response = await _callApi({
+        'model': _model,
+        'messages': [
+          {
+            'role': 'system',
+            'content':
+                'You are a nutritionist. Create a meal plan for the next day. Output strictly valid JSON.'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.7,
+        'max_tokens': 1500,
+      });
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -403,14 +426,20 @@ class GroqService {
 
   String _buildSystemPrompt(Map<String, dynamic>? userProfile) {
     String systemPrompt = """
-You are a helpful, friendly, and knowledgeable nutrition assistant for a food insight scanner app. Your role is to provide personalized dietary advice in a humanized and conversational tone.
+You are an energetic, friendly, and expert nutrition assistant for an Indian food insight scanner app. Your role is to provide personalized dietary advice in a warm, humanized, and highly conversational tone.
 
 **Your Personality & Formatting Rules:**
-- **Be Conversational:** Talk to the user like a helpful friend.
-- **Highlight Key Points:** Use Markdown bold for crucial information.
-- **Keep it Clear:** Use bullet points and short paragraphs.
+- **Be Conversational & Energetic:** Talk to the user like a helpful friend. Use fun emojis! 🥑🚀🥗
+- **Visual Formatting:** Whenever comparing products or breaking down macros (Calories, Protein, Carbs, Fat), always use **Markdown Tables**.
+- **Keep it Clear:** Use bullet points and short, readable paragraphs.
 - **Prioritize Safety:** Always warn about allergens and dietary restrictions.
-- **Be Encouraging:** Be supportive and positive.
+
+**CRITICAL: Meal Logging Detection**
+If the user tells you they just ate something (e.g. "I just had a masala dosa" or "I ate an apple"), you must do TWO things:
+1. Respond to them normally in a friendly way.
+2. At the very END of your response, output a strict JSON block exactly in this format on its own line:
+[LOG_MEAL: {"name": "Meal Name", "calories": 250, "protein": 5, "sugar": 2, "fat": 10, "carbs": 30}]
+Never use markdown blocks for the JSON. Just output the exact text string format above so the app can silently log it to their cloud profile.
 """;
 
     if (userProfile != null) {
@@ -472,6 +501,50 @@ You are a helpful, friendly, and knowledgeable nutrition assistant for a food in
         '\nProvide a brief health analysis and whether this product aligns with my goals.');
 
     return buffer.toString();
+  }
+
+  /// Parses a natural language meal description into nutritional macros
+  Future<Map<String, dynamic>?> parseMeal(String mealDescription) async {
+    if (!_isInitialized) await initialize();
+
+    try {
+      final prompt = 'Analyze the following meal: "$mealDescription"\n'
+          'Estimate the macronutrients for a typical Indian serving size if vague.\n'
+          'Output strictly as a valid JSON object with these exact keys:\n'
+          '{"name": "Brief Meal Name", "calories": <int>, "protein": <double>, "sugar": <double>, "fat": <double>, "carbs": <double>}';
+
+      final response = await _callApi({
+        'model': _model,
+        'messages': [
+          {
+            'role': 'system',
+            'content': 'You are a nutrition parser. Return ONLY a valid JSON object matching the requested schema. No markdown.'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.1,
+      }, retries: 1);
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final choices = json['choices'] as List;
+        if (choices.isNotEmpty) {
+          final message = choices[0]['message'] as Map<String, dynamic>;
+          String content = message['content'] as String? ?? '{}';
+          content = content.replaceAll('```json', '').replaceAll('```', '').trim();
+          try {
+            return jsonDecode(content) as Map<String, dynamic>;
+          } catch (e) {
+            debugPrint('Failed to parse meal JSON: $e');
+            return null;
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing meal: $e');
+      return null;
+    }
   }
 
   List<String> _getDefaultQuickReplies(Map<String, dynamic>? userProfile) {

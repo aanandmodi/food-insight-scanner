@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -74,7 +74,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
           Container(
             width: double.infinity,
             height: double.infinity,
-            color: Colors.black.withOpacity(0.6),
+            color: Colors.black.withValues(alpha: 0.6),
           ),
 
           // Scanning area cutout
@@ -113,7 +113,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                         color: widget.isScanning
                             ? AppTheme.lightTheme.colorScheme.primary
                             : AppTheme.lightTheme.colorScheme.primary
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                         width: 3,
                       ),
                       borderRadius: BorderRadius.circular(16),
@@ -224,7 +224,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: const Center(
@@ -244,7 +244,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Center(
@@ -272,7 +272,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -290,7 +290,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 Text(
                   'Make sure the barcode is well-lit and clearly visible',
                   style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                   textAlign: TextAlign.center,
                 ),
