@@ -17,24 +17,30 @@ class ProgressIndicatorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: isDark
+          ? AppTheme.glassmorphicDecoration(borderRadius: 16)
+          : BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -43,35 +49,38 @@ class ProgressIndicatorWidget extends StatelessWidget {
             children: [
               Text(
                 'Profile Setup',
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 '$currentStep of $totalSteps',
-                style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
           SizedBox(height: 2.h),
-          _buildProgressBar(),
+          _buildProgressBar(context),
           SizedBox(height: 2.h),
-          _buildStepIndicators(),
+          _buildStepIndicators(context),
         ],
       ),
     );
   }
 
-  Widget _buildProgressBar() {
+  Widget _buildProgressBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final double progress = currentStep / totalSteps;
 
     return Container(
       height: 8,
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+        color: colorScheme.outline.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Stack(
@@ -79,13 +88,13 @@ class ProgressIndicatorWidget extends StatelessWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
-            width: progress * 100.w - (8.w), // Account for container padding
+            width: progress * 100.w - (8.w),
             height: 8,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.lightTheme.colorScheme.primary,
-                  AppTheme.lightTheme.colorScheme.secondary,
+                  colorScheme.primary,
+                  colorScheme.secondary,
                 ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
@@ -93,9 +102,8 @@ class ProgressIndicatorWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.lightTheme.colorScheme.primary
-                      .withValues(alpha: 0.3),
-                  blurRadius: 4,
+                  color: colorScheme.primary.withValues(alpha: isDark ? 0.5 : 0.3),
+                  blurRadius: isDark ? 8 : 4,
                   offset: const Offset(0, 1),
                 ),
               ],
@@ -106,7 +114,11 @@ class ProgressIndicatorWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildStepIndicators() {
+  Widget _buildStepIndicators(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       children: List.generate(totalSteps, (index) {
         final stepNumber = index + 1;
@@ -126,49 +138,50 @@ class ProgressIndicatorWidget extends StatelessWidget {
                       height: 8.w,
                       decoration: BoxDecoration(
                         color: isCompleted
-                            ? AppTheme.lightTheme.colorScheme.primary
+                            ? colorScheme.primary
                             : isCurrent
-                                ? AppTheme.lightTheme.colorScheme.primary
-                                : AppTheme.lightTheme.colorScheme.outline
-                                    .withValues(alpha: 0.3),
+                                ? colorScheme.primary
+                                : colorScheme.outline.withValues(alpha: 0.3),
                         shape: BoxShape.circle,
                         border: isCurrent
                             ? Border.all(
-                                color: AppTheme.lightTheme.colorScheme.primary,
+                                color: colorScheme.primary,
                                 width: 2,
                               )
                             : null,
-                        boxShadow: (isCompleted || isCurrent)
+                        boxShadow: (isCompleted || isCurrent) && isDark
                             ? [
                                 BoxShadow(
-                                  color: AppTheme.lightTheme.colorScheme.primary
-                                      .withValues(alpha: 0.3),
-                                  blurRadius: 6,
+                                  color: colorScheme.primary.withValues(alpha: 0.4),
+                                  blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
                               ]
-                            : null,
+                            : (isCompleted || isCurrent)
+                                ? [
+                                    BoxShadow(
+                                      color: colorScheme.primary.withValues(alpha: 0.3),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                       ),
                       child: Center(
                         child: isCompleted
                             ? CustomIconWidget(
                                 iconName: 'check',
-                                color:
-                                    AppTheme.lightTheme.colorScheme.onPrimary,
+                                color: colorScheme.onPrimary,
                                 size: 16,
                               )
                             : Text(
                                 stepNumber.toString(),
-                                style: AppTheme.lightTheme.textTheme.bodySmall
-                                    ?.copyWith(
+                                style: theme.textTheme.bodySmall?.copyWith(
                                   color: isCurrent
-                                      ? AppTheme
-                                          .lightTheme.colorScheme.onPrimary
+                                      ? colorScheme.onPrimary
                                       : isUpcoming
-                                          ? AppTheme.lightTheme.colorScheme
-                                              .onSurfaceVariant
-                                          : AppTheme
-                                              .lightTheme.colorScheme.onPrimary,
+                                          ? colorScheme.onSurfaceVariant
+                                          : colorScheme.onPrimary,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 10.sp,
                                 ),
@@ -180,12 +193,11 @@ class ProgressIndicatorWidget extends StatelessWidget {
                       index < stepLabels.length
                           ? stepLabels[index]
                           : 'Step $stepNumber',
-                      style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: (isCompleted || isCurrent)
-                            ? AppTheme.lightTheme.colorScheme.primary
-                            : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
-                        fontWeight:
-                            isCurrent ? FontWeight.w600 : FontWeight.w400,
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
+                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
                         fontSize: 9.sp,
                       ),
                       textAlign: TextAlign.center,
@@ -202,9 +214,8 @@ class ProgressIndicatorWidget extends StatelessWidget {
                   margin: EdgeInsets.only(bottom: 4.h),
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? AppTheme.lightTheme.colorScheme.primary
-                        : AppTheme.lightTheme.colorScheme.outline
-                            .withValues(alpha: 0.3),
+                        ? colorScheme.primary
+                        : colorScheme.outline.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(1),
                   ),
                 ),

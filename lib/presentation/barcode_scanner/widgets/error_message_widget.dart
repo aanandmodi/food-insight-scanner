@@ -48,14 +48,14 @@ class ErrorMessageWidget extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.error
+                  color: Theme.of(context).colorScheme.error
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(32),
                 ),
                 child: Center(
                   child: CustomIconWidget(
                     iconName: 'error_outline',
-                    color: AppTheme.lightTheme.colorScheme.error,
+                    color: Theme.of(context).colorScheme.error,
                     size: 32,
                   ),
                 ),
@@ -66,7 +66,7 @@ class ErrorMessageWidget extends StatelessWidget {
               // Title
               Text(
                 title,
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -77,8 +77,8 @@ class ErrorMessageWidget extends StatelessWidget {
               // Message
               Text(
                 message,
-                style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.onSurface
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface
                       .withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
@@ -126,3 +126,4 @@ class ErrorMessageWidget extends StatelessWidget {
     );
   }
 }
+

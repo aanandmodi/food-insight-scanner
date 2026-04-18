@@ -1,0 +1,2 @@
+D:/Downloads/food_insight_scanner/food_insight_scanner/android/app/.cxx/RelWithDebInfo/715q4t52/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/Downloads/food_insight_scanner/food_insight_scanner/android/app/.cxx/RelWithDebInfo/715q4t52/armeabi-v7a/CMakeFiles/rebuild_cache.dir

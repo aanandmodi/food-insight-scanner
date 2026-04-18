@@ -91,7 +91,7 @@ class _SuccessFlashWidgetState extends State<SuccessFlashWidget>
         return Container(
           width: double.infinity,
           height: double.infinity,
-          color: AppTheme.lightTheme.primaryColor.withValues(
+          color: Theme.of(context).colorScheme.primary.withValues(
             alpha: _fadeAnimation.value * 0.3,
           ),
           child: Center(
@@ -105,7 +105,7 @@ class _SuccessFlashWidgetState extends State<SuccessFlashWidget>
                   borderRadius: BorderRadius.circular(60),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.lightTheme.primaryColor
+                      color: Theme.of(context).colorScheme.primary
                           .withValues(alpha: 0.3),
                       blurRadius: 20,
                       spreadRadius: 5,
@@ -118,15 +118,15 @@ class _SuccessFlashWidgetState extends State<SuccessFlashWidget>
                     children: [
                       CustomIconWidget(
                         iconName: 'check_circle',
-                        color: AppTheme.lightTheme.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 48,
                       ),
                       SizedBox(height: 1.h),
                       Text(
                         'Scanned!',
                         style:
-                            AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
-                          color: AppTheme.lightTheme.primaryColor,
+                            Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -141,3 +141,5 @@ class _SuccessFlashWidgetState extends State<SuccessFlashWidget>
     );
   }
 }
+
+

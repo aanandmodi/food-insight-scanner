@@ -1,6 +1,9 @@
 // lib/presentation/auth/signup_screen.dart
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/services/auth_service.dart';
@@ -57,7 +60,7 @@ class _SignupScreenState extends State<SignupScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppTheme.lightTheme.colorScheme.error,
+        backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -68,6 +71,7 @@ class _SignupScreenState extends State<SignupScreen>
 
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+    HapticFeedback.lightImpact();
 
     setState(() => _isLoading = true);
     try {
@@ -90,8 +94,12 @@ class _SignupScreenState extends State<SignupScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -102,15 +110,19 @@ class _SignupScreenState extends State<SignupScreen>
                   width: double.infinity,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppTheme.lightTheme.colorScheme.primary
-                            .withValues(alpha: 0.08),
-                        AppTheme.lightTheme.scaffoldBackgroundColor,
-                        AppTheme.lightTheme.colorScheme.secondary
-                            .withValues(alpha: 0.04),
-                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: isDark
+                          ? [
+                              colorScheme.primary.withValues(alpha: 0.08),
+                              theme.scaffoldBackgroundColor,
+                              theme.scaffoldBackgroundColor,
+                            ]
+                          : [
+                              colorScheme.primary.withValues(alpha: 0.08),
+                              theme.scaffoldBackgroundColor,
+                              colorScheme.secondary.withValues(alpha: 0.04),
+                            ],
                     ),
                   ),
                   child: SafeArea(
@@ -122,75 +134,78 @@ class _SignupScreenState extends State<SignupScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             SizedBox(height: 2.h),
-                            // Back button
+                            // Back button with glass
                             GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                padding: EdgeInsets.all(2.w),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.lightTheme.colorScheme.surface
-                                      .withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme
-                                        .lightTheme.colorScheme.outline
-                                        .withValues(alpha: 0.3),
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.pop(context);
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                  child: Container(
+                                    padding: EdgeInsets.all(2.w),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : colorScheme.surface.withValues(alpha: 0.8),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? Colors.white.withValues(alpha: 0.15)
+                                            : colorScheme.outline.withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    child: CustomIconWidget(
+                                      iconName: 'arrow_back',
+                                      color: colorScheme.onSurface,
+                                      size: 24,
+                                    ),
                                   ),
                                 ),
-                                child: CustomIconWidget(
-                                  iconName: 'arrow_back',
-                                  color: AppTheme
-                                      .lightTheme.colorScheme.onSurface,
-                                  size: 24,
-                                ),
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 400.ms)
+                                .slideX(begin: -0.1),
                             SizedBox(height: 3.h),
                             // Header
                             Text(
                               'Create Account',
-                              style: AppTheme
-                                  .lightTheme.textTheme.headlineMedium
-                                  ?.copyWith(
+                              style: theme.textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
+                                shadows: isDark
+                                    ? AppTheme.textGlow(colorScheme.primary, blur: 6)
+                                    : null,
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 100.ms),
                             SizedBox(height: 1.h),
                             Text(
                               'Sign up to personalize your food insights and track your nutrition.',
-                              style: AppTheme.lightTheme.textTheme.bodyLarge
-                                  ?.copyWith(
-                                color: AppTheme
-                                    .lightTheme.colorScheme.onSurfaceVariant,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 200.ms),
                             SizedBox(height: 4.h),
                             // Form
                             Form(
                               key: _formKey,
                               child: Column(
                                 children: [
-                                  // Name
-                                  TextFormField(
+                                  _buildField(
                                     controller: _nameController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Full Name',
-                                      hintText: 'Enter your full name',
-                                      prefixIcon: Padding(
-                                        padding: EdgeInsets.all(3.w),
-                                        child: CustomIconWidget(
-                                          iconName: 'person',
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
-                                    textCapitalization:
-                                        TextCapitalization.words,
+                                    label: 'Full Name',
+                                    hint: 'Enter your full name',
+                                    icon: 'person',
+                                    colorScheme: colorScheme,
+                                    capitalization: TextCapitalization.words,
                                     validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
+                                      if (value == null || value.trim().isEmpty) {
                                         return 'Please enter your name';
                                       }
                                       if (value.trim().length < 2) {
@@ -200,31 +215,18 @@ class _SignupScreenState extends State<SignupScreen>
                                     },
                                   ),
                                   SizedBox(height: 2.h),
-                                  // Email
-                                  TextFormField(
+                                  _buildField(
                                     controller: _emailController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Email',
-                                      hintText: 'you@example.com',
-                                      prefixIcon: Padding(
-                                        padding: EdgeInsets.all(3.w),
-                                        child: CustomIconWidget(
-                                          iconName: 'email',
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
-                                    keyboardType:
-                                        TextInputType.emailAddress,
+                                    label: 'Email',
+                                    hint: 'you@example.com',
+                                    icon: 'email',
+                                    colorScheme: colorScheme,
+                                    keyboardType: TextInputType.emailAddress,
                                     validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
+                                      if (value == null || value.trim().isEmpty) {
                                         return 'Please enter your email';
                                       }
-                                      if (!RegExp(
-                                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                                           .hasMatch(value.trim())) {
                                         return 'Please enter a valid email';
                                       }
@@ -232,41 +234,14 @@ class _SignupScreenState extends State<SignupScreen>
                                     },
                                   ),
                                   SizedBox(height: 2.h),
-                                  // Password
-                                  TextFormField(
+                                  _buildPasswordField(
                                     controller: _passwordController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Password',
-                                      hintText: 'At least 6 characters',
-                                      prefixIcon: Padding(
-                                        padding: EdgeInsets.all(3.w),
-                                        child: CustomIconWidget(
-                                          iconName: 'lock',
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      suffixIcon: GestureDetector(
-                                        onTap: () => setState(() =>
-                                            _obscurePassword =
-                                                !_obscurePassword),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(3.w),
-                                          child: CustomIconWidget(
-                                            iconName: _obscurePassword
-                                                ? 'visibility_off'
-                                                : 'visibility',
-                                            color: AppTheme
-                                                .lightTheme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    obscureText: _obscurePassword,
+                                    label: 'Password',
+                                    hint: 'At least 6 characters',
+                                    colorScheme: colorScheme,
+                                    obscure: _obscurePassword,
+                                    onToggle: () => setState(
+                                        () => _obscurePassword = !_obscurePassword),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter a password';
@@ -278,47 +253,17 @@ class _SignupScreenState extends State<SignupScreen>
                                     },
                                   ),
                                   SizedBox(height: 2.h),
-                                  // Confirm Password
-                                  TextFormField(
-                                    controller:
-                                        _confirmPasswordController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Confirm Password',
-                                      hintText: 'Re-enter your password',
-                                      prefixIcon: Padding(
-                                        padding: EdgeInsets.all(3.w),
-                                        child: CustomIconWidget(
-                                          iconName: 'lock',
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      suffixIcon: GestureDetector(
-                                        onTap: () => setState(() =>
-                                            _obscureConfirmPassword =
-                                                !_obscureConfirmPassword),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(3.w),
-                                          child: CustomIconWidget(
-                                            iconName:
-                                                _obscureConfirmPassword
-                                                    ? 'visibility_off'
-                                                    : 'visibility',
-                                            color: AppTheme
-                                                .lightTheme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    obscureText:
-                                        _obscureConfirmPassword,
+                                  _buildPasswordField(
+                                    controller: _confirmPasswordController,
+                                    label: 'Confirm Password',
+                                    hint: 'Re-enter your password',
+                                    colorScheme: colorScheme,
+                                    obscure: _obscureConfirmPassword,
+                                    onToggle: () => setState(() =>
+                                        _obscureConfirmPassword =
+                                            !_obscureConfirmPassword),
                                     validator: (value) {
-                                      if (value !=
-                                          _passwordController.text) {
+                                      if (value != _passwordController.text) {
                                         return 'Passwords do not match';
                                       }
                                       return null;
@@ -326,69 +271,69 @@ class _SignupScreenState extends State<SignupScreen>
                                   ),
                                 ],
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 300.ms)
+                                .slideY(begin: 0.05, end: 0),
                             SizedBox(height: 4.h),
                             // Sign Up Button
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed:
-                                    _isLoading ? null : _handleSignUp,
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize:
-                                      Size(double.infinity, 7.h),
+                            GlowButton(
+                              glowColor: colorScheme.primary,
+                              glowIntensity: isDark ? 0.25 : 0.1,
+                              onTap: _isLoading ? null : _handleSignUp,
+                              child: Container(
+                                width: double.infinity,
+                                height: 7.h,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: _isLoading
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child:
-                                            CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<
-                                                  Color>(
-                                            AppTheme.lightTheme
-                                                .colorScheme.onPrimary,
+                                child: Center(
+                                  child: _isLoading
+                                      ? SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              colorScheme.onPrimary,
+                                            ),
+                                          ),
+                                        )
+                                      : Text(
+                                          'Create Account',
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            color: colorScheme.onPrimary,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                      )
-                                    : Text(
-                                        'Create Account',
-                                        style: AppTheme.lightTheme
-                                            .textTheme.titleMedium
-                                            ?.copyWith(
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.onPrimary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                ),
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 400.ms),
                             const Spacer(),
                             // Already have an account
                             Padding(
-                              padding:
-                                  EdgeInsets.symmetric(vertical: 3.h),
+                              padding: EdgeInsets.symmetric(vertical: 3.h),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     'Already have an account? ',
-                                    style: AppTheme
-                                        .lightTheme.textTheme.bodyMedium,
+                                    style: theme.textTheme.bodyMedium,
                                   ),
                                   GestureDetector(
-                                    onTap: () =>
-                                        Navigator.pop(context),
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      Navigator.pop(context);
+                                    },
                                     child: Text(
                                       'Sign In',
-                                      style: AppTheme.lightTheme
-                                          .textTheme.bodyMedium
-                                          ?.copyWith(
-                                        color: AppTheme.lightTheme
-                                            .colorScheme.primary,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.primary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -407,6 +352,75 @@ class _SignupScreenState extends State<SignupScreen>
           );
         },
       ),
+    );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required String icon,
+    required ColorScheme colorScheme,
+    TextInputType? keyboardType,
+    TextCapitalization capitalization = TextCapitalization.none,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Padding(
+          padding: EdgeInsets.all(3.w),
+          child: CustomIconWidget(
+            iconName: icon,
+            color: colorScheme.primary,
+            size: 20,
+          ),
+        ),
+      ),
+      keyboardType: keyboardType,
+      textCapitalization: capitalization,
+      validator: validator,
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required ColorScheme colorScheme,
+    required bool obscure,
+    required VoidCallback onToggle,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Padding(
+          padding: EdgeInsets.all(3.w),
+          child: CustomIconWidget(
+            iconName: 'lock',
+            color: colorScheme.primary,
+            size: 20,
+          ),
+        ),
+        suffixIcon: GestureDetector(
+          onTap: onToggle,
+          child: Padding(
+            padding: EdgeInsets.all(3.w),
+            child: CustomIconWidget(
+              iconName: obscure ? 'visibility_off' : 'visibility',
+              color: colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+      obscureText: obscure,
+      validator: validator,
     );
   }
 }

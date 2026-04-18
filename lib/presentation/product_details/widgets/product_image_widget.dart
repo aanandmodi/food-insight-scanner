@@ -24,8 +24,8 @@ class ProductImageWidget extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
-            AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.7),
+            Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+            Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
           ],
         ),
         boxShadow: [
@@ -53,9 +53,9 @@ class ProductImageWidget extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppTheme.lightTheme.colorScheme.primary
+                      Theme.of(context).colorScheme.primary
                           .withValues(alpha: 0.1),
-                      AppTheme.lightTheme.colorScheme.secondary
+                      Theme.of(context).colorScheme.secondary
                           .withValues(alpha: 0.1),
                     ],
                   ),
@@ -66,14 +66,14 @@ class ProductImageWidget extends StatelessWidget {
                     CustomIconWidget(
                       iconName: 'image',
                       size: 48,
-                      color: AppTheme.lightTheme.colorScheme.primary
+                      color: Theme.of(context).colorScheme.primary
                           .withValues(alpha: 0.5),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       'No Image Available',
-                      style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurface
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface
                             .withValues(alpha: 0.6),
                       ),
                     ),
@@ -84,3 +84,4 @@ class ProductImageWidget extends StatelessWidget {
     );
   }
 }
+

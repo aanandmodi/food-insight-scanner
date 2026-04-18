@@ -1,4 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:sizer/sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +31,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
     'sugarGoal': 50,
   };
   
-  // User Profile Data for AI
   Map<String, dynamic>? _userProfile;
 
   @override
@@ -43,7 +45,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
       final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final prefs = await SharedPreferences.getInstance();
 
-      // Fetch entries directly from Firestore (supports offline persistence natively)
       List<Map<String, dynamic>> entries = [];
       try {
         entries = await FirestoreService().getDietLog(dateString);
@@ -51,7 +52,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
         debugPrint('Firestore diet log failed: $e');
       }
 
-      // Load user profile for goals
       Map<String, dynamic>? profile;
       try {
         profile = await FirestoreService().getUserProfile().timeout(
@@ -62,7 +62,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
         debugPrint('Firestore profile failed: $e');
       }
       
-      // Default goals if not set
       int calGoal = 2000;
       int proteinGoal = 150;
       
@@ -78,7 +77,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
         'allergies': prefs.getStringList('user_allergies'),
       };
 
-      // Calculate totals
       int totalCals = 0;
       double totalProtein = 0;
       double totalSugar = 0;
@@ -110,6 +108,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
   }
 
   void _changeDate(int days) {
+    HapticFeedback.lightImpact();
     setState(() {
       _selectedDate = _selectedDate.add(Duration(days: days));
     });
@@ -143,12 +142,16 @@ class _DietLogScreenState extends State<DietLogScreen> {
     bool isAnalyzing = false;
     bool showManualFields = false;
     String? errorMessage;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: isDark ? AppTheme.cardDark : null,
           title: const Text('Add Meal'),
           content: SingleChildScrollView(
             child: Column(
@@ -157,6 +160,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
                 DropdownButtonFormField<String>(
                   value: selectedType,
                   decoration: const InputDecoration(labelText: 'Meal Type'),
+                  dropdownColor: isDark ? AppTheme.cardDark : null,
                   items: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -164,7 +168,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (isAnalyzing) ...[
-                  const CircularProgressIndicator(),
+                  CircularProgressIndicator(color: colorScheme.primary),
                   const SizedBox(height: 16),
                   const Text('AI is estimating nutrition facts...'),
                 ] else ...[
@@ -182,7 +186,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
                     const SizedBox(height: 8),
                     Text(
                       errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                      style: TextStyle(color: colorScheme.error, fontSize: 12),
                     ),
                   ],
                   if (showManualFields) ...[
@@ -255,9 +259,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
                   }
                   _loadData();
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-                ),
                 child: const Text('Save Manual'),
               ),
             if (!isAnalyzing && !showManualFields)
@@ -309,9 +310,6 @@ class _DietLogScreenState extends State<DietLogScreen> {
                     });
                   }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-                ),
                 child: const Text('Add'),
               ),
           ],
@@ -338,7 +336,10 @@ class _DietLogScreenState extends State<DietLogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Group entries by meal type
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     final Map<String, List<Map<String, dynamic>>> groupedEntries = {
       'Breakfast': [],
       'Lunch': [],
@@ -356,11 +357,11 @@ class _DietLogScreenState extends State<DietLogScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Diet Log',
-          style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -375,7 +376,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
           : SingleChildScrollView(
               padding: EdgeInsets.all(4.w),
               child: Column(
@@ -390,7 +391,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
                        ),
                        Text(
                          DateFormat('EEEE, MMM d').format(_selectedDate),
-                         style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                         style: theme.textTheme.titleMedium?.copyWith(
                            fontWeight: FontWeight.bold,
                          ),
                        ),
@@ -399,27 +400,48 @@ class _DietLogScreenState extends State<DietLogScreen> {
                          onPressed: () => _changeDate(1),
                        ),
                      ],
-                   ),
+                   )
+                       .animate()
+                       .fadeIn(duration: 400.ms),
                    SizedBox(height: 2.h),
                    
-                   // Summary Card
-                   NutritionSummaryCard(nutritionData: _nutritionSummary),
+                   // Summary Card (already glassmorphic)
+                   NutritionSummaryCard(nutritionData: _nutritionSummary)
+                       .animate()
+                       .fadeIn(duration: 500.ms, delay: 100.ms)
+                       .scaleXY(begin: 0.95, end: 1.0),
                    SizedBox(height: 3.h),
                    
                    // Generate Plan Button
-                   SizedBox(
-                     width: double.infinity,
-                     child: ElevatedButton.icon(
-                       onPressed: _generatePlanForTomorrow,
-                       icon: const Icon(Icons.auto_awesome, color: Colors.white),
-                       label: const Text('Generate Plan for Tomorrow'),
-                       style: ElevatedButton.styleFrom(
-                         backgroundColor: AppTheme.lightTheme.colorScheme.secondary,
-                         foregroundColor: Colors.white,
-                         padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                   GlowButton(
+                     glowColor: colorScheme.secondary,
+                     glowIntensity: isDark ? 0.2 : 0.1,
+                     onTap: _generatePlanForTomorrow,
+                     child: Container(
+                       width: double.infinity,
+                       padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                       decoration: BoxDecoration(
+                         color: colorScheme.secondary,
+                         borderRadius: BorderRadius.circular(12),
+                       ),
+                       child: Row(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           Icon(Icons.auto_awesome, color: colorScheme.onSecondary),
+                           SizedBox(width: 2.w),
+                           Text(
+                             'Generate Plan for Tomorrow',
+                             style: theme.textTheme.titleSmall?.copyWith(
+                               color: colorScheme.onSecondary,
+                               fontWeight: FontWeight.w600,
+                             ),
+                           ),
+                         ],
                        ),
                      ),
-                   ),
+                   )
+                       .animate()
+                       .fadeIn(duration: 500.ms, delay: 200.ms),
                    SizedBox(height: 3.h),
                    
                    // Meal Sections
@@ -434,13 +456,13 @@ class _DietLogScreenState extends State<DietLogScreen> {
                            padding: EdgeInsets.symmetric(vertical: 1.h),
                            child: Text(
                              type,
-                             style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                             style: theme.textTheme.titleMedium?.copyWith(
                                fontWeight: FontWeight.bold,
-                               color: AppTheme.lightTheme.colorScheme.primary,
+                               color: colorScheme.primary,
                              ),
                            ),
                          ),
-                         ...meals.map((meal) => _buildMealTile(meal)),
+                         ...meals.map((meal) => _buildMealTile(context, meal)),
                          SizedBox(height: 1.h),
                        ],
                      );
@@ -451,11 +473,14 @@ class _DietLogScreenState extends State<DietLogScreen> {
                        padding: EdgeInsets.only(top: 5.h),
                        child: Column(
                          children: [
-                           Icon(Icons.restaurant_menu, size: 10.w, color: Colors.grey[300]),
+                           Icon(Icons.restaurant_menu,
+                               size: 10.w, color: colorScheme.onSurfaceVariant),
                            SizedBox(height: 1.h),
                            Text(
                              'No meals logged for this day.',
-                             style: TextStyle(color: Colors.grey[500]),
+                             style: theme.textTheme.bodyMedium?.copyWith(
+                               color: colorScheme.onSurfaceVariant,
+                             ),
                            ),
                            SizedBox(height: 2.h),
                            OutlinedButton.icon(
@@ -463,7 +488,8 @@ class _DietLogScreenState extends State<DietLogScreen> {
                              icon: const Icon(Icons.add),
                              label: const Text('Add Your First Meal'),
                              style: OutlinedButton.styleFrom(
-                               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+                               padding: EdgeInsets.symmetric(
+                                   horizontal: 6.w, vertical: 1.5.h),
                              ),
                            ),
                          ],
@@ -475,17 +501,39 @@ class _DietLogScreenState extends State<DietLogScreen> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addManualEntry,
-        backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Meal'),
+      floatingActionButton: GlowButton(
+        glowColor: colorScheme.primary,
+        glowIntensity: isDark ? 0.25 : 0.1,
+        onTap: _addManualEntry,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+          decoration: BoxDecoration(
+            color: colorScheme.primary,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, color: colorScheme.onPrimary),
+              SizedBox(width: 2.w),
+              Text(
+                'Add Meal',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildMealTile(Map<String, dynamic> meal) {
+  Widget _buildMealTile(BuildContext context, Map<String, dynamic> meal) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final protein = (meal['protein'] as num?)?.toDouble() ?? 0;
     final sugar = (meal['sugar'] as num?)?.toDouble() ?? 0;
     final calories = (meal['calories'] as num?)?.toInt() ?? 0;
@@ -494,7 +542,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
       key: Key(meal['id'] ?? UniqueKey().toString()),
       direction: DismissDirection.endToStart,
       background: Container(
-        color: Colors.red,
+        color: colorScheme.error,
         alignment: Alignment.centerRight,
         padding: EdgeInsets.only(right: 4.w),
         child: const Icon(Icons.delete, color: Colors.white),
@@ -502,20 +550,28 @@ class _DietLogScreenState extends State<DietLogScreen> {
       onDismissed: (_) => _deleteEntry(meal['id']),
       child: Card(
         margin: EdgeInsets.only(bottom: 1.h),
-        elevation: 0,
-        color: Colors.white,
+        elevation: isDark ? 0 : 1,
+        color: isDark ? AppTheme.glassDarkBg : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey[200]!),
+          side: BorderSide(
+            color: isDark
+                ? AppTheme.glassDarkBorder
+                : Colors.grey[200]!,
+          ),
         ),
         child: ListTile(
           title: Text(
             meal['name'] ?? 'Unknown',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           subtitle: Text(
             '${meal['brand'] ?? ''} • $calories kcal',
-            style: TextStyle(color: Colors.grey[600]),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -523,11 +579,17 @@ class _DietLogScreenState extends State<DietLogScreen> {
             children: [
               Text(
                 '${protein.toStringAsFixed(1)}g P',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                ),
               ),
               Text(
                 '${sugar.toStringAsFixed(1)}g S',
-                style: const TextStyle(fontSize: 12, color: Colors.orange),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppTheme.getWarningColor(
+                      theme.brightness == Brightness.light),
+                ),
               ),
             ],
           ),
@@ -590,119 +652,184 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.8,
       minChildSize: 0.5,
       maxChildSize: 0.9,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: EdgeInsets.all(5.w),
-        child: Column(
-          children: [
-            Container(
-              width: 10.w,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
+      builder: (_, controller) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.surfaceDark : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: isDark
+                  ? Border(
+                      top: BorderSide(color: AppTheme.glassDarkBorder),
+                      left: BorderSide(color: AppTheme.glassDarkBorder),
+                      right: BorderSide(color: AppTheme.glassDarkBorder),
+                    )
+                  : null,
             ),
-            SizedBox(height: 2.h),
-            Text(
-              'Recommended Plan for Tomorrow',
-              style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.lightTheme.colorScheme.secondary,
-              ),
-            ),
-            const Divider(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(4.w),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.error_outline, size: 12.w, color: Colors.orange),
-                                SizedBox(height: 2.h),
-                                Text(
-                                  _error!.contains('GROQ_API_KEY')
-                                      ? 'AI plan requires a Groq API key.\nAdd it in assets/env.json'
-                                      : 'Could not generate plan.\nPlease check your internet connection.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.grey[600]),
+            padding: EdgeInsets.all(5.w),
+            child: Column(
+              children: [
+                Container(
+                  width: 10.w,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'Recommended Plan for Tomorrow',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.secondary,
+                  ),
+                ),
+                Divider(color: isDark ? AppTheme.dividerDark : null),
+                Expanded(
+                  child: _isLoading
+                      ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
+                      : _error != null
+                          ? Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(4.w),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.error_outline,
+                                        size: 12.w,
+                                        color: AppTheme.getWarningColor(
+                                            !isDark)),
+                                    SizedBox(height: 2.h),
+                                    Text(
+                                      _error!.contains('GROQ_API_KEY')
+                                          ? 'AI plan requires a Groq API key.\nAdd it in assets/env.json'
+                                          : 'Could not generate plan.\nPlease check your internet connection.',
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : ListView(
-                          controller: controller,
-                          children: [
-                             Text(
-                               _plan?['summary'] ?? '',
-                               style: const TextStyle(fontStyle: FontStyle.italic),
-                             ),
-                             SizedBox(height: 2.h),
-                             ...(_plan?['meals'] as List? ?? []).map((meal) {
-                               final mealType = (meal['type'] as String?) ?? 'Meal';
-                               return Card(
-                                 margin: EdgeInsets.only(bottom: 2.h),
-                                 color: Colors.green[50],
-                                 child: ListTile(
-                                   leading: CircleAvatar(
-                                     backgroundColor: Colors.white,
-                                     child: Text(
-                                       mealType.isNotEmpty ? mealType[0] : 'M',
-                                       style: TextStyle(color: Colors.green[800]),
-                                     ),
-                                   ),
-                                   title: Text(
-                                     mealType,
-                                     style: const TextStyle(fontWeight: FontWeight.bold),
-                                   ),
-                                   subtitle: Column(
-                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                     children: [
-                                       Text(meal['name'] ?? ''),
-                                       Text(
-                                         meal['description'] ?? '',
-                                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                       ),
-                                     ],
-                                   ),
-                                   trailing: Text(
-                                     '${meal['calories'] ?? 0} kcal',
-                                     style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            )
+                          : ListView(
+                              controller: controller,
+                              children: [
+                                 Text(
+                                   _plan?['summary'] ?? '',
+                                   style: theme.textTheme.bodyMedium?.copyWith(
+                                     fontStyle: FontStyle.italic,
+                                     color: colorScheme.onSurfaceVariant,
                                    ),
                                  ),
-                               );
-                             }),
-                             SizedBox(height: 2.h),
-                             Container(
-                               padding: EdgeInsets.all(3.w),
-                               decoration: BoxDecoration(
-                                 color: Colors.blue[50],
-                                 borderRadius: BorderRadius.circular(10),
-                               ),
-                               child: Row(
-                                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                 children: [
-                                   Text('Total Calories: ${_plan?['totalCalories'] ?? 0}'),
-                                   Text('Protein: ${_plan?['totalProtein'] ?? 0}g'),
-                                 ],
-                               ),
-                             )
-                          ],
-                        ),
+                                 SizedBox(height: 2.h),
+                                 ...(_plan?['meals'] as List? ?? []).map((meal) {
+                                   final mealType = (meal['type'] as String?) ?? 'Meal';
+                                   return Card(
+                                     margin: EdgeInsets.only(bottom: 2.h),
+                                     color: isDark
+                                         ? colorScheme.primary.withValues(alpha: 0.1)
+                                         : Colors.green[50],
+                                     shape: RoundedRectangleBorder(
+                                       borderRadius: BorderRadius.circular(12),
+                                       side: isDark
+                                           ? BorderSide(
+                                               color: colorScheme.primary
+                                                   .withValues(alpha: 0.2))
+                                           : BorderSide.none,
+                                     ),
+                                     child: ListTile(
+                                       leading: CircleAvatar(
+                                         backgroundColor: isDark
+                                             ? colorScheme.primary
+                                                 .withValues(alpha: 0.2)
+                                             : Colors.white,
+                                         child: Text(
+                                           mealType.isNotEmpty ? mealType[0] : 'M',
+                                           style: TextStyle(
+                                             color: colorScheme.primary,
+                                           ),
+                                         ),
+                                       ),
+                                       title: Text(
+                                         mealType,
+                                         style: theme.textTheme.titleSmall?.copyWith(
+                                           fontWeight: FontWeight.bold,
+                                         ),
+                                       ),
+                                       subtitle: Column(
+                                         crossAxisAlignment:
+                                             CrossAxisAlignment.start,
+                                         children: [
+                                           Text(meal['name'] ?? ''),
+                                           Text(
+                                             meal['description'] ?? '',
+                                             style: theme.textTheme.bodySmall?.copyWith(
+                                               color: colorScheme.onSurfaceVariant,
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                       trailing: Text(
+                                         '${meal['calories'] ?? 0} kcal',
+                                         style: theme.textTheme.labelMedium?.copyWith(
+                                           fontWeight: FontWeight.bold,
+                                           color: colorScheme.primary,
+                                         ),
+                                       ),
+                                     ),
+                                   );
+                                 }),
+                                 SizedBox(height: 2.h),
+                                 ClipRRect(
+                                   borderRadius: BorderRadius.circular(10),
+                                   child: BackdropFilter(
+                                     filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                     child: Container(
+                                       padding: EdgeInsets.all(3.w),
+                                       decoration: isDark
+                                           ? AppTheme.glassmorphicDecoration(
+                                               borderRadius: 10)
+                                           : BoxDecoration(
+                                               color: Colors.blue[50],
+                                               borderRadius:
+                                                   BorderRadius.circular(10),
+                                             ),
+                                       child: Row(
+                                         mainAxisAlignment:
+                                             MainAxisAlignment.spaceAround,
+                                         children: [
+                                           Text(
+                                             'Total Calories: ${_plan?['totalCalories'] ?? 0}',
+                                             style: theme.textTheme.bodyMedium,
+                                           ),
+                                           Text(
+                                             'Protein: ${_plan?['totalProtein'] ?? 0}g',
+                                             style: theme.textTheme.bodyMedium,
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                   ),
+                                 ),
+                              ],
+                            ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

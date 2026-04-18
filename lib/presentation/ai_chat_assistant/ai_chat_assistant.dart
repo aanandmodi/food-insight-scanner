@@ -1,12 +1,9 @@
 // lib/presentation/ai_chat_assistant/ai_chat_assistant.dart
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/services/groq_service.dart';
-import '../../core/services/firestore_service.dart';
 import '../../models/user_profile.dart'; // Import the UserProfile model
 import './widgets/chat_header_widget.dart';
 import './widgets/chat_input_widget.dart';
@@ -52,59 +49,21 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       _showTypingIndicator = true;
     });
 
-    try {
-      await _groqService.initialize();
-      setState(() {
-         _messages.add({
-            "id": 1,
-            // FIX: Use the user's actual name and health goal from the widget's userProfile
-            "message": "Hello, ${widget.userProfile.name}! I'm your personal nutrition assistant. How can I assist you with your ${widget.userProfile.healthGoals} goal today?",
-            "isUser": false,
-            "timestamp": DateTime.now(),
-          });
-          _isLoading = false;
-          _showTypingIndicator = false;
+    // No client-side API key initialization needed — AI calls go through
+    // Cloud Functions which hold the key server-side.
+    setState(() {
+      _messages.add({
+        "id": 1,
+        "message":
+            "Hello, ${widget.userProfile.name}! I'm your personal nutrition assistant. "
+            "How can I assist you with your ${widget.userProfile.healthGoals} goal today?",
+        "isUser": false,
+        "timestamp": DateTime.now(),
       });
-      _updateQuickReplies();
-    } catch (e) {
-      final errorStr = e.toString();
-      final isApiKeyMissing = errorStr.contains('GROQ_API_KEY') ||
-          errorStr.contains('not found') ||
-          errorStr.contains('not set');
-
-      setState(() {
-        _isLoading = false;
-        _showTypingIndicator = false;
-
-        if (isApiKeyMissing) {
-          // Show a helpful welcome message with setup instructions
-          _messages.add({
-            "id": 1,
-            "message":
-                "👋 Hi ${widget.userProfile.name}! I'm NutriBot, your AI nutrition assistant.\n\n"
-                "⚠️ **Setup Required:** To enable AI features, you need a free Groq API key.\n\n"
-                "**Steps:**\n"
-                "1. Go to **console.groq.com**\n"
-                "2. Sign up and copy your API key\n"
-                "3. Open `assets/env.json` in the project\n"
-                "4. Replace `your-groq-api-key-here` with your key\n"
-                "5. Rebuild the app\n\n"
-                "In the meantime, you can still scan products, track nutrition, and manage your shopping list! 🛒",
-            "isUser": false,
-            "timestamp": DateTime.now(),
-          });
-          _errorMessage = null; // Don't show the red error banner
-        } else {
-          _messages.add({
-            "id": 1,
-            "message": "Hi ${widget.userProfile.name}! I'm having trouble connecting right now. Please check your internet and try again.",
-            "isUser": false,
-            "timestamp": DateTime.now(),
-          });
-          _errorMessage = 'Connection issue. Please check your internet.';
-        }
-      });
-    }
+      _isLoading = false;
+      _showTypingIndicator = false;
+    });
+    _updateQuickReplies();
   }
 
   @override
@@ -167,47 +126,18 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
     try {
       final conversationHistory = _buildConversationHistory();
-      
-      final aiResponse = await _groqService.generateResponse(
+
+      // Use the meta variant so we can detect server-side meal logging
+      final result = await _groqService.generateResponseWithMeta(
         userMessage: message,
         conversationHistory: conversationHistory,
-        // FIX: Use the user profile from the widget
         userProfile: widget.userProfile.toMap(),
       );
 
-      String displayMessage = aiResponse;
+      final displayMessage = result['reply'] as String? ?? 'Sorry, I could not generate a response.';
+      final mealLogged = result['mealLogged'] as bool? ?? false;
 
-      // Extract conversational auto-log intent
-      final logMatch = RegExp(r'\[LOG_MEAL:\s*({.*?})\s*\]', dotAll: true).firstMatch(displayMessage);
-      if (logMatch != null) {
-        try {
-          final jsonStr = logMatch.group(1)!;
-          final macros = jsonDecode(jsonStr);
-          
-          final dateString = DateFormat('yyyy-MM-dd').format(DateTime.now());
-          final entry = {
-            'name': macros['name'] ?? 'AI Logged Meal',
-            'mealType': 'Snack',
-            'calories': macros['calories'] ?? 0,
-            'protein': (macros['protein'] ?? 0).toDouble(),
-            'sugar': (macros['sugar'] ?? 0).toDouble(),
-            'fat': (macros['fat'] ?? 0).toDouble(),
-            'carbs': (macros['carbs'] ?? 0).toDouble(),
-            'brand': 'Conversational AI',
-            'time': DateFormat('HH:mm').format(DateTime.now()),
-            'date': dateString,
-          };
-          
-          FirestoreService().saveDietEntry(entry);
-          
-          // Remove the tag from the UI message smoothly
-          displayMessage = displayMessage.replaceAll(logMatch.group(0)!, '').trim();
-        } catch (e) {
-          debugPrint('Failed to parse AI log intent: $e');
-        }
-      }
-
-      if(mounted) {
+      if (mounted) {
         setState(() {
           _messages.add({
             "id": _messages.length + 1,
@@ -216,10 +146,21 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
             "timestamp": DateTime.now(),
           });
         });
-      }
 
+        // Show a subtle toast if a meal was auto-logged server-side
+        if (mealLogged) {
+          final mealName = (result['mealData'] as Map?)?['name'] ?? 'Meal';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ "$mealName" logged to your diet!'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     } catch (e) {
-       if(mounted) {
+      if (mounted) {
         setState(() {
           _messages.add({
             "id": _messages.length + 1,
@@ -227,25 +168,19 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
             "isUser": false,
             "timestamp": DateTime.now(),
           });
-          
-          final errorString = e.toString();
-          if (errorString.contains('401')) {
-            _errorMessage = 'Invalid API Key. Please enter a valid Groq API key in assets/env.json and rebuild the app.';
-          } else {
-            _errorMessage = 'Error communicating with AI: $errorString';
-          }
+
+          _errorMessage = 'Error communicating with AI. Please check your internet.';
         });
       }
-    }
-    finally {
-        if(mounted) {
-            setState(() {
-              _isLoading = false;
-              _showTypingIndicator = false;
-            });
-            _scrollToBottom();
-            await _updateQuickReplies();
-        }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showTypingIndicator = false;
+        });
+        _scrollToBottom();
+        await _updateQuickReplies();
+      }
     }
   }
 
@@ -268,7 +203,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           ChatHeaderWidget(
@@ -323,8 +258,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppTheme.lightTheme.scaffoldBackgroundColor,
-                    AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.5),
+                    Theme.of(context).scaffoldBackgroundColor,
+                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                   ],
                 ),
               ),

@@ -49,8 +49,8 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.lightTheme.primaryColor,
-                  AppTheme.lightTheme.colorScheme.secondary,
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -66,7 +66,7 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
             decoration: BoxDecoration(
-              color: AppTheme.lightTheme.colorScheme.surface
+              color: Theme.of(context).colorScheme.surface
                   .withValues(alpha: 0.9),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4.w),
@@ -82,7 +82,7 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
                 ),
               ],
               border: Border.all(
-                color: AppTheme.lightTheme.colorScheme.outline
+                color: Theme.of(context).colorScheme.outline
                     .withValues(alpha: 0.2),
                 width: 1,
               ),
@@ -119,8 +119,10 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color:
-            AppTheme.lightTheme.colorScheme.primary.withValues(alpha: opacity),
+            Theme.of(context).colorScheme.primary.withValues(alpha: opacity),
       ),
     );
   }
 }
+
+

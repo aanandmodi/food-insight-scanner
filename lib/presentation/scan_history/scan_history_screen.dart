@@ -1,4 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/services/product_service.dart';
@@ -45,7 +48,6 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
       _scanHistory.removeAt(index);
     });
 
-    // Delete from Firestore if it has an ID
     if (scanId != null) {
       try {
         await FirestoreService().deleteScan(scanId);
@@ -63,24 +65,25 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Scan History',
-          style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(
-          color: AppTheme.lightTheme.colorScheme.onSurface,
-        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
           : _scanHistory.isEmpty
               ? Center(
                   child: Column(
@@ -89,20 +92,20 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                       Icon(
                         Icons.history,
                         size: 15.w,
-                        color: AppTheme.lightTheme.disabledColor,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       SizedBox(height: 2.h),
                       Text(
                         'No scans yet',
-                        style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.lightTheme.disabledColor,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                       SizedBox(height: 1.h),
                       Text(
                         'Scan a product barcode to see it here',
-                        style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -110,117 +113,143 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: _loadHistory,
+                  color: colorScheme.primary,
                   child: ListView.separated(
                     padding: EdgeInsets.all(4.w),
                     itemCount: _scanHistory.length,
-                    separatorBuilder: (context, index) => SizedBox(height: 2.h),
+                    separatorBuilder: (context, index) =>
+                        SizedBox(height: 2.h),
                     itemBuilder: (context, index) {
                       final scan = _scanHistory[index];
-                      return _buildHistoryItem(scan, index);
+                      return _buildHistoryItem(context, scan, index)
+                          .animate()
+                          .fadeIn(
+                              duration: 400.ms,
+                              delay: Duration(
+                                  milliseconds: (index * 50).clamp(0, 300)))
+                          .slideY(begin: 0.03, end: 0);
                     },
                   ),
                 ),
     );
   }
 
-  Widget _buildHistoryItem(Map<String, dynamic> scan, int index) {
+  Widget _buildHistoryItem(
+      BuildContext context, Map<String, dynamic> scan, int index) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Dismissible(
-      key: Key(scan['id']?.toString() ?? scan['barcode']?.toString() ?? UniqueKey().toString()),
+      key: Key(scan['id']?.toString() ??
+          scan['barcode']?.toString() ??
+          UniqueKey().toString()),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: EdgeInsets.only(right: 4.w),
         decoration: BoxDecoration(
-          color: AppTheme.lightTheme.colorScheme.error,
-          borderRadius: BorderRadius.circular(12),
+          color: colorScheme.error,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (_) => _deleteHistoryItem(index),
-      child: InkWell(
+      child: GestureDetector(
         onTap: () {
+          HapticFeedback.lightImpact();
           Navigator.pushNamed(
             context,
             '/product-details',
             arguments: scan,
           );
         },
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.all(3.w),
-          child: Row(
-            children: [
-              // Image
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: scan['image'] != null && scan['image'].toString().isNotEmpty
-                    ? Image.network(
-                        scan['image'],
-                        width: 15.w,
-                        height: 15.w,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 15.w,
-                          height: 15.w,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image_not_supported, size: 20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Container(
+              decoration: isDark
+                  ? AppTheme.glassmorphicDecoration(borderRadius: 16)
+                  : BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
-                      )
-                    : Container(
-                        width: 15.w,
-                        height: 15.w,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.fastfood, size: 20),
-                      ),
-              ),
-              SizedBox(width: 4.w),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      scan['name'] ?? 'Unknown Product',
-                      style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      ],
                     ),
-                    SizedBox(height: 0.5.h),
-                    Text(
-                      scan['brand'] ?? '',
-                      style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
+              padding: EdgeInsets.all(3.w),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: scan['image'] != null &&
+                            scan['image'].toString().isNotEmpty
+                        ? Image.network(
+                            scan['image'],
+                            width: 15.w,
+                            height: 15.w,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 15.w,
+                              height: 15.w,
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported,
+                                  size: 20),
+                            ),
+                          )
+                        : Container(
+                            width: 15.w,
+                            height: 15.w,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.grey[200],
+                            child: const Icon(Icons.fastfood, size: 20),
+                          ),
+                  ),
+                  SizedBox(width: 4.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          scan['name'] ?? 'Unknown Product',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 0.5.h),
+                        Text(
+                          scan['brand'] ?? '',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        SizedBox(height: 0.5.h),
+                        Text(
+                          _formatDate(scan['scannedAt']),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 0.5.h),
-                    // Date
-                    Text(
-                     _formatDate(scan['scannedAt']),
-                      style: AppTheme.lightTheme.textTheme.labelSmall?.copyWith(
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: colorScheme.primary,
+                  ),
+                ],
               ),
-              // Arrow
-              Icon(
-                Icons.chevron_right,
-                color: AppTheme.lightTheme.colorScheme.primary,
-              ),
-            ],
+            ),
           ),
         ),
       ),

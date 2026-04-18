@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
-
 
 import '../../core/app_export.dart';
 import '../../core/services/groq_service.dart';
@@ -127,6 +129,7 @@ class _ProductDetailsState extends State<ProductDetails> {
   }
 
   Future<void> _onAddToDietLog() async {
+    HapticFeedback.mediumImpact();
     try {
       final now = DateTime.now();
       final dateString = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
@@ -148,6 +151,7 @@ class _ProductDetailsState extends State<ProductDetails> {
       final savedToCloud = await FirestoreService().saveDietEntry(entryData);
 
       if (mounted) {
+        final theme = Theme.of(context);
         final message = savedToCloud
             ? '${productData['name']} added to diet log!'
             : '${productData['name']} saved locally to diet log!';
@@ -163,11 +167,10 @@ class _ProductDetailsState extends State<ProductDetails> {
               ],
             ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+            backgroundColor: theme.colorScheme.primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        // Pop context to return to previous screen
         Navigator.pop(context);
       }
     } catch (e) {
@@ -205,10 +208,16 @@ class _ProductDetailsState extends State<ProductDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     if (productData.isEmpty) {
       return Scaffold(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
-        body: const Center(child: CircularProgressIndicator()),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: colorScheme.primary),
+        ),
       );
     }
 
@@ -224,7 +233,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     final String? nutriscore = productData['nutriscore'] as String?;
 
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Background gradient
@@ -233,125 +242,157 @@ class _ProductDetailsState extends State<ProductDetails> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  AppTheme.lightTheme.colorScheme.primary
-                      .withValues(alpha: 0.05),
-                  AppTheme.lightTheme.scaffoldBackgroundColor,
-                ],
+                colors: isDark
+                    ? [
+                        colorScheme.primary.withValues(alpha: 0.08),
+                        theme.scaffoldBackgroundColor,
+                        theme.scaffoldBackgroundColor,
+                      ]
+                    : [
+                        colorScheme.primary.withValues(alpha: 0.05),
+                        theme.scaffoldBackgroundColor,
+                      ],
               ),
             ),
           ),
           // Main content
           Column(
             children: [
-              // Custom app bar
-              Container(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 2.h,
-                  left: 4.w,
-                  right: 4.w,
-                  bottom: 2.h,
-                ),
-                decoration: BoxDecoration(
-                  color: _isScrolled
-                      ? AppTheme.lightTheme.colorScheme.surface
-                          .withValues(alpha: 0.95)
-                      : Colors.transparent,
-                  boxShadow: _isScrolled
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: EdgeInsets.all(2.w),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightTheme.colorScheme.surface
-                              .withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppTheme.lightTheme.colorScheme.outline
-                                .withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: CustomIconWidget(
-                          iconName: 'arrow_back',
-                          size: 24,
-                          color: AppTheme.lightTheme.colorScheme.onSurface,
-                        ),
-                      ),
+              // Custom glass app bar
+              ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: _isScrolled ? 15 : 0,
+                    sigmaY: _isScrolled ? 15 : 0,
+                  ),
+                  child: Container(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 2.h,
+                      left: 4.w,
+                      right: 4.w,
+                      bottom: 2.h,
                     ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      child: AnimatedOpacity(
-                        opacity: _isScrolled ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Text(
-                          productName,
-                          style: AppTheme.lightTheme.textTheme.titleLarge
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
+                    decoration: BoxDecoration(
+                      color: _isScrolled
+                          ? (isDark
+                              ? AppTheme.glassDarkBg
+                              : colorScheme.surface.withValues(alpha: 0.95))
+                          : Colors.transparent,
+                      border: _isScrolled
+                          ? Border(
+                              bottom: BorderSide(
+                                color: isDark
+                                    ? AppTheme.glassDarkBorder
+                                    : Colors.black.withValues(alpha: 0.05),
+                              ),
+                            )
+                          : null,
                     ),
-                    // Nutri-Score badge
-                    if (nutriscore != null)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 3.w, vertical: 0.5.h),
-                        margin: EdgeInsets.only(right: 2.w),
-                        decoration: BoxDecoration(
-                          color: _nutriscoreColor(nutriscore),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          nutriscore.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(2.w),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : colorScheme.surface.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.15)
+                                    : colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: CustomIconWidget(
+                              iconName: 'arrow_back',
+                              size: 24,
+                              color: colorScheme.onSurface,
+                            ),
                           ),
                         ),
-                      ),
-                    GestureDetector(
-                      onTap: _navigateToAIChat,
-                      child: Container(
-                        padding: EdgeInsets.all(2.w),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightTheme.colorScheme.surface
-                              .withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppTheme.lightTheme.colorScheme.outline
-                                .withValues(alpha: 0.2),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: AnimatedOpacity(
+                            opacity: _isScrolled ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Text(
+                              productName,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
-                        child: CustomIconWidget(
-                          iconName: 'chat',
-                          size: 24,
-                          color: AppTheme.lightTheme.colorScheme.primary,
+                        // Nutri-Score badge
+                        if (nutriscore != null)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 3.w, vertical: 0.5.h),
+                            margin: EdgeInsets.only(right: 2.w),
+                            decoration: BoxDecoration(
+                              color: _nutriscoreColor(nutriscore),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: isDark
+                                  ? [
+                                      BoxShadow(
+                                        color: _nutriscoreColor(nutriscore)
+                                            .withValues(alpha: 0.4),
+                                        blurRadius: 8,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              nutriscore.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _navigateToAIChat();
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(2.w),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : colorScheme.surface.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.15)
+                                    : colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: CustomIconWidget(
+                              iconName: 'chat',
+                              size: 24,
+                              color: colorScheme.primary,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-              // Scrollable content
+              // Scrollable content with staggered animations
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _onRefresh,
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: colorScheme.primary,
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -360,11 +401,14 @@ class _ProductDetailsState extends State<ProductDetails> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: 2.h),
-                        // Product image
+                        // Product image with parallax feel
                         ProductImageWidget(
                           imageUrl: imageUrl,
                           productName: productName,
-                        ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms)
+                            .scaleXY(begin: 0.95, end: 1.0, duration: 500.ms),
                         SizedBox(height: 3.h),
                         // Product info
                         ProductInfoWidget(
@@ -372,13 +416,19 @@ class _ProductDetailsState extends State<ProductDetails> {
                           brand: brand,
                           category: category,
                           rating: null,
-                        ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 100.ms)
+                            .slideY(begin: 0.03, end: 0),
                         SizedBox(height: 3.h),
                         // Nutrition bars
                         if (nutrition.isNotEmpty)
                           NutritionBarsWidget(
                             nutritionData: nutrition,
-                          ),
+                          )
+                              .animate()
+                              .fadeIn(duration: 500.ms, delay: 200.ms)
+                              .slideY(begin: 0.03, end: 0),
                         SizedBox(height: 3.h),
                         // Safety alerts
                         SafetyAlertsWidget(
@@ -386,24 +436,35 @@ class _ProductDetailsState extends State<ProductDetails> {
                           ingredients: ingredients,
                           dietaryPreference: dietaryPreference,
                           nutritionData: nutrition,
-                        ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 300.ms)
+                            .slideY(begin: 0.03, end: 0),
                         SizedBox(height: 3.h),
                         // Ingredients
                         IngredientsWidget(
                           ingredients: ingredients,
                           userAllergies: userAllergies,
-                        ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 400.ms),
                         SizedBox(height: 3.h),
-                        // Alternatives - empty for now since we use real data
+                        // Alternatives
                         if (_isLoadingAlternatives)
                           Padding(
                             padding: EdgeInsets.symmetric(vertical: 2.h),
-                            child: const Center(child: CircularProgressIndicator()),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: colorScheme.primary,
+                              ),
+                            ),
                           )
                         else
                           AlternativesWidget(
                             alternatives: _alternatives,
-                          ),
+                          )
+                              .animate()
+                              .fadeIn(duration: 500.ms, delay: 500.ms),
                         SizedBox(height: 12.h),
                       ],
                     ),

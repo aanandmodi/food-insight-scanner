@@ -24,9 +24,9 @@ class ProductInfoWidget extends StatelessWidget {
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -41,9 +41,9 @@ class ProductInfoWidget extends StatelessWidget {
         children: [
           Text(
             productName,
-            style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -54,8 +54,8 @@ class ProductInfoWidget extends StatelessWidget {
               Expanded(
                 child: Text(
                   'by $brand',
-                  style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.primary,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -68,7 +68,7 @@ class ProductInfoWidget extends StatelessWidget {
                   padding:
                       EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
                   decoration: BoxDecoration(
-                    color: AppTheme.lightTheme.colorScheme.primary
+                    color: Theme.of(context).colorScheme.primary
                         .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -84,9 +84,9 @@ class ProductInfoWidget extends StatelessWidget {
                       Text(
                         rating!.toStringAsFixed(1),
                         style:
-                            AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.lightTheme.colorScheme.onSurface,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -100,18 +100,18 @@ class ProductInfoWidget extends StatelessWidget {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.secondary
+                color: Theme.of(context).colorScheme.secondary
                     .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.secondary
+                  color: Theme.of(context).colorScheme.secondary
                       .withValues(alpha: 0.3),
                 ),
               ),
               child: Text(
                 category!,
-                style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.secondary,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.secondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -122,3 +122,4 @@ class ProductInfoWidget extends StatelessWidget {
     );
   }
 }
+

@@ -2,11 +2,13 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 import 'firestore_service.dart';
+import 'local_database_service.dart';
 import 'product_service.dart';
 import '../../main.dart' show retryFirebaseInit;
 
@@ -19,7 +21,6 @@ class AuthService {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: '579993459207-6rcmc0fgucpdc01f3rhvmtlc1oprlou4.apps.googleusercontent.com',
   );
 
   // ──────────────────────────── Firebase Readiness ────────────────────────────
@@ -243,10 +244,19 @@ class AuthService {
       debugPrint('Google sign-in Firebase error: ${e.code} - ${e.message}');
       throw AuthException.fromFirebase(e);
     } catch (e) {
-      debugPrint('Error during Google Sign-In: $e');
+      debugPrint('╔══════════════════════════════════════════════════');
+      debugPrint('║ GOOGLE SIGN-IN ERROR');
+      debugPrint('║ Type: ${e.runtimeType}');
+      debugPrint('║ Raw: $e');
+      if (e is PlatformException) {
+        debugPrint('║ PlatformException Code: ${e.code}');
+        debugPrint('║ PlatformException Message: ${e.message}');
+        debugPrint('║ PlatformException Details: ${e.details}');
+      }
+      debugPrint('╚══════════════════════════════════════════════════');
       throw AuthException(
         code: 'google-sign-in-failed',
-        message: 'Google Sign-In failed. Please try again.',
+        message: 'Google Sign-In failed: ${e is PlatformException ? '${e.code} – ${e.message}' : e.toString()}',
       );
     }
   }
@@ -349,11 +359,18 @@ class AuthService {
       await prefs.remove('user_dietary_preferences');
       await prefs.remove('profile_completed');
 
-      // Clear local scan history
+      // Clear local scan history (SQLite)
       try {
         await ProductService().clearLocalHistory();
       } catch (e) {
         debugPrint('Error clearing local scan history: $e');
+      }
+
+      // Clear local diet log (SQLite)
+      try {
+        await LocalDatabaseService().clearDietLog();
+      } catch (e) {
+        debugPrint('Error clearing local diet log: $e');
       }
     } catch (e) {
       debugPrint('Error clearing local data: $e');

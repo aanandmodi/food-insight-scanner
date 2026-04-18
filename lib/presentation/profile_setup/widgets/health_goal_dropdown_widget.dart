@@ -53,10 +53,10 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.8),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
@@ -79,14 +79,14 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                   children: [
                     CustomIconWidget(
                       iconName: 'track_changes',
-                      color: AppTheme.lightTheme.colorScheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 20,
                     ),
                     SizedBox(width: 2.w),
                     Text(
                       'Health Goal',
                       style:
-                          AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -95,8 +95,8 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                 SizedBox(height: 1.h),
                 Text(
                   'What\'s your primary health objective?',
-                  style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -113,12 +113,12 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               margin: EdgeInsets.symmetric(horizontal: 4.w),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: _isExpanded
-                      ? AppTheme.lightTheme.colorScheme.primary
-                      : AppTheme.lightTheme.colorScheme.outline,
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.outline,
                   width: _isExpanded ? 2 : 1,
                 ),
               ),
@@ -127,7 +127,7 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                   if (widget.selectedGoal != null) ...[
                     CustomIconWidget(
                       iconName: _getSelectedGoalIcon(),
-                      color: AppTheme.lightTheme.colorScheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 20,
                     ),
                     SizedBox(width: 3.w),
@@ -137,10 +137,10 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                       widget.selectedGoal != null
                           ? _getSelectedGoalLabel()
                           : 'Select your health goal',
-                      style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: widget.selectedGoal != null
-                            ? AppTheme.lightTheme.colorScheme.onSurface
-                            : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -149,7 +149,7 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                     duration: const Duration(milliseconds: 200),
                     child: CustomIconWidget(
                       iconName: 'keyboard_arrow_down',
-                      color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 24,
                     ),
                   ),
@@ -164,10 +164,10 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                 ? Container(
                     margin: EdgeInsets.all(4.w),
                     decoration: BoxDecoration(
-                      color: AppTheme.lightTheme.colorScheme.surface,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppTheme.lightTheme.colorScheme.outline
+                        color: Theme.of(context).colorScheme.outline
                             .withValues(alpha: 0.3),
                         width: 1,
                       ),
@@ -201,11 +201,11 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
         padding: EdgeInsets.all(4.w),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.1)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border(
             bottom: BorderSide(
-              color: AppTheme.lightTheme.colorScheme.outline
+              color: Theme.of(context).colorScheme.outline
                   .withValues(alpha: 0.2),
               width: 0.5,
             ),
@@ -217,16 +217,16 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
               padding: EdgeInsets.all(2.w),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.lightTheme.colorScheme.primary
-                    : AppTheme.lightTheme.colorScheme.primary
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.primary
                         .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: CustomIconWidget(
                 iconName: goal['icon'],
                 color: isSelected
-                    ? AppTheme.lightTheme.colorScheme.onPrimary
-                    : AppTheme.lightTheme.colorScheme.primary,
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
             ),
@@ -237,19 +237,19 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
                 children: [
                   Text(
                     goal['label'],
-                    style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight:
                           isSelected ? FontWeight.w600 : FontWeight.w500,
                       color: isSelected
-                          ? AppTheme.lightTheme.colorScheme.primary
-                          : AppTheme.lightTheme.colorScheme.onSurface,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   SizedBox(height: 0.5.h),
                   Text(
                     goal['description'],
-                    style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -258,7 +258,7 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
             if (isSelected)
               CustomIconWidget(
                 iconName: 'check_circle',
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
           ],
@@ -285,3 +285,4 @@ class _HealthGoalDropdownWidgetState extends State<HealthGoalDropdownWidget> {
     return goal['label'];
   }
 }
+

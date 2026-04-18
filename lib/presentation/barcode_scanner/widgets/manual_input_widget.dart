@@ -70,7 +70,7 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
             // Title
             Text(
               'Enter Barcode Manually',
-              style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),
@@ -80,7 +80,7 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
 
             Text(
               'Can\'t scan? Type the barcode number below',
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
@@ -105,13 +105,13 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(20),
                 ],
-                style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Colors.white,
                   letterSpacing: 1.2,
                 ),
                 decoration: InputDecoration(
                   hintText: 'Enter barcode number',
-                  hintStyle: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
+                  hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Colors.white.withValues(alpha: 0.5),
                   ),
                   prefixIcon: Padding(
@@ -140,7 +140,7 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
               child: ElevatedButton(
                 onPressed: widget.isLoading ? null : _handleSearch,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.lightTheme.primaryColor,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -165,7 +165,7 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
                           const SizedBox(width: 12),
                           Text(
                             'Searching...',
-                            style: AppTheme.lightTheme.textTheme.labelLarge
+                            style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -184,7 +184,7 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
                           const SizedBox(width: 8),
                           Text(
                             'Search Product',
-                            style: AppTheme.lightTheme.textTheme.labelLarge
+                            style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -201,7 +201,7 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
             Center(
               child: Text(
                 'Barcode is usually found below the product',
-                style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Colors.white.withValues(alpha: 0.6),
                 ),
                 textAlign: TextAlign.center,
@@ -213,3 +213,5 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
     );
   }
 }
+
+

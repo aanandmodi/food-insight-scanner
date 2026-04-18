@@ -66,10 +66,10 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.8),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
@@ -87,13 +87,13 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
             children: [
               CustomIconWidget(
                 iconName: 'warning',
-                color: AppTheme.lightTheme.colorScheme.error,
+                color: Theme.of(context).colorScheme.error,
                 size: 20,
               ),
               SizedBox(width: 2.w),
               Text(
                 'Allergies & Restrictions',
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -102,8 +102,8 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
           SizedBox(height: 2.h),
           Text(
             'Select any food allergies or dietary restrictions you have:',
-            style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           SizedBox(height: 2.h),
@@ -119,10 +119,10 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
             SizedBox(height: 2.h),
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   width: 1.5,
                 ),
               ),
@@ -142,7 +142,7 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
                         onPressed: _addCustomAllergy,
                         icon: CustomIconWidget(
                           iconName: 'check',
-                          color: AppTheme.lightTheme.colorScheme.primary,
+                          color: Theme.of(context).colorScheme.primary,
                           size: 20,
                         ),
                       ),
@@ -155,7 +155,7 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
                         },
                         icon: CustomIconWidget(
                           iconName: 'close',
-                          color: AppTheme.lightTheme.colorScheme.error,
+                          color: Theme.of(context).colorScheme.error,
                           size: 20,
                         ),
                       ),
@@ -181,19 +181,19 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
         padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.lightTheme.colorScheme.primary
-              : AppTheme.lightTheme.colorScheme.surface,
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AppTheme.lightTheme.colorScheme.primary
-                : AppTheme.lightTheme.colorScheme.outline,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
             width: 1.5,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.lightTheme.colorScheme.primary
+                    color: Theme.of(context).colorScheme.primary
                         .withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
@@ -209,16 +209,16 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
                 padding: EdgeInsets.only(right: 1.w),
                 child: CustomIconWidget(
                   iconName: 'check',
-                  color: AppTheme.lightTheme.colorScheme.onPrimary,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   size: 16,
                 ),
               ),
             Text(
               allergy,
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: isSelected
-                    ? AppTheme.lightTheme.colorScheme.onPrimary
-                    : AppTheme.lightTheme.colorScheme.onSurface,
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
               ),
             ),
@@ -238,10 +238,10 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
         decoration: BoxDecoration(
-          color: AppTheme.lightTheme.colorScheme.surface,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: AppTheme.lightTheme.colorScheme.primary,
+            color: Theme.of(context).colorScheme.primary,
             width: 1.5,
             style: BorderStyle.solid,
           ),
@@ -251,14 +251,14 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
           children: [
             CustomIconWidget(
               iconName: 'add',
-              color: AppTheme.lightTheme.colorScheme.primary,
+              color: Theme.of(context).colorScheme.primary,
               size: 16,
             ),
             SizedBox(width: 1.w),
             Text(
               'Custom',
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -274,3 +274,4 @@ class _AllergySelectionWidgetState extends State<AllergySelectionWidget> {
     super.dispose();
   }
 }
+

@@ -53,16 +53,16 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
         color: isAllergen
             ? Colors.red.withValues(alpha: 0.1)
             : isHighlighted
-                ? AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.1)
-                : AppTheme.lightTheme.colorScheme.surface,
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isAllergen
               ? Colors.red.withValues(alpha: 0.5)
               : isHighlighted
-                  ? AppTheme.lightTheme.colorScheme.primary
+                  ? Theme.of(context).colorScheme.primary
                       .withValues(alpha: 0.5)
-                  : AppTheme.lightTheme.colorScheme.outline
+                  : Theme.of(context).colorScheme.outline
                       .withValues(alpha: 0.3),
           width: 1.5,
         ),
@@ -88,12 +88,12 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
           Flexible(
             child: Text(
               ingredient,
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: isAllergen
                     ? Colors.red
                     : isHighlighted
-                        ? AppTheme.lightTheme.colorScheme.primary
-                        : AppTheme.lightTheme.colorScheme.onSurface,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface,
                 fontWeight: isAllergen || isHighlighted
                     ? FontWeight.w600
                     : FontWeight.w400,
@@ -118,9 +118,9 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -138,15 +138,15 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
               CustomIconWidget(
                 iconName: 'list',
                 size: 24,
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
               SizedBox(width: 2.w),
               Expanded(
                 child: Text(
                   'Ingredients (${widget.ingredients.length})',
-                  style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.lightTheme.colorScheme.onSurface,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -155,14 +155,14 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                 child: Container(
                   padding: EdgeInsets.all(2.w),
                   decoration: BoxDecoration(
-                    color: AppTheme.lightTheme.colorScheme.primary
+                    color: Theme.of(context).colorScheme.primary
                         .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: CustomIconWidget(
                     iconName: _isExpanded ? 'expand_less' : 'expand_more',
                     size: 20,
-                    color: AppTheme.lightTheme.colorScheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
@@ -171,10 +171,10 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
           SizedBox(height: 2.h),
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.lightTheme.colorScheme.surface,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.lightTheme.colorScheme.outline
+                color: Theme.of(context).colorScheme.outline
                     .withValues(alpha: 0.3),
               ),
             ),
@@ -188,7 +188,7 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                   child: CustomIconWidget(
                     iconName: 'search',
                     size: 20,
-                    color: AppTheme.lightTheme.colorScheme.onSurface
+                    color: Theme.of(context).colorScheme.onSurface
                         .withValues(alpha: 0.6),
                   ),
                 ),
@@ -203,7 +203,7 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                           child: CustomIconWidget(
                             iconName: 'clear',
                             size: 20,
-                            color: AppTheme.lightTheme.colorScheme.onSurface
+                            color: Theme.of(context).colorScheme.onSurface
                                 .withValues(alpha: 0.6),
                           ),
                         ),
@@ -213,7 +213,7 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                 contentPadding:
                     EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               ),
-              style: AppTheme.lightTheme.textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
           SizedBox(height: 2.h),
@@ -222,11 +222,11 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
               width: double.infinity,
               padding: EdgeInsets.all(4.w),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface
+                color: Theme.of(context).colorScheme.surface
                     .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.outline
+                  color: Theme.of(context).colorScheme.outline
                       .withValues(alpha: 0.2),
                 ),
               ),
@@ -235,14 +235,14 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                   CustomIconWidget(
                     iconName: 'search_off',
                     size: 32,
-                    color: AppTheme.lightTheme.colorScheme.onSurface
+                    color: Theme.of(context).colorScheme.onSurface
                         .withValues(alpha: 0.4),
                   ),
                   SizedBox(height: 1.h),
                   Text(
                     'No ingredients found',
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.lightTheme.colorScheme.onSurface
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface
                           .withValues(alpha: 0.6),
                     ),
                   ),
@@ -264,11 +264,11 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                     padding:
                         EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
                     decoration: BoxDecoration(
-                      color: AppTheme.lightTheme.colorScheme.primary
+                      color: Theme.of(context).colorScheme.primary
                           .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppTheme.lightTheme.colorScheme.primary
+                        color: Theme.of(context).colorScheme.primary
                             .withValues(alpha: 0.3),
                       ),
                     ),
@@ -277,9 +277,9 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                       children: [
                         Text(
                           'Show ${_filteredIngredients.length - 6} more',
-                          style: AppTheme.lightTheme.textTheme.bodyMedium
+                          style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                            color: AppTheme.lightTheme.colorScheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -287,7 +287,7 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                         CustomIconWidget(
                           iconName: 'expand_more',
                           size: 16,
-                          color: AppTheme.lightTheme.colorScheme.primary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -307,3 +307,4 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
     super.dispose();
   }
 }
+

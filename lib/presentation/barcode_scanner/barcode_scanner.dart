@@ -282,7 +282,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
                           ? 'Initializing Camera...'
                           : 'Camera Access Needed',
                       style:
-                          AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                       ),
                     ),
@@ -329,7 +329,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
               right: 20,
               child: FloatingActionButton(
                 onPressed: _showManualInputSheet,
-                backgroundColor: AppTheme.lightTheme.primaryColor,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 child: const CustomIconWidget(
                   iconName: 'keyboard',
                   color: Colors.white,
@@ -371,3 +371,4 @@ class _BarcodeScannerState extends State<BarcodeScanner>
     );
   }
 }
+

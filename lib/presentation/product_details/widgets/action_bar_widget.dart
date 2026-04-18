@@ -20,7 +20,7 @@ class ActionBarWidget extends StatelessWidget {
       msg: "Added to Diet Log",
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
-      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+      backgroundColor: Theme.of(context).colorScheme.primary,
       textColor: Colors.white,
       fontSize: 16.0,
     );
@@ -36,7 +36,7 @@ class ActionBarWidget extends StatelessWidget {
       msg: "Product shared successfully",
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
-      backgroundColor: AppTheme.lightTheme.colorScheme.secondary,
+      backgroundColor: Theme.of(context).colorScheme.secondary,
       textColor: Colors.white,
       fontSize: 16.0,
     );
@@ -48,11 +48,11 @@ class ActionBarWidget extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.95),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
         border: Border(
           top: BorderSide(
             color:
-                AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+                Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -74,10 +74,10 @@ class ActionBarWidget extends StatelessWidget {
               child: Container(
                 padding: EdgeInsets.all(3.w),
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.lightTheme.colorScheme.outline
+                    color: Theme.of(context).colorScheme.outline
                         .withValues(alpha: 0.3),
                   ),
                   boxShadow: [
@@ -91,7 +91,7 @@ class ActionBarWidget extends StatelessWidget {
                 child: CustomIconWidget(
                   iconName: 'share',
                   size: 24,
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -107,14 +107,14 @@ class ActionBarWidget extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppTheme.lightTheme.colorScheme.primary,
-                        AppTheme.lightTheme.colorScheme.secondary,
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.secondary,
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.lightTheme.colorScheme.primary
+                        color: Theme.of(context).colorScheme.primary
                             .withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
@@ -133,7 +133,7 @@ class ActionBarWidget extends StatelessWidget {
                       Text(
                         'Add to Diet Log',
                         style:
-                            AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
@@ -149,3 +149,4 @@ class ActionBarWidget extends StatelessWidget {
     );
   }
 }
+

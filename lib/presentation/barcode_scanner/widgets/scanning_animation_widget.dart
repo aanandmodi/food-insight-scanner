@@ -116,18 +116,18 @@ class _ScanningAnimationWidgetState extends State<ScanningAnimationWidget>
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppTheme.lightTheme.primaryColor
+                        color: Theme.of(context).colorScheme.primary
                             .withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(40),
                         border: Border.all(
-                          color: AppTheme.lightTheme.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           width: 3,
                         ),
                       ),
                       child: Center(
                         child: CustomIconWidget(
                           iconName: 'qr_code_scanner',
-                          color: AppTheme.lightTheme.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           size: 40,
                         ),
                       ),
@@ -154,7 +154,7 @@ class _ScanningAnimationWidgetState extends State<ScanningAnimationWidget>
                 children: [
                   Text(
                     widget.message,
-                    style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
@@ -169,7 +169,7 @@ class _ScanningAnimationWidgetState extends State<ScanningAnimationWidget>
                     child: LinearProgressIndicator(
                       backgroundColor: Colors.white.withValues(alpha: 0.2),
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        AppTheme.lightTheme.primaryColor,
+                        Theme.of(context).colorScheme.primary,
                       ),
                       minHeight: 4,
                     ),
@@ -179,7 +179,7 @@ class _ScanningAnimationWidgetState extends State<ScanningAnimationWidget>
 
                   Text(
                     'Please wait while we fetch product details',
-                    style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.white.withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
@@ -193,3 +193,5 @@ class _ScanningAnimationWidgetState extends State<ScanningAnimationWidget>
     );
   }
 }
+
+

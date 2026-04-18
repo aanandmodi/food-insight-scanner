@@ -135,9 +135,9 @@ class SafetyAlertsWidget extends StatelessWidget {
       case 'caution':
         return Colors.amber;
       case 'success':
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
       default:
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -184,7 +184,7 @@ class SafetyAlertsWidget extends StatelessWidget {
               children: [
                 Text(
                   alert['title'],
-                  style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: color,
                   ),
@@ -192,8 +192,8 @@ class SafetyAlertsWidget extends StatelessWidget {
                 SizedBox(height: 0.5.h),
                 Text(
                   alert['message'],
-                  style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurface,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
@@ -215,9 +215,9 @@ class SafetyAlertsWidget extends StatelessWidget {
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -235,14 +235,14 @@ class SafetyAlertsWidget extends StatelessWidget {
               CustomIconWidget(
                 iconName: 'security',
                 size: 24,
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
               SizedBox(width: 2.w),
               Text(
                 'Safety & Compatibility',
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -254,3 +254,4 @@ class SafetyAlertsWidget extends StatelessWidget {
     );
   }
 }
+

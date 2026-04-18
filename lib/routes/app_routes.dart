@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/auth_gate.dart';
 import '../presentation/auth/login_screen.dart';
 import '../presentation/auth/signup_screen.dart';
 import '../presentation/profile_setup/profile_setup.dart';
@@ -16,9 +17,11 @@ import '../presentation/profile/profile_screen.dart';
 import '../presentation/diet_log/diet_log_screen.dart';
 import '../presentation/settings/settings_screen.dart';
 import '../presentation/shopping_list/shopping_list_screen.dart';
+import '../core/utils/user_utils.dart';
 
 class AppRoutes {
   static const String initial = '/';
+  static const String authGate = '/auth-gate';
   static const String login = '/login';
   static const String signup = '/signup';
   static const String profileSetup = '/profile-setup';
@@ -35,6 +38,7 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const SplashScreen(),
+    authGate: (context) => const AuthGate(),
     login: (context) => const LoginScreen(),
     signup: (context) => const SignupScreen(),
     profileSetup: (context) => const ProfileSetup(),
@@ -49,23 +53,23 @@ class AppRoutes {
     shoppingList: (context) => const ShoppingListScreen(),
   };
 
-  /// Use onGenerateRoute for routes that need dynamic arguments.
+  /// Cinematic page transitions for all routes
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case aiChatAssistant:
         final args = settings.arguments;
         if (args is Map<String, dynamic>) {
-          return MaterialPageRoute(
+          return _buildCinematicRoute(
             settings: settings,
-            builder: (context) => AiChatAssistant(
+            child: AiChatAssistant(
               userProfile: UserProfile.fromMap(args),
             ),
           );
         }
         // Fallback: Load profile from SharedPreferences
-        return MaterialPageRoute(
+        return _buildCinematicRoute(
           settings: settings,
-          builder: (context) => FutureBuilder<UserProfile>(
+          child: FutureBuilder<UserProfile>(
             future: _loadUserProfile(),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
@@ -82,20 +86,44 @@ class AppRoutes {
     }
   }
 
+  /// Creates a smooth fade + slide cinematic page transition
+  static PageRouteBuilder _buildCinematicRoute({
+    required RouteSettings settings,
+    required Widget child,
+  }) {
+    return PageRouteBuilder(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+      transitionDuration: const Duration(milliseconds: 400),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curvedAnimation = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        return FadeTransition(
+          opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation),
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.03),
+              end: Offset.zero,
+            ).animate(curvedAnimation),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   static Future<UserProfile> _loadUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     
     int userAge = 25;
     final dobStr = prefs.getString('user_dob');
     if (dobStr != null) {
-      try {
-        final dob = DateTime.parse(dobStr);
-        final now = DateTime.now();
-        userAge = now.year - dob.year;
-        if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
-          userAge--;
-        }
-      } catch (_) {}
+      userAge = UserUtils.calculateAgeFromString(dobStr);
     }
 
     return UserProfile(

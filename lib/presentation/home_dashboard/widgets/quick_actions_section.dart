@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'dart:ui';
 
 import '../../../core/app_export.dart';
 
@@ -17,6 +19,9 @@ class QuickActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
       child: Column(
@@ -24,41 +29,42 @@ class QuickActionsSection extends StatelessWidget {
         children: [
           Text(
             "Quick Actions",
-            style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 1.5.h),
           Row(
             children: [
               Expanded(
-                child: _buildActionButton(
+                child: _buildGlassActionButton(
                   context,
                   "Scan Barcode",
                   "qr_code_scanner",
-                  AppTheme.lightTheme.colorScheme.primary,
+                  colorScheme.primary,
                   onScanBarcode,
                 ),
               ),
               SizedBox(width: 3.w),
               Expanded(
-                child: _buildActionButton(
+                child: _buildGlassActionButton(
                   context,
                   "Upload Image",
                   "photo_camera",
-                  AppTheme.getSuccessColor(true),
+                  AppTheme.getSuccessColor(
+                      theme.brightness == Brightness.light),
                   onUploadImage,
                 ),
               ),
             ],
           ),
           SizedBox(height: 2.h),
-          _buildActionButton(
+          _buildGlassActionButton(
             context,
             "Chat with AI Assistant",
             "smart_toy",
-            AppTheme.getWarningColor(true),
+            AppTheme.getWarningColor(theme.brightness == Brightness.light),
             onChatWithAI,
             isFullWidth: true,
           ),
@@ -67,7 +73,7 @@ class QuickActionsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(
+  Widget _buildGlassActionButton(
     BuildContext context,
     String title,
     String iconName,
@@ -75,79 +81,96 @@ class QuickActionsSection extends StatelessWidget {
     VoidCallback onTap, {
     bool isFullWidth = false,
   }) {
-    return Container(
-      height: isFullWidth ? 8.h : 12.h,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.1),
-            color.withValues(alpha: 0.05),
-          ],
-        ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlowButton(
+      glowColor: color,
+      glowIntensity: isDark ? 0.2 : 0.1,
+      borderRadius: 16.0,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.all(3.w),
-            child: isFullWidth
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CustomIconWidget(
-                        iconName: iconName,
-                        size: 6.w,
-                        color: color,
-                      ),
-                      SizedBox(width: 3.w),
-                      Text(
-                        title,
-                        style:
-                            AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            height: isFullWidth ? 8.h : 12.h,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        color.withValues(alpha: 0.15),
+                        color.withValues(alpha: 0.05),
+                      ]
+                    : [
+                        color.withValues(alpha: 0.1),
+                        color.withValues(alpha: 0.05),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? color.withValues(alpha: 0.35)
+                    : color.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(3.w),
+              child: isFullWidth
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CustomIconWidget(
+                          iconName: iconName,
+                          size: 6.w,
                           color: color,
                         ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CustomIconWidget(
-                        iconName: iconName,
-                        size: 8.w,
-                        color: color,
-                      ),
-                      SizedBox(height: 1.h),
-                      Text(
-                        title,
-                        style:
-                            AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        SizedBox(width: 3.w),
+                        Text(
+                          title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                            shadows: isDark
+                                ? AppTheme.textGlow(color, blur: 4)
+                                : null,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CustomIconWidget(
+                          iconName: iconName,
+                          size: 8.w,
                           color: color,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                        SizedBox(height: 1.h),
+                        Text(
+                          title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

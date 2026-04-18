@@ -267,7 +267,7 @@ class _ProfileSetupState extends State<ProfileSetup>
         child: Container(
           padding: EdgeInsets.all(6.w),
           decoration: BoxDecoration(
-            color: AppTheme.lightTheme.colorScheme.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -284,27 +284,27 @@ class _ProfileSetupState extends State<ProfileSetup>
                 width: 20.w,
                 height: 20.w,
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
                 child: CustomIconWidget(
                   iconName: 'check',
-                  color: AppTheme.lightTheme.colorScheme.onPrimary,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   size: 40,
                 ),
               ),
               SizedBox(height: 3.h),
               Text(
                 'Profile Created!',
-                style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               SizedBox(height: 1.h),
               Text(
                 'Welcome to Food Insight Scanner, $_userName!',
-                style: AppTheme.lightTheme.textTheme.bodyLarge,
+                style: Theme.of(context).textTheme.bodyLarge,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -321,21 +321,21 @@ class _ProfileSetupState extends State<ProfileSetup>
           children: [
             CustomIconWidget(
               iconName: 'error',
-              color: AppTheme.lightTheme.colorScheme.onError,
+              color: Theme.of(context).colorScheme.onError,
               size: 20,
             ),
             SizedBox(width: 2.w),
             Expanded(
               child: Text(
                 message,
-                style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.onError,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onError,
                 ),
               ),
             ),
           ],
         ),
-        backgroundColor: AppTheme.lightTheme.colorScheme.error,
+        backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -374,11 +374,11 @@ class _ProfileSetupState extends State<ProfileSetup>
             builder: (context) => AlertDialog(
               title: Text(
                 'Unsaved Changes',
-                style: AppTheme.lightTheme.textTheme.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               content: Text(
                 'You have unsaved changes. Do you want to save your profile before leaving?',
-                style: AppTheme.lightTheme.textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
               actions: [
                 TextButton(
@@ -386,7 +386,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                   child: Text(
                     'Discard',
                     style:
-                        TextStyle(color: AppTheme.lightTheme.colorScheme.error),
+                        TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
                 TextButton(
@@ -417,9 +417,9 @@ class _ProfileSetupState extends State<ProfileSetup>
       helpText: 'Select your date of birth',
       builder: (context, child) {
         return Theme(
-          data: AppTheme.lightTheme.copyWith(
-            colorScheme: AppTheme.lightTheme.colorScheme,
-          ),
+           data: Theme.of(context).copyWith(
+             colorScheme: Theme.of(context).colorScheme,
+           ),
           child: child!,
         );
       },
@@ -458,17 +458,17 @@ class _ProfileSetupState extends State<ProfileSetup>
         }
       },
       child: Scaffold(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.1),
-                AppTheme.lightTheme.colorScheme.secondary
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                Theme.of(context).colorScheme.secondary
                     .withValues(alpha: 0.05),
-                AppTheme.lightTheme.scaffoldBackgroundColor,
+                Theme.of(context).scaffoldBackgroundColor,
               ],
             ),
           ),
@@ -531,17 +531,17 @@ class _ProfileSetupState extends State<ProfileSetup>
             child: Container(
               padding: EdgeInsets.all(2.w),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface
+                color: Theme.of(context).colorScheme.surface
                     .withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.outline
+                  color: Theme.of(context).colorScheme.outline
                       .withValues(alpha: 0.3),
                 ),
               ),
               child: CustomIconWidget(
                 iconName: 'arrow_back',
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+                color: Theme.of(context).colorScheme.onSurface,
                 size: 24,
               ),
             ),
@@ -553,7 +553,7 @@ class _ProfileSetupState extends State<ProfileSetup>
               children: [
                 Text(
                   'Setup Your Profile',
-                  style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     fontSize: 16.sp,
                   ),
@@ -561,8 +561,8 @@ class _ProfileSetupState extends State<ProfileSetup>
                 ),
                 Text(
                   'Step $_currentStep of $_totalSteps',
-                  style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -591,7 +591,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                 _buildStepHeader('person', 'Personal Information'),
                 SizedBox(height: 2.h),
                 Text('What should we call you?',
-                    style: AppTheme.lightTheme.textTheme.bodyLarge
+                    style: Theme.of(context).textTheme.bodyLarge
                         ?.copyWith(fontWeight: FontWeight.w500)),
                 SizedBox(height: 1.5.h),
                 TextFormField(
@@ -603,7 +603,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                       padding: EdgeInsets.all(3.w),
                       child: CustomIconWidget(
                         iconName: 'badge',
-                        color: AppTheme.lightTheme.colorScheme.primary,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 20,
                       ),
                     ),
@@ -628,7 +628,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                 ),
                 SizedBox(height: 3.h),
                 Text('Gender',
-                    style: AppTheme.lightTheme.textTheme.bodyLarge
+                    style: Theme.of(context).textTheme.bodyLarge
                         ?.copyWith(fontWeight: FontWeight.w500)),
                 SizedBox(height: 1.h),
                 Wrap(
@@ -645,13 +645,13 @@ class _ProfileSetupState extends State<ProfileSetup>
                           _hasUnsavedChanges = true;
                         });
                       },
-                      selectedColor: AppTheme.lightTheme.colorScheme.primary
+                      selectedColor: Theme.of(context).colorScheme.primary
                           .withValues(alpha: 0.2),
-                      checkmarkColor: AppTheme.lightTheme.colorScheme.primary,
+                      checkmarkColor: Theme.of(context).colorScheme.primary,
                       labelStyle: TextStyle(
                         color: isSelected
-                            ? AppTheme.lightTheme.colorScheme.primary
-                            : AppTheme.lightTheme.colorScheme.onSurface,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.w400,
                       ),
@@ -659,8 +659,8 @@ class _ProfileSetupState extends State<ProfileSetup>
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
                           color: isSelected
-                              ? AppTheme.lightTheme.colorScheme.primary
-                              : AppTheme.lightTheme.colorScheme.outline,
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
                         ),
                       ),
                     );
@@ -691,7 +691,7 @@ class _ProfileSetupState extends State<ProfileSetup>
             _buildStepHeader('cake', 'Date of Birth'),
             SizedBox(height: 2.h),
             Text('When were you born?',
-                style: AppTheme.lightTheme.textTheme.bodyLarge
+                style: Theme.of(context).textTheme.bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 2.h),
             GestureDetector(
@@ -700,12 +700,12 @@ class _ProfileSetupState extends State<ProfileSetup>
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _dateOfBirth != null
-                        ? AppTheme.lightTheme.colorScheme.primary
-                        : AppTheme.lightTheme.colorScheme.outline,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outline,
                     width: _dateOfBirth != null ? 2 : 1,
                   ),
                 ),
@@ -713,7 +713,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                   children: [
                     CustomIconWidget(
                       iconName: 'calendar_today',
-                      color: AppTheme.lightTheme.colorScheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 24,
                     ),
                     SizedBox(width: 3.w),
@@ -722,16 +722,16 @@ class _ProfileSetupState extends State<ProfileSetup>
                         _dateOfBirth != null
                             ? '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}'
                             : 'Tap to select your date of birth',
-                        style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: _dateOfBirth != null
-                              ? AppTheme.lightTheme.colorScheme.onSurface
-                              : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
                     CustomIconWidget(
                       iconName: 'chevron_right',
-                      color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 24,
                     ),
                   ],
@@ -743,21 +743,21 @@ class _ProfileSetupState extends State<ProfileSetup>
               Container(
                 padding: EdgeInsets.all(3.w),
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.primaryContainer,
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
                     CustomIconWidget(
                       iconName: 'info',
-                      color: AppTheme.lightTheme.colorScheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 20,
                     ),
                     SizedBox(width: 2.w),
                     Text(
                       'Your age: $_calculatedAge years',
-                      style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.primary,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -789,7 +789,7 @@ class _ProfileSetupState extends State<ProfileSetup>
             SizedBox(height: 2.h),
             // Height
             Text('Height (cm)',
-                style: AppTheme.lightTheme.textTheme.bodyLarge
+                style: Theme.of(context).textTheme.bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 1.h),
             TextFormField(
@@ -801,7 +801,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                   padding: EdgeInsets.all(3.w),
                   child: CustomIconWidget(
                     iconName: 'height',
-                    color: AppTheme.lightTheme.colorScheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),
                 ),
@@ -820,7 +820,7 @@ class _ProfileSetupState extends State<ProfileSetup>
             SizedBox(height: 3.h),
             // Weight
             Text('Weight (kg)',
-                style: AppTheme.lightTheme.textTheme.bodyLarge
+                style: Theme.of(context).textTheme.bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 1.h),
             TextFormField(
@@ -832,7 +832,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                   padding: EdgeInsets.all(3.w),
                   child: CustomIconWidget(
                     iconName: 'fitness_center',
-                    color: AppTheme.lightTheme.colorScheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),
                 ),
@@ -876,13 +876,13 @@ class _ProfileSetupState extends State<ProfileSetup>
       categoryColor = Colors.orange;
     } else if (bmi < 25) {
       category = 'Normal';
-      categoryColor = AppTheme.lightTheme.colorScheme.primary;
+      categoryColor = Theme.of(context).colorScheme.primary;
     } else if (bmi < 30) {
       category = 'Overweight';
       categoryColor = Colors.orange;
     } else {
       category = 'Obese';
-      categoryColor = AppTheme.lightTheme.colorScheme.error;
+      categoryColor = Theme.of(context).colorScheme.error;
     }
 
     return Container(
@@ -902,7 +902,7 @@ class _ProfileSetupState extends State<ProfileSetup>
             ),
             child: Text(
               bmi.toStringAsFixed(1),
-              style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: categoryColor,
                 fontWeight: FontWeight.bold,
               ),
@@ -913,10 +913,10 @@ class _ProfileSetupState extends State<ProfileSetup>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Your BMI',
-                  style: AppTheme.lightTheme.textTheme.bodySmall),
+                  style: Theme.of(context).textTheme.bodySmall),
               Text(
                 category,
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: categoryColor,
                   fontWeight: FontWeight.w600,
                 ),
@@ -943,8 +943,8 @@ class _ProfileSetupState extends State<ProfileSetup>
             SizedBox(height: 1.h),
             Text(
               'Select any conditions that apply to you. This helps us identify foods to avoid.',
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: 2.h),
@@ -971,13 +971,13 @@ class _ProfileSetupState extends State<ProfileSetup>
                       _hasUnsavedChanges = true;
                     });
                   },
-                  selectedColor: AppTheme.lightTheme.colorScheme.error
+                  selectedColor: Theme.of(context).colorScheme.error
                       .withValues(alpha: 0.15),
-                  checkmarkColor: AppTheme.lightTheme.colorScheme.error,
+                  checkmarkColor: Theme.of(context).colorScheme.error,
                   labelStyle: TextStyle(
                     color: isSelected
-                        ? AppTheme.lightTheme.colorScheme.error
-                        : AppTheme.lightTheme.colorScheme.onSurface,
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface,
                     fontWeight:
                         isSelected ? FontWeight.w600 : FontWeight.w400,
                     fontSize: 13,
@@ -986,8 +986,8 @@ class _ProfileSetupState extends State<ProfileSetup>
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
                       color: isSelected
-                          ? AppTheme.lightTheme.colorScheme.error
-                          : AppTheme.lightTheme.colorScheme.outline,
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.outline,
                     ),
                   ),
                 );
@@ -1056,11 +1056,11 @@ class _ProfileSetupState extends State<ProfileSetup>
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.95),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
         border: Border(
           top: BorderSide(
             color:
-                AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+                Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -1076,7 +1076,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                   children: [
                     CustomIconWidget(
                       iconName: 'arrow_back',
-                      color: AppTheme.lightTheme.colorScheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 18,
                     ),
                     SizedBox(width: 2.w),
@@ -1100,7 +1100,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.lightTheme.colorScheme.onPrimary,
+                          Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     )
@@ -1115,7 +1115,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                           iconName: _currentStep == _totalSteps
                               ? 'save'
                               : 'arrow_forward',
-                          color: AppTheme.lightTheme.colorScheme.onPrimary,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           size: 18,
                         ),
                       ],
@@ -1131,10 +1131,10 @@ class _ProfileSetupState extends State<ProfileSetup>
 
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
-      color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.8),
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
-        color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.3),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
         width: 1,
       ),
       boxShadow: [
@@ -1152,14 +1152,14 @@ class _ProfileSetupState extends State<ProfileSetup>
       children: [
         CustomIconWidget(
           iconName: iconName,
-          color: AppTheme.lightTheme.colorScheme.primary,
+          color: Theme.of(context).colorScheme.primary,
           size: 24,
         ),
         SizedBox(width: 3.w),
         Expanded(
           child: Text(
             title,
-            style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
             overflow: TextOverflow.ellipsis,
@@ -1173,10 +1173,10 @@ class _ProfileSetupState extends State<ProfileSetup>
     return Container(
       padding: EdgeInsets.all(3.w),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -1184,15 +1184,15 @@ class _ProfileSetupState extends State<ProfileSetup>
         children: [
           CustomIconWidget(
             iconName: 'info',
-            color: AppTheme.lightTheme.colorScheme.primary,
+            color: Theme.of(context).colorScheme.primary,
             size: 20,
           ),
           SizedBox(width: 2.w),
           Expanded(
             child: Text(
               text,
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),

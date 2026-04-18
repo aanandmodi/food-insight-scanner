@@ -1,6 +1,9 @@
 // lib/presentation/auth/login_screen.dart
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/services/auth_service.dart';
@@ -57,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppTheme.lightTheme.colorScheme.error,
+        backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -71,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -90,6 +93,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleEmailSignIn() async {
     if (!_formKey.currentState!.validate()) return;
+    HapticFeedback.lightImpact();
 
     _setLoading(true, _AuthMethod.email);
     try {
@@ -108,11 +112,11 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleGoogleSignIn() async {
+    HapticFeedback.lightImpact();
     _setLoading(true, _AuthMethod.google);
     try {
       final user = await _authService.signInWithGoogle();
       if (user == null) {
-        // User cancelled — not an error
         _setLoading(false);
         return;
       }
@@ -127,6 +131,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleGuestSignIn() async {
+    HapticFeedback.lightImpact();
     _setLoading(true, _AuthMethod.guest);
     try {
       await _authService.signInAnonymously();
@@ -134,7 +139,6 @@ class _LoginScreenState extends State<LoginScreen>
         Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
       }
     } catch (e) {
-      // If Firebase fails for guest mode, still let user proceed offline
       debugPrint('Guest sign-in failed, proceeding offline: $e');
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
@@ -145,6 +149,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _handleContinueOffline() {
+    HapticFeedback.lightImpact();
     Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
   }
 
@@ -185,8 +190,12 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -197,15 +206,19 @@ class _LoginScreenState extends State<LoginScreen>
                   width: double.infinity,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppTheme.lightTheme.colorScheme.primary
-                            .withValues(alpha: 0.08),
-                        AppTheme.lightTheme.scaffoldBackgroundColor,
-                        AppTheme.lightTheme.colorScheme.secondary
-                            .withValues(alpha: 0.04),
-                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: isDark
+                          ? [
+                              colorScheme.primary.withValues(alpha: 0.08),
+                              theme.scaffoldBackgroundColor,
+                              theme.scaffoldBackgroundColor,
+                            ]
+                          : [
+                              colorScheme.primary.withValues(alpha: 0.08),
+                              theme.scaffoldBackgroundColor,
+                              colorScheme.secondary.withValues(alpha: 0.04),
+                            ],
                     ),
                   ),
                   child: SafeArea(
@@ -218,155 +231,61 @@ class _LoginScreenState extends State<LoginScreen>
                             SizedBox(height: 4.h),
                             // Firebase status banner
                             if (!_authService.isFirebaseReady)
-                              GestureDetector(
-                                onTap: _isRetrying ? null : _handleRetryConnection,
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.all(3.w),
-                                  margin: EdgeInsets.only(bottom: 2.h),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.orange.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.cloud_off,
-                                          color: Colors.orange, size: 5.w),
-                                      SizedBox(width: 2.w),
-                                      Expanded(
-                                        child: Text(
-                                          'Offline mode — tap to retry connection',
-                                          style: TextStyle(
-                                            color: Colors.orange.shade800,
-                                            fontSize: 11.sp,
-                                          ),
-                                        ),
-                                      ),
-                                      if (_isRetrying)
-                                        const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                                          ),
-                                        )
-                                      else
-                                        Icon(Icons.refresh, color: Colors.orange, size: 5.w),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                              _buildOfflineBanner(colorScheme, isDark)
+                                  .animate()
+                                  .fadeIn(duration: 400.ms)
+                                  .slideY(begin: -0.1),
                             // Logo
-                            CustomIconWidget(
-                              iconName: 'qr_code_scanner',
-                              color:
-                                  AppTheme.lightTheme.colorScheme.primary,
-                              size: SizerUtil.deviceType ==
-                                      DeviceType.tablet
-                                  ? 10.w
-                                  : 16.w,
-                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: isDark
+                                    ? AppTheme.glowBoxShadow(
+                                        colorScheme.primary,
+                                        intensity: 0.2,
+                                        blur: 20,
+                                      )
+                                    : null,
+                              ),
+                              child: CustomIconWidget(
+                                iconName: 'qr_code_scanner',
+                                color: colorScheme.primary,
+                                size: SizerUtil.deviceType == DeviceType.tablet
+                                    ? 10.w
+                                    : 16.w,
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 600.ms, delay: 100.ms)
+                                .scaleXY(begin: 0.8, end: 1.0, duration: 600.ms),
                             SizedBox(height: 2.h),
                             Text(
                               'Food Insight Scanner',
                               textAlign: TextAlign.center,
-                              style: AppTheme
-                                  .lightTheme.textTheme.headlineSmall
-                                  ?.copyWith(
+                              style: theme.textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
+                                shadows: isDark
+                                    ? AppTheme.textGlow(colorScheme.primary, blur: 8)
+                                    : null,
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 200.ms),
                             SizedBox(height: 0.5.h),
                             Text(
                               'Sign in to continue',
-                              style: AppTheme.lightTheme.textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                color: AppTheme.lightTheme.colorScheme
-                                    .onSurfaceVariant,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
                               ),
-                            ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 300.ms),
                             SizedBox(height: 4.h),
-                            // Email/Password Form
-                            Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _emailController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Email',
-                                      hintText: 'you@example.com',
-                                      prefixIcon: Padding(
-                                        padding: EdgeInsets.all(3.w),
-                                        child: CustomIconWidget(
-                                          iconName: 'email',
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
-                                    keyboardType:
-                                        TextInputType.emailAddress,
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Please enter your email';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  TextFormField(
-                                    controller: _passwordController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Password',
-                                      hintText: 'Enter your password',
-                                      prefixIcon: Padding(
-                                        padding: EdgeInsets.all(3.w),
-                                        child: CustomIconWidget(
-                                          iconName: 'lock',
-                                          color: AppTheme.lightTheme
-                                              .colorScheme.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      suffixIcon: GestureDetector(
-                                        onTap: () => setState(() =>
-                                            _obscurePassword =
-                                                !_obscurePassword),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(3.w),
-                                          child: CustomIconWidget(
-                                            iconName: _obscurePassword
-                                                ? 'visibility_off'
-                                                : 'visibility',
-                                            color: AppTheme
-                                                .lightTheme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    obscureText: _obscurePassword,
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.isEmpty) {
-                                        return 'Please enter your password';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
+                            // Form
+                            _buildForm(theme, colorScheme, isDark)
+                                .animate()
+                                .fadeIn(duration: 500.ms, delay: 400.ms)
+                                .slideY(begin: 0.05, end: 0),
                             // Forgot password
                             Align(
                               alignment: Alignment.centerRight,
@@ -374,11 +293,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 onPressed: _handleForgotPassword,
                                 child: Text(
                                   'Forgot Password?',
-                                  style: AppTheme
-                                      .lightTheme.textTheme.bodySmall
-                                      ?.copyWith(
-                                    color: AppTheme.lightTheme
-                                        .colorScheme.primary,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.primary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -386,284 +302,24 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                             SizedBox(height: 1.h),
                             // Sign In button
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : _handleEmailSignIn,
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize: Size(
-                                      double.infinity, 6.5.h),
-                                ),
-                                child: _isLoading &&
-                                        _activeMethod ==
-                                            _AuthMethod.email
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child:
-                                            CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<
-                                                  Color>(
-                                            AppTheme
-                                                .lightTheme
-                                                .colorScheme
-                                                .onPrimary,
-                                          ),
-                                        ),
-                                      )
-                                    : Text(
-                                        'Sign In',
-                                        style: AppTheme
-                                            .lightTheme
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                          color: AppTheme
-                                              .lightTheme
-                                              .colorScheme
-                                              .onPrimary,
-                                          fontWeight:
-                                              FontWeight.w600,
-                                        ),
-                                      ),
-                              ),
-                            ),
+                            _buildSignInButton(theme, colorScheme, isDark),
                             SizedBox(height: 2.5.h),
-                            // Divider
-                            Row(
-                              children: [
-                                Expanded(
-                                    child: Divider(
-                                        color: AppTheme
-                                            .lightTheme
-                                            .dividerColor)),
-                                Padding(
-                                  padding:
-                                      EdgeInsets.symmetric(
-                                          horizontal: 4.w),
-                                  child: Text(
-                                    'or continue with',
-                                    style: AppTheme
-                                        .lightTheme
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                      color: AppTheme
-                                          .lightTheme
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                    child: Divider(
-                                        color: AppTheme
-                                            .lightTheme
-                                            .dividerColor)),
-                              ],
-                            ),
+                            _buildDivider(theme, colorScheme),
                             SizedBox(height: 2.5.h),
-                            // Google Sign In
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: _isLoading
-                                    ? null
-                                    : _handleGoogleSignIn,
-                                style:
-                                    ElevatedButton.styleFrom(
-                                  minimumSize: Size(
-                                      double.infinity, 6.5.h),
-                                  backgroundColor:
-                                      Colors.white,
-                                  foregroundColor:
-                                      Colors.black87,
-                                  elevation: 1,
-                                  shape:
-                                      RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(
-                                            12),
-                                    side: BorderSide(
-                                      color: AppTheme
-                                          .lightTheme
-                                          .dividerColor,
-                                    ),
-                                  ),
-                                ),
-                                icon: _isLoading &&
-                                        _activeMethod ==
-                                            _AuthMethod.google
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child:
-                                            CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<
-                                                      Color>(
-                                                  Colors
-                                                      .black54),
-                                        ),
-                                      )
-                                    : CustomIconWidget(
-                                        iconName:
-                                            'google_logo',
-                                        size: 2.5.h,
-                                      ),
-                                label: const Text(
-                                    'Sign in with Google'),
-                              ),
-                            ),
+                            _buildGoogleSignIn(theme, colorScheme, isDark),
                             SizedBox(height: 2.h),
                             // Guest Mode
-                            TextButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : _handleGuestSignIn,
-                              child: _isLoading &&
-                                      _activeMethod == _AuthMethod.guest
-                                  ? SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child:
-                                          CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<
-                                                Color>(
-                                          AppTheme
-                                              .lightTheme
-                                              .colorScheme
-                                              .primary,
-                                        ),
-                                      ),
-                                    )
-                                  : Text(
-                                      'Continue as Guest',
-                                      style: AppTheme
-                                          .lightTheme
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                        color: AppTheme
-                                            .lightTheme
-                                            .colorScheme
-                                            .primary,
-                                        fontWeight:
-                                            FontWeight.w600,
-                                      ),
-                                    ),
-                            ),
+                            _buildGuestButton(theme, colorScheme),
                             SizedBox(height: 1.h),
-                            // Continue Without Account
-                            TextButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : _handleContinueOffline,
-                              child: Text(
-                                'Continue Without Account',
-                                style: AppTheme
-                                    .lightTheme
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                  color: AppTheme
-                                      .lightTheme
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontWeight: FontWeight.w500,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
-                            // Retry Connection Button (prominent)
+                            _buildOfflineButton(theme, colorScheme),
+                            // Retry Connection
                             if (!_authService.isFirebaseReady) ...[
                               SizedBox(height: 1.h),
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(3.w),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.lightTheme.colorScheme.error.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme.lightTheme.colorScheme.error.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Firebase is not available. Please check your internet connection.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: AppTheme.lightTheme.colorScheme.error,
-                                        fontSize: 11.sp,
-                                      ),
-                                    ),
-                                    SizedBox(height: 1.h),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: _isRetrying ? null : _handleRetryConnection,
-                                        icon: _isRetrying
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                ),
-                                              )
-                                            : const Icon(Icons.refresh, size: 18),
-                                        label: Text(_isRetrying ? 'Connecting...' : 'Retry Connection'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppTheme.lightTheme.colorScheme.error,
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(vertical: 1.2.h),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              _buildRetrySection(theme, colorScheme, isDark),
                             ],
                             const Spacer(),
                             // Sign Up link
-                            Padding(
-                              padding:
-                                  EdgeInsets.symmetric(vertical: 3.h),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    "Don't have an account? ",
-                                    style: AppTheme.lightTheme
-                                        .textTheme.bodyMedium,
-                                  ),
-                                  GestureDetector(
-                                    onTap: () =>
-                                        Navigator.pushNamed(
-                                            context, AppRoutes.signup),
-                                    child: Text(
-                                      'Sign Up',
-                                      style: AppTheme.lightTheme
-                                          .textTheme.bodyMedium
-                                          ?.copyWith(
-                                        color: AppTheme.lightTheme
-                                            .colorScheme.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            _buildSignUpLink(theme, colorScheme),
                           ],
                         ),
                       ),
@@ -674,6 +330,341 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner(ColorScheme colorScheme, bool isDark) {
+    return GestureDetector(
+      onTap: _isRetrying ? null : _handleRetryConnection,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(3.w),
+        margin: EdgeInsets.only(bottom: 2.h),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: isDark ? 0.15 : 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.orange.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.cloud_off, color: Colors.orange, size: 5.w),
+            SizedBox(width: 2.w),
+            Expanded(
+              child: Text(
+                'Offline mode — tap to retry connection',
+                style: TextStyle(
+                  color: isDark ? Colors.orange.shade300 : Colors.orange.shade800,
+                  fontSize: 11.sp,
+                ),
+              ),
+            ),
+            if (_isRetrying)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                ),
+              )
+            else
+              Icon(Icons.refresh, color: Colors.orange, size: 5.w),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _emailController,
+            decoration: InputDecoration(
+              labelText: 'Email',
+              hintText: 'you@example.com',
+              prefixIcon: Padding(
+                padding: EdgeInsets.all(3.w),
+                child: CustomIconWidget(
+                  iconName: 'email',
+                  color: colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 2.h),
+          TextFormField(
+            controller: _passwordController,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              hintText: 'Enter your password',
+              prefixIcon: Padding(
+                padding: EdgeInsets.all(3.w),
+                child: CustomIconWidget(
+                  iconName: 'lock',
+                  color: colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              suffixIcon: GestureDetector(
+                onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                child: Padding(
+                  padding: EdgeInsets.all(3.w),
+                  child: CustomIconWidget(
+                    iconName: _obscurePassword ? 'visibility_off' : 'visibility',
+                    color: colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            obscureText: _obscurePassword,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignInButton(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+    return GlowButton(
+      glowColor: colorScheme.primary,
+      glowIntensity: isDark ? 0.25 : 0.1,
+      onTap: _isLoading ? null : _handleEmailSignIn,
+      child: Container(
+        width: double.infinity,
+        height: 6.5.h,
+        decoration: BoxDecoration(
+          color: colorScheme.primary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: _isLoading && _activeMethod == _AuthMethod.email
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+                  ),
+                )
+              : Text(
+                  'Sign In',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: theme.dividerColor)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.w),
+          child: Text(
+            'or continue with',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(child: Divider(color: theme.dividerColor)),
+      ],
+    );
+  }
+
+  Widget _buildGoogleSignIn(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+    return SizedBox(
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            height: 6.5.h,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : theme.dividerColor,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _isLoading ? null : _handleGoogleSignIn,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _isLoading && _activeMethod == _AuthMethod.google
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                isDark ? Colors.white54 : Colors.black54,
+                              ),
+                            ),
+                          )
+                        : CustomIconWidget(
+                            iconName: 'google_logo',
+                            size: 2.5.h,
+                          ),
+                    SizedBox(width: 3.w),
+                    Text(
+                      'Sign in with Google',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestButton(ThemeData theme, ColorScheme colorScheme) {
+    return TextButton(
+      onPressed: _isLoading ? null : _handleGuestSignIn,
+      child: _isLoading && _activeMethod == _AuthMethod.guest
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+              ),
+            )
+          : Text(
+              'Continue as Guest',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildOfflineButton(ThemeData theme, ColorScheme colorScheme) {
+    return TextButton(
+      onPressed: _isLoading ? null : _handleContinueOffline,
+      child: Text(
+        'Continue Without Account',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRetrySection(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(3.w),
+      decoration: BoxDecoration(
+        color: colorScheme.error.withValues(alpha: isDark ? 0.15 : 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.error.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Firebase is not available. Please check your internet connection.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: colorScheme.error,
+              fontSize: 11.sp,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isRetrying ? null : _handleRetryConnection,
+              icon: _isRetrying
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.refresh, size: 18),
+              label: Text(_isRetrying ? 'Connecting...' : 'Retry Connection'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 1.2.h),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignUpLink(ThemeData theme, ColorScheme colorScheme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 3.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Don't have an account? ",
+            style: theme.textTheme.bodyMedium,
+          ),
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.pushNamed(context, AppRoutes.signup);
+            },
+            child: Text(
+              'Sign Up',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

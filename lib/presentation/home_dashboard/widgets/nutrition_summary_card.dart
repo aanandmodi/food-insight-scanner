@@ -1,8 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../../theme/app_theme.dart';
 
 class NutritionSummaryCard extends StatelessWidget {
   final Map<String, dynamic> nutritionData;
@@ -14,90 +14,122 @@ class NutritionSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final calories = (nutritionData['calories'] as num?)?.toInt() ?? 0;
+    final caloriesGoal = (nutritionData['caloriesGoal'] as num?)?.toInt() ?? 2000;
+    final sugar = (nutritionData['sugar'] as num?)?.toInt() ?? 0;
+    final sugarGoal = (nutritionData['sugarGoal'] as num?)?.toInt() ?? 50;
+    final protein = (nutritionData['protein'] as num?)?.toInt() ?? 0;
+    final proteinGoal = (nutritionData['proteinGoal'] as num?)?.toInt() ?? 150;
+
     return Container(
-      width: double.infinity,
-      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
-            AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color:
-                AppTheme.lightTheme.colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Today's Nutrition",
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  "${nutritionData['totalCalories'] ?? 0} kcal",
-                  style: AppTheme.lightTheme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.lightTheme.colorScheme.primary,
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: EdgeInsets.all(4.w),
+            decoration: isDark
+                ? AppTheme.glassmorphicDecoration()
+                : BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Today's Nutrition",
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 3.w, vertical: 0.5.h),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: isDark
+                            ? Border.all(
+                                color: colorScheme.primary.withValues(alpha: 0.3),
+                              )
+                            : null,
+                      ),
+                      child: Text(
+                        "$calories / $caloriesGoal kcal",
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          shadows: isDark
+                              ? AppTheme.textGlow(colorScheme.primary, blur: 6)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                SizedBox(height: 2.h),
+                _buildAnimatedNutritionBar(
+                  context,
+                  "Calories",
+                  calories,
+                  caloriesGoal,
+                  colorScheme.primary,
+                  isDark,
+                ),
+                SizedBox(height: 1.5.h),
+                _buildAnimatedNutritionBar(
+                  context,
+                  "Sugar",
+                  sugar,
+                  sugarGoal,
+                  AppTheme.getWarningColor(!isDark),
+                  isDark,
+                ),
+                SizedBox(height: 1.5.h),
+                _buildAnimatedNutritionBar(
+                  context,
+                  "Protein",
+                  protein,
+                  proteinGoal,
+                  AppTheme.getSuccessColor(!isDark),
+                  isDark,
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 2.h),
-          _buildNutritionBar(
-            "Calories",
-            nutritionData['calories'] ?? 0,
-            nutritionData['caloriesGoal'] ?? 2000,
-            AppTheme.lightTheme.colorScheme.primary,
-          ),
-          SizedBox(height: 1.5.h),
-          _buildNutritionBar(
-            "Sugar",
-            nutritionData['sugar'] ?? 0,
-            nutritionData['sugarGoal'] ?? 50,
-            AppTheme.getWarningColor(true),
-          ),
-          SizedBox(height: 1.5.h),
-          _buildNutritionBar(
-            "Protein",
-            nutritionData['protein'] ?? 0,
-            nutritionData['proteinGoal'] ?? 150,
-            AppTheme.getSuccessColor(true),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildNutritionBar(String label, int current, int goal, Color color) {
-    double progress = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
+  Widget _buildAnimatedNutritionBar(
+    BuildContext context,
+    String label,
+    int current,
+    int goal,
+    Color color,
+    bool isDark,
+  ) {
+    final theme = Theme.of(context);
+    final progress = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
+    final unit = label == 'Calories' ? 'kcal' : 'g';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,51 +139,77 @@ class NutritionSummaryCard extends StatelessWidget {
           children: [
             Text(
               label,
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             Text(
-              "$current / $goal ${_getUnit(label)}",
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              "$current / $goal $unit",
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: color,
+                shadows: isDark ? AppTheme.textGlow(color, blur: 4) : null,
               ),
             ),
           ],
         ),
         SizedBox(height: 0.5.h),
-        Container(
-          height: 8,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: progress,
-            child: Container(
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: progress),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) {
+              return Stack(
+                children: [
+                  // Track
+                  Container(
+                    height: 1.h,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? color.withValues(alpha: 0.12)
+                          : color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  // Fill
+                  Container(
+                    height: 1.h,
+                    width: double.infinity,
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: value,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              color.withValues(alpha: 0.8),
+                              color,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: isDark
+                              ? [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.5),
+                                    blurRadius: 8,
+                                    spreadRadius: 0,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
     );
-  }
-
-  String _getUnit(String label) {
-    switch (label.toLowerCase()) {
-      case 'calories':
-        return 'kcal';
-      case 'sugar':
-        return 'g';
-      case 'protein':
-        return 'g';
-      default:
-        return '';
-    }
   }
 }

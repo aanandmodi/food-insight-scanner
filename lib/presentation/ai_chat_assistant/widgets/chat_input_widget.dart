@@ -92,7 +92,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -107,10 +107,10 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(6.w),
                   border: Border.all(
-                    color: AppTheme.lightTheme.colorScheme.outline
+                    color: Theme.of(context).colorScheme.outline
                         .withValues(alpha: 0.3),
                     width: 1,
                   ),
@@ -125,9 +125,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                         textCapitalization: TextCapitalization.sentences,
                         decoration: InputDecoration(
                           hintText: 'Ask about nutrition, ingredients...',
-                          hintStyle: AppTheme.lightTheme.textTheme.bodyMedium
+                          hintStyle: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                            color: AppTheme.lightTheme.colorScheme.onSurface
+                            color: Theme.of(context).colorScheme.onSurface
                                 .withValues(alpha: 0.6),
                           ),
                           border: InputBorder.none,
@@ -136,7 +136,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                             vertical: 2.h,
                           ),
                         ),
-                        style: AppTheme.lightTheme.textTheme.bodyMedium,
+                        style: Theme.of(context).textTheme.bodyMedium,
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
@@ -152,7 +152,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                               : (_isRecording ? 'stop' : 'mic'),
                           color: _isRecording
                               ? Colors.red
-                              : AppTheme.lightTheme.colorScheme.primary,
+                              : Theme.of(context).colorScheme.primary,
                           size: 5.w,
                         ),
                       ),
@@ -169,8 +169,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 height: 12.w,
                 decoration: BoxDecoration(
                   color: _hasText && !widget.isLoading
-                      ? AppTheme.lightTheme.colorScheme.primary
-                      : AppTheme.lightTheme.colorScheme.outline
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.outline
                           .withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
@@ -181,15 +181,15 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.lightTheme.colorScheme.surface,
+                            Theme.of(context).colorScheme.surface,
                           ),
                         ),
                       )
                     : CustomIconWidget(
                         iconName: 'send',
                         color: _hasText
-                            ? AppTheme.lightTheme.colorScheme.surface
-                            : AppTheme.lightTheme.colorScheme.onSurface
+                            ? Theme.of(context).colorScheme.surface
+                            : Theme.of(context).colorScheme.onSurface
                                 .withValues(alpha: 0.5),
                         size: 5.w,
                       ),
@@ -201,3 +201,4 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     );
   }
 }
+

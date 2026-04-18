@@ -31,10 +31,10 @@ class QuickReplyWidget extends StatelessWidget {
                     padding:
                         EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
                     decoration: BoxDecoration(
-                      color: AppTheme.lightTheme.colorScheme.surface,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(6.w),
                       border: Border.all(
-                        color: AppTheme.lightTheme.colorScheme.outline
+                        color: Theme.of(context).colorScheme.outline
                             .withValues(alpha: 0.3),
                         width: 1,
                       ),
@@ -50,8 +50,8 @@ class QuickReplyWidget extends StatelessWidget {
                       child: Text(
                         suggestions[index],
                         style:
-                            AppTheme.lightTheme.textTheme.labelMedium?.copyWith(
-                          color: AppTheme.lightTheme.colorScheme.primary,
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -66,3 +66,4 @@ class QuickReplyWidget extends StatelessWidget {
         : const SizedBox.shrink();
   }
 }
+

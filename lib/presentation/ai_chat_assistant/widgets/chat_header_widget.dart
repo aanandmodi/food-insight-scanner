@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -16,7 +16,7 @@ class ChatHeaderWidget extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -34,7 +34,7 @@ class ChatHeaderWidget extends StatelessWidget {
                 padding: EdgeInsets.all(2.w),
                 child: CustomIconWidget(
                   iconName: 'arrow_back',
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: Theme.of(context).colorScheme.onSurface,
                   size: 6.w,
                 ),
               ),
@@ -47,8 +47,8 @@ class ChatHeaderWidget extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.lightTheme.colorScheme.primary,
-                    AppTheme.lightTheme.colorScheme.secondary,
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -67,9 +67,9 @@ class ChatHeaderWidget extends StatelessWidget {
                 children: [
                   Text(
                     'NutriBot Assistant',
-                    style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.lightTheme.colorScheme.onSurface,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -89,8 +89,8 @@ class ChatHeaderWidget extends StatelessWidget {
                       Text(
                         'Online',
                         style:
-                            AppTheme.lightTheme.textTheme.labelSmall?.copyWith(
-                          color: AppTheme.lightTheme.colorScheme.onSurface
+                            Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface
                               .withValues(alpha: 0.7),
                         ),
                       ),
@@ -107,7 +107,7 @@ class ChatHeaderWidget extends StatelessWidget {
                 padding: EdgeInsets.all(2.w),
                 child: CustomIconWidget(
                   iconName: 'more_vert',
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: Theme.of(context).colorScheme.onSurface,
                   size: 5.w,
                 ),
               ),

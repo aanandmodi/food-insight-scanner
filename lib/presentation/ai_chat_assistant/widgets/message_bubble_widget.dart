@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
@@ -32,8 +32,8 @@ class MessageBubbleWidget extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.lightTheme.primaryColor,
-                    AppTheme.lightTheme.colorScheme.secondary,
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -53,8 +53,8 @@ class MessageBubbleWidget extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: isUser
-                    ? AppTheme.lightTheme.primaryColor
-                    : AppTheme.lightTheme.colorScheme.surface
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.surface
                         .withValues(alpha: 0.9),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(4.w),
@@ -73,7 +73,7 @@ class MessageBubbleWidget extends StatelessWidget {
                 ],
                 border: !isUser
                     ? Border.all(
-                        color: AppTheme.lightTheme.colorScheme.outline
+                        color: Theme.of(context).colorScheme.outline
                             .withValues(alpha: 0.2),
                         width: 1,
                       )
@@ -86,10 +86,10 @@ class MessageBubbleWidget extends StatelessWidget {
                     data: message,
                     selectable: true,
                     styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                      p: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                      p: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: isUser
                             ? Colors.white
-                            : AppTheme.lightTheme.colorScheme.onSurface,
+                            : Theme.of(context).colorScheme.onSurface,
                         height: 1.4,
                       ),
                       strong: const TextStyle(fontWeight: FontWeight.w900),
@@ -98,10 +98,10 @@ class MessageBubbleWidget extends StatelessWidget {
                   SizedBox(height: 1.h),
                   Text(
                     _formatTime(timestamp),
-                    style: AppTheme.lightTheme.textTheme.labelSmall?.copyWith(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: isUser
                           ? Colors.white.withValues(alpha: 0.7)
-                          : AppTheme.lightTheme.colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurface
                               .withValues(alpha: 0.6),
                     ),
                   ),
@@ -116,7 +116,7 @@ class MessageBubbleWidget extends StatelessWidget {
               height: 8.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.lightTheme.colorScheme.secondary,
+                color: Theme.of(context).colorScheme.secondary,
               ),
               child: CustomIconWidget(
                 iconName: 'person',
@@ -145,3 +145,4 @@ class MessageBubbleWidget extends StatelessWidget {
     }
   }
 }
+

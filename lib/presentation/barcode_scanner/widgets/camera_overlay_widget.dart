@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -84,7 +84,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
               height: 35.h,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   width: 2,
                 ),
                 borderRadius: BorderRadius.circular(16),
@@ -111,8 +111,8 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: widget.isScanning
-                            ? AppTheme.lightTheme.colorScheme.primary
-                            : AppTheme.lightTheme.colorScheme.primary
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.primary
                                 .withValues(alpha: 0.5),
                         width: 3,
                       ),
@@ -130,11 +130,11 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                             decoration: BoxDecoration(
                               border: Border(
                                 top: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                                 left: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                               ),
@@ -150,11 +150,11 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                             decoration: BoxDecoration(
                               border: Border(
                                 top: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                                 right: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                               ),
@@ -170,11 +170,11 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                             decoration: BoxDecoration(
                               border: Border(
                                 bottom: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                                 left: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                               ),
@@ -190,11 +190,11 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                             decoration: BoxDecoration(
                               border: Border(
                                 bottom: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                                 right: BorderSide(
-                                  color: AppTheme.lightTheme.colorScheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   width: 4,
                                 ),
                               ),
@@ -251,7 +251,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                       child: CustomIconWidget(
                         iconName: widget.isFlashOn ? 'flash_on' : 'flash_off',
                         color: widget.isFlashOn
-                            ? AppTheme.lightTheme.colorScheme.primary
+                            ? Theme.of(context).colorScheme.primary
                             : Colors.white,
                         size: 24,
                       ),
@@ -279,7 +279,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                     widget.isScanning
                         ? 'Scanning for barcode...'
                         : 'Position barcode within the frame',
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
@@ -289,7 +289,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 SizedBox(height: 2.h),
                 Text(
                   'Make sure the barcode is well-lit and clearly visible',
-                  style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.8),
                   ),
                   textAlign: TextAlign.center,

@@ -1,22 +1,21 @@
 // lib/core/services/firestore_service.dart
 
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_database_service.dart';
 
 /// Service for managing user data in Firestore.
 /// All methods are resilient to Firebase being unavailable (offline mode).
-/// Diet log entries have a SharedPreferences fallback for offline persistence.
+/// Diet log entries use SQLite (via [LocalDatabaseService]) as the local
+/// fallback instead of SharedPreferences.
 class FirestoreService {
   static final FirestoreService _instance = FirestoreService._internal();
   factory FirestoreService() => _instance;
   FirestoreService._internal();
 
-  // Local storage key prefix for diet entries
-  static const String _dietLogKeyPrefix = 'local_diet_log_';
+  final LocalDatabaseService _localDb = LocalDatabaseService();
 
   /// Check if Firebase is available before making calls
   bool get _isFirebaseReady {
@@ -180,47 +179,11 @@ class FirestoreService {
     }
   }
 
-  // ──────────────────────────── Products Cache ────────────────────────────
-
-  /// Cache product data in Firestore (shared across users)
-  Future<void> cacheProduct(
-      String barcode, Map<String, dynamic> productData) async {
-    final db = _firestore;
-    if (db == null) return;
-
-    try {
-      await db.collection('products').doc(barcode).set(
-        {
-          ...productData,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      ).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      debugPrint('Error caching product: $e');
-    }
-  }
-
-  /// Get cached product by barcode
-  Future<Map<String, dynamic>?> getCachedProduct(String barcode) async {
-    final db = _firestore;
-    if (db == null) return null;
-
-    try {
-      final doc = await db.collection('products').doc(barcode).get().timeout(const Duration(seconds: 5));
-      return doc.exists ? doc.data() : null;
-    } catch (e) {
-      debugPrint('Error loading cached product: $e');
-      return null;
-    }
-  }
-
   // ──────────────────────────── Diet Log ────────────────────────────
-  // Diet log entries are ALWAYS saved locally (SharedPreferences) as a fallback.
-  // When Firebase is available, entries are ALSO saved to Firestore.
-  // getDietLog merges both sources and deduplicates by entry name+time.
+  // Diet log entries are saved locally to SQLite (via LocalDatabaseService)
+  // and synced to Firestore when available.
 
-  /// Save a diet entry — always saves locally, also saves to Firestore if available.
+  /// Save a diet entry — always saves locally to SQLite, also saves to Firestore if available.
   /// Returns true if saved to cloud, false if saved locally only.
   Future<bool> saveDietEntry(Map<String, dynamic> entryData) async {
     // Ensure 'time' field is always present for UI display
@@ -242,9 +205,9 @@ class FirestoreService {
     data['id'] = localId;
     data['source'] = 'local';
 
-    // 1. Always save locally first
-    await _saveLocalDietEntry(data);
-    debugPrint('Diet entry saved locally: ${data['name']}');
+    // 1. Always save locally first (SQLite)
+    await _localDb.insertDietEntry(data);
+    debugPrint('Diet entry saved to SQLite: ${data['name']}');
 
     // 2. Try to save to Firestore if available
     final db = _firestore;
@@ -265,9 +228,7 @@ class FirestoreService {
         }).timeout(const Duration(seconds: 5));
 
         // Update local entry with Firestore ID so we can match later
-        data['firestoreId'] = docRef.id;
-        data['source'] = 'synced';
-        await _updateLocalDietEntry(data);
+        await _localDb.markDietEntrySynced(localId, docRef.id);
         debugPrint('Diet entry also saved to Firestore: ${docRef.id}');
         return true;
       } catch (e) {
@@ -278,10 +239,10 @@ class FirestoreService {
   }
 
   /// Get diet log for a specific date (YYYY-MM-DD).
-  /// Returns merged results from Firestore + local storage.
+  /// Returns merged results from Firestore + local SQLite.
   Future<List<Map<String, dynamic>>> getDietLog(String dateString) async {
-    // 1. Always get local entries
-    final localEntries = await _getLocalDietLog(dateString);
+    // 1. Always get local entries from SQLite
+    final localEntries = await _localDb.getDietLogByDate(dateString);
 
     // 2. Try to get Firestore entries
     final db = _firestore;
@@ -356,10 +317,10 @@ class FirestoreService {
     return merged;
   }
 
-  /// Delete a diet entry from both Firestore and local storage
+  /// Delete a diet entry from both Firestore and local SQLite
   Future<void> deleteDietEntry(String entryId) async {
-    // Delete from local storage
-    await _deleteLocalDietEntry(entryId);
+    // Delete from local SQLite
+    await _localDb.deleteDietEntry(entryId);
 
     // Delete from Firestore if available
     final db = _firestore;
@@ -494,97 +455,7 @@ class FirestoreService {
     }
   }
 
-  // ──────────────── Local Diet Log Helpers (SharedPreferences) ────────────────
-
-  /// Save a diet entry to local storage
-  Future<void> _saveLocalDietEntry(Map<String, dynamic> entry) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final dateKey = '$_dietLogKeyPrefix${entry['date']}';
-      final existingJson = prefs.getString(dateKey);
-      List<Map<String, dynamic>> entries = [];
-
-      if (existingJson != null) {
-        final decoded = jsonDecode(existingJson) as List;
-        entries = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-
-      entries.add(entry);
-      await prefs.setString(dateKey, jsonEncode(entries));
-    } catch (e) {
-      debugPrint('Error saving local diet entry: $e');
-    }
-  }
-
-  /// Update a local diet entry (e.g., after syncing to Firestore)
-  Future<void> _updateLocalDietEntry(Map<String, dynamic> updatedEntry) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final dateKey = '$_dietLogKeyPrefix${updatedEntry['date']}';
-      final existingJson = prefs.getString(dateKey);
-      if (existingJson == null) return;
-
-      final decoded = jsonDecode(existingJson) as List;
-      final entries = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-
-      final idx = entries.indexWhere((e) => e['id'] == updatedEntry['id']);
-      if (idx != -1) {
-        entries[idx] = updatedEntry;
-        await prefs.setString(dateKey, jsonEncode(entries));
-      }
-    } catch (e) {
-      debugPrint('Error updating local diet entry: $e');
-    }
-  }
-
-  /// Get local diet entries for a specific date
-  Future<List<Map<String, dynamic>>> _getLocalDietLog(String dateString) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final dateKey = '$_dietLogKeyPrefix$dateString';
-      final json = prefs.getString(dateKey);
-      if (json == null) return [];
-
-      final decoded = jsonDecode(json) as List;
-      return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    } catch (e) {
-      debugPrint('Error loading local diet log: $e');
-      return [];
-    }
-  }
-
-  /// Delete a local diet entry by ID
-  Future<void> _deleteLocalDietEntry(String entryId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      // We need to scan all date keys since we might not know the date
-      final keys = prefs.getKeys().where((k) => k.startsWith(_dietLogKeyPrefix));
-
-      for (final key in keys) {
-        final json = prefs.getString(key);
-        if (json == null) continue;
-
-        final decoded = jsonDecode(json) as List;
-        final entries = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        final originalLength = entries.length;
-
-        // Remove by local ID or by firestoreId
-        entries.removeWhere((e) =>
-            e['id'] == entryId || e['firestoreId'] == entryId);
-
-        if (entries.length != originalLength) {
-          if (entries.isEmpty) {
-            await prefs.remove(key);
-          } else {
-            await prefs.setString(key, jsonEncode(entries));
-          }
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error deleting local diet entry: $e');
-    }
-  }
+  // ──────────────────────── Sync Helpers ────────────────────────
 
   /// Sync any unsynced local diet entries to Firestore.
   /// Call this when Firebase becomes available.
@@ -594,46 +465,31 @@ class FirestoreService {
     if (db == null || uid == null) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys().where((k) => k.startsWith(_dietLogKeyPrefix));
+      final unsyncedEntries = await _localDb.getUnsyncedDietEntries();
 
-      for (final key in keys) {
-        final json = prefs.getString(key);
-        if (json == null) continue;
+      for (final entry in unsyncedEntries) {
+        try {
+          final firestoreData = Map<String, dynamic>.from(entry);
+          final localId = firestoreData['id'] as String?;
+          firestoreData.remove('id');
+          firestoreData.remove('source');
+          firestoreData.remove('firestoreId');
 
-        final decoded = jsonDecode(json) as List;
-        final entries = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        bool updated = false;
+          final docRef = await db
+              .collection('diet_log')
+              .doc(uid)
+              .collection('entries')
+              .add({
+            ...firestoreData,
+            'createdAt': FieldValue.serverTimestamp(),
+          }).timeout(const Duration(seconds: 5));
 
-        for (int i = 0; i < entries.length; i++) {
-          if (entries[i]['source'] == 'local') {
-            try {
-              final firestoreData = Map<String, dynamic>.from(entries[i]);
-              firestoreData.remove('id');
-              firestoreData.remove('source');
-              firestoreData.remove('firestoreId');
-
-              final docRef = await db
-                  .collection('diet_log')
-                  .doc(uid)
-                  .collection('entries')
-                  .add({
-                ...firestoreData,
-                'createdAt': FieldValue.serverTimestamp(),
-              }).timeout(const Duration(seconds: 5));
-
-              entries[i]['firestoreId'] = docRef.id;
-              entries[i]['source'] = 'synced';
-              updated = true;
-              debugPrint('Synced local entry to cloud: ${entries[i]['name']}');
-            } catch (e) {
-              debugPrint('Failed to sync entry: $e');
-            }
+          if (localId != null) {
+            await _localDb.markDietEntrySynced(localId, docRef.id);
           }
-        }
-
-        if (updated) {
-          await prefs.setString(key, jsonEncode(entries));
+          debugPrint('Synced local entry to cloud: ${entry['name']}');
+        } catch (e) {
+          debugPrint('Failed to sync entry: $e');
         }
       }
     } catch (e) {

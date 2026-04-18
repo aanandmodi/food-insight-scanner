@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -15,81 +16,93 @@ class DietLogPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
-            AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color:
-                AppTheme.lightTheme.colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Diet Log",
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
-                ),
-              ),
-              TextButton(
-                onPressed: onViewAll,
-                child: Text(
-                  "View All",
-                  style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.primary,
-                    fontWeight: FontWeight.w500,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: EdgeInsets.all(4.w),
+            decoration: isDark
+                ? AppTheme.glassmorphicDecoration()
+                : BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: colorScheme.outline.withValues(alpha: 0.2),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Diet Log",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: onViewAll,
+                      child: Text(
+                        "View All",
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                SizedBox(height: 1.h),
+                recentEntries.isEmpty
+                    ? _buildEmptyState(context)
+                    : Column(
+                        children: recentEntries
+                            .take(3)
+                            .map((entry) => _buildLogEntry(context, entry))
+                            .toList(),
+                      ),
+              ],
+            ),
           ),
-          SizedBox(height: 1.h),
-          recentEntries.isEmpty
-              ? _buildEmptyState()
-              : Column(
-                  children: recentEntries
-                      .take(3)
-                      .map((entry) => _buildLogEntry(entry))
-                      .toList(),
-                ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildLogEntry(Map<String, dynamic> entry) {
+  Widget _buildLogEntry(BuildContext context, Map<String, dynamic> entry) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: EdgeInsets.only(bottom: 1.h),
       padding: EdgeInsets.all(3.w),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.5),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.1),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -100,7 +113,9 @@ class DietLogPreview extends StatelessWidget {
             height: 12.w,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              color: AppTheme.lightTheme.colorScheme.surfaceContainerHighest,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : colorScheme.surfaceContainerHighest,
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -119,9 +134,9 @@ class DietLogPreview extends StatelessWidget {
               children: [
                 Text(
                   entry['name'] as String? ?? 'Unknown Food',
-                  style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                  style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.lightTheme.colorScheme.onSurface,
+                    color: colorScheme.onSurface,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -131,8 +146,8 @@ class DietLogPreview extends StatelessWidget {
                   children: [
                     Text(
                       "${entry['calories'] ?? 0} kcal",
-                      style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -141,15 +156,15 @@ class DietLogPreview extends StatelessWidget {
                       width: 4,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                        color: colorScheme.onSurfaceVariant,
                         shape: BoxShape.circle,
                       ),
                     ),
                     SizedBox(width: 2.w),
                     Text(
                       entry['time'] as String? ?? '',
-                      style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -160,14 +175,17 @@ class DietLogPreview extends StatelessWidget {
           CustomIconWidget(
             iconName: 'chevron_right',
             size: 5.w,
-            color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+            color: colorScheme.onSurfaceVariant,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       padding: EdgeInsets.symmetric(vertical: 3.h),
       child: Center(
@@ -176,21 +194,21 @@ class DietLogPreview extends StatelessWidget {
             CustomIconWidget(
               iconName: 'restaurant',
               size: 8.w,
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              color: colorScheme.onSurfaceVariant,
             ),
             SizedBox(height: 1.h),
             Text(
               "No entries yet",
-              style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
             SizedBox(height: 0.5.h),
             Text(
               "Start logging your meals to track progress",
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

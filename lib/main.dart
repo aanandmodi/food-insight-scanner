@@ -1,20 +1,14 @@
   // lib/main.dart
 
-import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'core/app_export.dart';
+import 'core/services/local_database_service.dart';
 // Corrected Path
 import 'widgets/custom_error_widget.dart';
-
-// Using a global variable for environment settings is acceptable for small apps,
-// but for larger apps, consider using a dependency injection solution like GetIt or Provider
-// to make your environment settings available throughout the app.
-// For now, we will keep it but it's a good practice to refactor this later.
-Map<String, dynamic> env = {};
 
 String? firebaseInitError;
 
@@ -54,19 +48,17 @@ Future<void> main() async {
       }
     }
 
-    // It's better to manage this state within a state management solution
+    // Initialize local SQLite database for offline persistence
+    try {
+      await LocalDatabaseService().initialize();
+      debugPrint('Local database initialized successfully.');
+    } catch (e) {
+      debugPrint('Error initializing local database: $e');
+    }
 
+    // It's better to manage this state within a state management solution
     // to avoid global variables.
     bool hasShownError = false;
-
-    // Load environment variables from a JSON file.
-    try {
-      final envString = await rootBundle.loadString('assets/env.json');
-      env = jsonDecode(envString);
-    } catch (e) {
-      debugPrint("Error loading env.json: $e");
-      // Continue without env if it fails, or handle appropriately
-    }
 
     // Set a custom error widget builder to show a user-friendly error screen.
     ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -120,7 +112,7 @@ class MyApp extends StatelessWidget {
         title: 'Food Insight Scanner',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
+        themeMode: ThemeMode.dark,
         // Using a builder to set the text scale factor to 1.0, which prevents
         // the app's font size from changing with the system's font size settings.
         builder: (context, child) {

@@ -64,20 +64,20 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
       case 'calories':
         if (value > 400) return Colors.red;
         if (value > 200) return Colors.orange;
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
       case 'sugar':
         if (value > 15) return Colors.red;
         if (value > 8) return Colors.orange;
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
       case 'sodium':
         if (value > 600) return Colors.red;
         if (value > 300) return Colors.orange;
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
       case 'protein':
         if (value < 5) return Colors.orange;
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
       default:
-        return AppTheme.lightTheme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -118,14 +118,14 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
                 children: [
                   Text(
                     label,
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.lightTheme.colorScheme.onSurface,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     '${value.toStringAsFixed(value % 1 == 0 ? 0 : 1)}$unit',
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: safetyColor,
                     ),
@@ -137,7 +137,7 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
                 height: 8,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  color: AppTheme.lightTheme.colorScheme.outline
+                  color: Theme.of(context).colorScheme.outline
                       .withValues(alpha: 0.2),
                 ),
                 child: Stack(
@@ -147,7 +147,7 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
                       height: 8,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        color: AppTheme.lightTheme.colorScheme.outline
+                        color: Theme.of(context).colorScheme.outline
                             .withValues(alpha: 0.1),
                       ),
                     ),
@@ -197,9 +197,9 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: AppTheme.lightTheme.colorScheme.surface.withValues(alpha: 0.9),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
         border: Border.all(
-          color: AppTheme.lightTheme.colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -217,14 +217,14 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
               CustomIconWidget(
                 iconName: 'bar_chart',
                 size: 24,
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
               SizedBox(width: 2.w),
               Text(
                 'Nutrition Facts',
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -259,3 +259,4 @@ class _NutritionBarsWidgetState extends State<NutritionBarsWidget>
     );
   }
 }
+

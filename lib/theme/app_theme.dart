@@ -1,70 +1,129 @@
 // lib/theme/app_theme.dart
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// A class that contains all theme configurations for the health and nutrition application.
+/// Cinematic dark-first design with glassmorphism and bloom effects.
 class AppTheme {
   AppTheme._();
 
-  // Adaptive Health Palette - Color specifications
-  static const Color primaryLight = Color(0xFF2E7D32); // Deep wellness green
+  // ──────────────────────── LIGHT PALETTE ────────────────────────
+  static const Color primaryLight = Color(0xFF2E7D32);
   static const Color primaryVariantLight = Color(0xFF1B5E20);
-  static const Color secondaryLight = Color(0xFF66BB6A); // Lighter green
+  static const Color secondaryLight = Color(0xFF66BB6A);
   static const Color secondaryVariantLight = Color(0xFF4CAF50);
-  static const Color backgroundLight = Color(0xFFFAFAFA); // Soft white base
-  static const Color surfaceLight = Color(0xFFFFFFFF); // Pure white
-  static const Color errorLight =
-      Color(0xFFD32F2F); // Clear red for allergen warnings
-  static const Color warningLight =
-      Color(0xFFF57C00); // Amber for caution states
-  static const Color successLight = Color(0xFF388E3C); // Confirmation green
-  static const Color accentLight = Color(0xFFE8F5E8); // Subtle green tint
+  static const Color backgroundLight = Color(0xFFFAFAFA);
+  static const Color surfaceLight = Color(0xFFFFFFFF);
+  static const Color errorLight = Color(0xFFD32F2F);
+  static const Color warningLight = Color(0xFFF57C00);
+  static const Color successLight = Color(0xFF388E3C);
+  static const Color accentLight = Color(0xFFE8F5E8);
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFF000000);
-  static const Color onBackgroundLight =
-      Color(0xFF212121); // High contrast dark gray
+  static const Color onBackgroundLight = Color(0xFF212121);
   static const Color onSurfaceLight = Color(0xFF212121);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
-  static const Color primaryDark = Color(0xFF66BB6A);
-  static const Color primaryVariantDark = Color(0xFF2E7D32);
-  static const Color secondaryDark = Color(0xFF81C784);
-  static const Color secondaryVariantDark = Color(0xFF66BB6A);
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color errorDark = Color(0xFFEF5350);
-  static const Color warningDark = Color(0xFFFFB74D);
-  static const Color successDark = Color(0xFF66BB6A);
-  static const Color accentDark = Color(0xFF2E4A2E);
-  static const Color onPrimaryDark = Color(0xFF000000);
-  static const Color onSecondaryDark = Color(0xFF000000);
-  static const Color onBackgroundDark = Color(0xFFFFFFFF);
-  static const Color onSurfaceDark = Color(0xFFFFFFFF);
-  static const Color onErrorDark = Color(0xFF000000);
+  // ──────────────────────── DARK PALETTE (Cinematic) ────────────────────────
+  static const Color primaryDark = Color(0xFF34D399);     // Emerald glow
+  static const Color primaryVariantDark = Color(0xFF10B981);
+  static const Color secondaryDark = Color(0xFF6EE7B7);   // Mint
+  static const Color secondaryVariantDark = Color(0xFF34D399);
+  static const Color backgroundDark = Color(0xFF0A0E1A);  // Midnight blue-black
+  static const Color surfaceDark = Color(0xFF111827);      // Dark navy
+  static const Color errorDark = Color(0xFFF87171);
+  static const Color warningDark = Color(0xFFFBBF24);
+  static const Color successDark = Color(0xFF34D399);
+  static const Color accentDark = Color(0xFF064E3B);       // Deep teal
+  static const Color onPrimaryDark = Color(0xFF0A0E1A);
+  static const Color onSecondaryDark = Color(0xFF0A0E1A);
+  static const Color onBackgroundDark = Color(0xFFF9FAFB);
+  static const Color onSurfaceDark = Color(0xFFF9FAFB);
+  static const Color onErrorDark = Color(0xFF0A0E1A);
 
   // Card and dialog colors
   static const Color cardLight = Color(0xFFFFFFFF);
-  static const Color cardDark = Color(0xFF2D2D2D);
+  static const Color cardDark = Color(0xFF1F2937);        // Translucent base
   static const Color dialogLight = Color(0xFFFFFFFF);
-  static const Color dialogDark = Color(0xFF2D2D2D);
+  static const Color dialogDark = Color(0xFF1F2937);
 
-  // Shadow colors for subtle elevation
+  // Shadow colors
   static const Color shadowLight = Color(0x0A000000);
-  static const Color shadowDark = Color(0x1AFFFFFF);
+  static const Color shadowDark = Color(0x33000000);
 
-  // Divider colors - minimal borders
+  // Divider colors
   static const Color dividerLight = Color(0xFFE0E0E0);
-  static const Color dividerDark = Color(0xFF424242);
+  static const Color dividerDark = Color(0xFF374151);
 
-  // Text colors with proper contrast ratios
-  static const Color textPrimaryLight = Color(0xFF212121); // High contrast
-  static const Color textSecondaryLight = Color(0xFF757575); // Medium gray
+  // Text colors
+  static const Color textPrimaryLight = Color(0xFF212121);
+  static const Color textSecondaryLight = Color(0xFF757575);
   static const Color textDisabledLight = Color(0xFFBDBDBD);
 
-  static const Color textPrimaryDark = Color(0xFFFFFFFF);
-  static const Color textSecondaryDark = Color(0xFFB0B0B0);
-  static const Color textDisabledDark = Color(0xFF616161);
+  static const Color textPrimaryDark = Color(0xFFF9FAFB);
+  static const Color textSecondaryDark = Color(0xFF9CA3AF);
+  static const Color textDisabledDark = Color(0xFF4B5563);
+
+  // ──────────────────────── GLASSMORPHISM TOKENS ────────────────────────
+  static const Color glassBackground = Color(0x1AFFFFFF);     // 10% white
+  static const Color glassBorder = Color(0x33FFFFFF);         // 20% white
+  static const Color glassBorderLight = Color(0x14000000);    // 8% black for light mode
+  static const double glassBlurSigma = 20.0;
+
+  // Dark glass (for dark theme)
+  static const Color glassDarkBg = Color(0x26FFFFFF);         // 15% white
+  static const Color glassDarkBorder = Color(0x40FFFFFF);     // 25% white
+
+  /// Creates a glassmorphic BoxDecoration for dark theme cards.
+  static BoxDecoration glassmorphicDecoration({
+    double borderRadius = 20.0,
+    Color? bgColor,
+    Color? borderColor,
+  }) {
+    return BoxDecoration(
+      color: bgColor ?? glassDarkBg,
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: borderColor ?? glassDarkBorder,
+        width: 1.0,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.2),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+  }
+
+  /// Creates glow BoxShadow list for bloom effects.
+  static List<BoxShadow> glowBoxShadow(Color color, {double intensity = 0.4, double blur = 25.0}) {
+    return [
+      BoxShadow(
+        color: color.withValues(alpha: intensity),
+        blurRadius: blur,
+        spreadRadius: 2,
+      ),
+      BoxShadow(
+        color: color.withValues(alpha: intensity * 0.5),
+        blurRadius: blur * 1.5,
+        spreadRadius: 0,
+      ),
+    ];
+  }
+
+  /// Creates a subtle text glow for emphasis.
+  static List<Shadow> textGlow(Color color, {double blur = 12.0}) {
+    return [
+      Shadow(
+        color: color.withValues(alpha: 0.5),
+        blurRadius: blur,
+      ),
+    ];
+  }
 
   /// Light theme optimized for health and nutrition app
   static ThemeData lightTheme = ThemeData(
@@ -158,7 +217,7 @@ class AppTheme {
       ),
     ),
 
-    // Button themes with Contemporary Wellness Minimalism
+    // Button themes
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         foregroundColor: onPrimaryLight,
@@ -249,7 +308,7 @@ class AppTheme {
       ),
     ),
 
-    // Switch theme for settings
+    // Switch theme
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
@@ -290,14 +349,14 @@ class AppTheme {
       }),
     ),
 
-    // Progress indicator for loading states
+    // Progress indicator
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: primaryLight,
       linearTrackColor: accentLight,
       circularTrackColor: accentLight,
     ),
 
-    // Slider theme for nutrition progress
+    // Slider theme
     sliderTheme: SliderThemeData(
       activeTrackColor: primaryLight,
       thumbColor: primaryLight,
@@ -337,7 +396,7 @@ class AppTheme {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     ),
 
-    // SnackBar theme for smart alert patterns
+    // SnackBar theme
     snackBarTheme: SnackBarThemeData(
       backgroundColor: textPrimaryLight,
       contentTextStyle: GoogleFonts.inter(
@@ -353,7 +412,7 @@ class AppTheme {
       elevation: 4.0,
     ),
 
-    // Bottom sheet theme for contextual information
+    // Bottom sheet theme
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: surfaceLight,
       elevation: 8.0,
@@ -384,7 +443,7 @@ class AppTheme {
     ),
   );
 
-  /// Dark theme optimized for various lighting conditions
+  /// Dark theme — cinematic glassmorphic design
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     colorScheme: ColorScheme(
@@ -403,7 +462,7 @@ class AppTheme {
       onTertiaryContainer: successDark,
       error: errorDark,
       onError: onErrorDark,
-      errorContainer: const Color(0xFF4A1A1A),
+      errorContainer: const Color(0xFF7F1D1D),
       onErrorContainer: errorDark,
       surface: surfaceDark,
       onSurface: onSurfaceDark,
@@ -421,9 +480,9 @@ class AppTheme {
     cardColor: cardDark,
     dividerColor: dividerDark,
     appBarTheme: AppBarTheme(
-      backgroundColor: surfaceDark,
+      backgroundColor: Colors.transparent,
       foregroundColor: textPrimaryDark,
-      elevation: 1.0,
+      elevation: 0,
       shadowColor: shadowDark,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: GoogleFonts.inter(
@@ -436,23 +495,24 @@ class AppTheme {
     ),
     cardTheme: CardThemeData(
       color: cardDark,
-      elevation: 2.0,
+      elevation: 0,
       shadowColor: shadowDark,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(16.0),
+        side: BorderSide(color: glassDarkBorder, width: 1),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: surfaceDark,
+      backgroundColor: Colors.transparent,
       selectedItemColor: primaryDark,
       unselectedItemColor: textSecondaryDark,
-      elevation: 4.0,
+      elevation: 0,
       type: BottomNavigationBarType.fixed,
       selectedLabelStyle: GoogleFonts.inter(
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
       unselectedLabelStyle: GoogleFonts.inter(
         fontSize: 12,
@@ -462,7 +522,7 @@ class AppTheme {
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: primaryDark,
       foregroundColor: onPrimaryDark,
-      elevation: 4.0,
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
       ),
@@ -471,7 +531,7 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         foregroundColor: onPrimaryDark,
         backgroundColor: primaryDark,
-        elevation: 2.0,
+        elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
@@ -486,7 +546,7 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryDark,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        side: const BorderSide(color: primaryDark, width: 1.5),
+        side: BorderSide(color: primaryDark.withAlpha(128), width: 1.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
@@ -511,16 +571,16 @@ class AppTheme {
     ),
     textTheme: _buildTextTheme(isLight: false),
     inputDecorationTheme: InputDecorationTheme(
-      fillColor: surfaceDark,
+      fillColor: const Color(0xFF1F2937),
       filled: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.0),
-        borderSide: const BorderSide(color: dividerDark, width: 1.0),
+        borderSide: BorderSide(color: dividerDark.withAlpha(128), width: 1.0),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.0),
-        borderSide: const BorderSide(color: dividerDark, width: 1.0),
+        borderSide: BorderSide(color: dividerDark.withAlpha(128), width: 1.0),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.0),
@@ -561,7 +621,7 @@ class AppTheme {
         if (states.contains(WidgetState.selected)) {
           return primaryDark.withAlpha(128);
         }
-        return Colors.grey[600];
+        return Colors.grey[700];
       }),
     ),
     checkboxTheme: CheckboxThemeData(
@@ -572,7 +632,7 @@ class AppTheme {
         return Colors.transparent;
       }),
       checkColor: WidgetStateProperty.all(onPrimaryDark),
-      side: const BorderSide(color: dividerDark, width: 2.0),
+      side: BorderSide(color: dividerDark.withAlpha(200), width: 2.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4.0),
       ),
@@ -625,9 +685,9 @@ class AppTheme {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: textPrimaryDark,
+      backgroundColor: const Color(0xFF1F2937),
       contentTextStyle: GoogleFonts.inter(
-        color: surfaceDark,
+        color: textPrimaryDark,
         fontSize: 14,
         fontWeight: FontWeight.w400,
       ),
@@ -638,20 +698,30 @@ class AppTheme {
       ),
       elevation: 4.0,
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: surfaceDark,
-      elevation: 8.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20.0),
-        ),
+    bottomSheetTheme: BoxDecoration(
+      color: surfaceDark,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      border: Border(
+        top: BorderSide(color: glassDarkBorder, width: 1),
+        left: BorderSide(color: glassDarkBorder, width: 1),
+        right: BorderSide(color: glassDarkBorder, width: 1),
       ),
-    ),
+    ) is BoxDecoration
+        ? BottomSheetThemeData(
+            backgroundColor: surfaceDark,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
+              side: BorderSide(color: glassDarkBorder, width: 1),
+            ),
+          )
+        : const BottomSheetThemeData(),
     dialogTheme: DialogThemeData(
       backgroundColor: dialogDark,
-      elevation: 8.0,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
+        borderRadius: BorderRadius.circular(20.0),
+        side: BorderSide(color: glassDarkBorder, width: 1),
       ),
       titleTextStyle: GoogleFonts.inter(
         fontSize: 20,
@@ -661,7 +731,7 @@ class AppTheme {
       contentTextStyle: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: textPrimaryDark,
+        color: textSecondaryDark,
       ),
     ),
   );
@@ -709,7 +779,7 @@ class AppTheme {
         color: textPrimary,
       ),
 
-      // Title styles for product names and important information
+      // Title styles
       titleLarge: GoogleFonts.inter(
         fontSize: 22,
         fontWeight: FontWeight.w500,
@@ -729,7 +799,7 @@ class AppTheme {
         letterSpacing: 0.1,
       ),
 
-      // Body styles for ingredient lists and nutritional information
+      // Body styles
       bodyLarge: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
@@ -749,7 +819,7 @@ class AppTheme {
         letterSpacing: 0.4,
       ),
 
-      // Label styles for buttons and metadata
+      // Label styles
       labelLarge: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w500,

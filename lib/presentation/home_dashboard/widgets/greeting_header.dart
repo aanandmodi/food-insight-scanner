@@ -15,6 +15,10 @@ class GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       child: Row(
@@ -26,17 +30,20 @@ class GreetingHeader extends StatelessWidget {
               children: [
                 Text(
                   _getGreeting(),
-                  style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
                 SizedBox(height: 0.5.h),
                 Text(
                   userName.isNotEmpty ? userName : "Welcome",
-                  style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.lightTheme.colorScheme.onSurface,
+                    color: colorScheme.onSurface,
+                    shadows: isDark
+                        ? AppTheme.textGlow(colorScheme.primary, blur: 8)
+                        : null,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -44,14 +51,15 @@ class GreetingHeader extends StatelessWidget {
                 SizedBox(height: 0.5.h),
                 Text(
                   currentDate,
-                  style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
+          // Glow avatar ring
           Container(
             width: 12.w,
             height: 12.w,
@@ -60,24 +68,30 @@ class GreetingHeader extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.lightTheme.colorScheme.primary
-                      .withValues(alpha: 0.2),
-                  AppTheme.lightTheme.colorScheme.primary
-                      .withValues(alpha: 0.1),
+                  colorScheme.primary.withValues(alpha: 0.3),
+                  colorScheme.primary.withValues(alpha: 0.1),
                 ],
               ),
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppTheme.lightTheme.colorScheme.primary
-                    .withValues(alpha: 0.3),
-                width: 1,
+                color: colorScheme.primary.withValues(alpha: 0.5),
+                width: 1.5,
               ),
+              boxShadow: isDark
+                  ? [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: 0.25),
+                        blurRadius: 15,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
             ),
             child: Center(
               child: CustomIconWidget(
                 iconName: 'person',
                 size: 6.w,
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: colorScheme.primary,
               ),
             ),
           ),
