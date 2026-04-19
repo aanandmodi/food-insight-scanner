@@ -189,14 +189,13 @@ class _HomeDashboardState extends State<HomeDashboard>
 
       if (!mounted) return;
 
-      await Navigator.pushNamed(
-        context,
-        '/ai-chat-assistant',
-        arguments: {
-          'uploadedImagePath': pickedFile.path,
-        },
-      );
-      _loadUserData();
+      if (!mounted) return;
+
+      // We'll transition to AI Chat via IndexedStack
+      setState(() {
+        _currentIndex = 2;
+      });
+      // Further implementation will pass pickedFile.path to the Chat provider if required.
     } catch (e) {
       debugPrint('Image picker error: $e');
       if (mounted) {
@@ -210,13 +209,11 @@ class _HomeDashboardState extends State<HomeDashboard>
     }
   }
 
-  /// Navigate to AI Chat as a pushed screen
-  Future<void> _navigateToAIChat() async {
-    await Navigator.pushNamed(
-      context,
-      '/ai-chat-assistant',
-    );
-    _loadUserData();
+  /// Navigate to AI Chat via IndexedStack
+  void _navigateToAIChat() {
+    setState(() {
+      _currentIndex = 2;
+    });
   }
 
   // ──────────────────────── Tab Content Builders ────────────────────────
@@ -272,30 +269,28 @@ class _HomeDashboardState extends State<HomeDashboard>
                       currentDate: _formatCurrentDate(),
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 0.ms)
-                        .slideX(begin: -0.1, end: 0, duration: 500.ms),
+                        .fadeIn(duration: 500.ms, delay: 0.ms, curve: Curves.easeOutCubic)
+                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
                     SizedBox(height: 1.h),
                     NutritionSummaryCard(
                       nutritionData: _nutritionData,
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 100.ms)
-                        .scaleXY(begin: 0.95, end: 1.0, duration: 500.ms),
+                        .fadeIn(duration: 500.ms, delay: 100.ms, curve: Curves.easeOutCubic)
+                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
                     SizedBox(height: 2.h),
                     QuickActionsSection(
-                      onScanBarcode: () async {
-                        await Navigator.pushNamed(
-                            context, '/barcode-scanner');
-                        _loadUserData();
+                      onScanBarcode: () {
+                        setState(() {
+                          _currentIndex = 1;
+                        });
                       },
                       onUploadImage: _handleUploadImage,
-                      onChatWithAI: () async {
-                        await _navigateToAIChat();
-                      },
+                      onChatWithAI: _navigateToAIChat,
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 200.ms)
-                        .slideY(begin: 0.05, end: 0, duration: 500.ms),
+                        .fadeIn(duration: 500.ms, delay: 200.ms, curve: Curves.easeOutCubic)
+                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
                     SizedBox(height: 2.h),
                     RecentScansSection(
                       recentScans: _recentScans,
@@ -304,8 +299,8 @@ class _HomeDashboardState extends State<HomeDashboard>
                       },
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 300.ms)
-                        .slideX(begin: 0.1, end: 0, duration: 500.ms),
+                        .fadeIn(duration: 500.ms, delay: 300.ms, curve: Curves.easeOutCubic)
+                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
                     SizedBox(height: 2.h),
                     DietLogPreview(
                       recentEntries: _dietLogEntries,
@@ -315,8 +310,8 @@ class _HomeDashboardState extends State<HomeDashboard>
                       },
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 400.ms)
-                        .slideY(begin: 0.08, end: 0, duration: 500.ms),
+                        .fadeIn(duration: 500.ms, delay: 400.ms, curve: Curves.easeOutCubic)
+                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
                     SizedBox(height: 10.h),
                   ],
                 ),
@@ -384,10 +379,11 @@ class _HomeDashboardState extends State<HomeDashboard>
               child: GestureDetector(
                 onTapDown: (_) => HapticFeedback.lightImpact(),
                 child: FloatingActionButton.extended(
-                  onPressed: () async {
+                  onPressed: () {
                     HapticFeedback.lightImpact();
-                    await Navigator.pushNamed(context, '/barcode-scanner');
-                    _loadUserData();
+                    setState(() {
+                      _currentIndex = 1;
+                    });
                   },
                   backgroundColor: colorScheme.primary,
                   foregroundColor: colorScheme.onPrimary,

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../widgets/custom_bounce_button.dart';
 
 class RecentScansSection extends StatelessWidget {
   final List<Map<String, dynamic>> recentScans;
@@ -75,10 +76,9 @@ class RecentScansSection extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return GestureDetector(
+    return CustomBounceButton(
       onTap: () {
-        HapticFeedback.lightImpact();
-        Navigator.pushNamed(context, '/product-details');
+        Navigator.pushNamed(context, '/product-details', arguments: scan);
       },
       child: Container(
         width: 35.w,
@@ -121,11 +121,14 @@ class RecentScansSection extends StatelessWidget {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: CustomImageWidget(
-                            imageUrl: scan['image'] as String? ?? '',
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
+                          child: Hero(
+                            tag: 'scan_${scan['id']}',
+                            child: CustomImageWidget(
+                              imageUrl: scan['image'] as String? ?? '',
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),

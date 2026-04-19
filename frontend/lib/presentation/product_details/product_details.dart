@@ -402,9 +402,12 @@ class _ProductDetailsState extends State<ProductDetails> {
                       children: [
                         SizedBox(height: 2.h),
                         // Product image with parallax feel
-                        ProductImageWidget(
-                          imageUrl: imageUrl,
-                          productName: productName,
+                        Hero(
+                          tag: 'scan_${productData['id'] ?? productData['barcode'] ?? ''}',
+                          child: ProductImageWidget(
+                            imageUrl: imageUrl,
+                            productName: productName,
+                          ),
                         )
                             .animate()
                             .fadeIn(duration: 500.ms)

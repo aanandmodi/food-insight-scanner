@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../../../core/app_export.dart';
 
@@ -25,91 +26,103 @@ class NutritionSummaryCard extends StatelessWidget {
     final protein = (nutritionData['protein'] as num?)?.toInt() ?? 0;
     final proteinGoal = (nutritionData['proteinGoal'] as num?)?.toInt() ?? 150;
 
+    final caloriesColor = colorScheme.primary;
+    final proteinColor = AppTheme.getSuccessColor(!isDark);
+    final sugarColor = AppTheme.getWarningColor(!isDark);
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            padding: EdgeInsets.all(4.w),
-            decoration: isDark
-                ? AppTheme.glassmorphicDecoration()
-                : BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
+            padding: EdgeInsets.all(5.w),
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? AppTheme.glassDarkBg 
+                  : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1) 
+                    : Colors.white.withValues(alpha: 0.6),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark 
+                      ? Colors.black.withValues(alpha: 0.2) 
+                      : colorScheme.primary.withValues(alpha: 0.05),
+                  blurRadius: 30,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  "Today's Nutrition",
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                SizedBox(height: 3.h),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "Today's Nutrition",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
+                    // Concentric Circular Progress Rings
+                    SizedBox(
+                      height: 160,
+                      width: 160,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _buildRing(160, calories, caloriesGoal, caloriesColor, isDark),
+                          _buildRing(125, protein, proteinGoal, proteinColor, isDark),
+                          _buildRing(90, sugar, sugarGoal, sugarColor, isDark),
+                          // Center Text
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "$calories",
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: colorScheme.onSurface,
+                                  shadows: isDark ? AppTheme.textGlow(caloriesColor, blur: 10) : null,
+                                ),
+                              ),
+                              Text(
+                                "kcal",
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 3.w, vertical: 0.5.h),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: isDark
-                            ? Border.all(
-                                color: colorScheme.primary.withValues(alpha: 0.3),
-                              )
-                            : null,
-                      ),
-                      child: Text(
-                        "$calories / $caloriesGoal kcal",
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          shadows: isDark
-                              ? AppTheme.textGlow(colorScheme.primary, blur: 6)
-                              : null,
-                        ),
+                    SizedBox(width: 6.w),
+                    // Legend
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLegendItem(context, 'Calories', calories, caloriesGoal, caloriesColor, isDark, "kcal"),
+                          SizedBox(height: 2.h),
+                          _buildLegendItem(context, 'Protein', protein, proteinGoal, proteinColor, isDark, "g"),
+                          SizedBox(height: 2.h),
+                          _buildLegendItem(context, 'Sugar', sugar, sugarGoal, sugarColor, isDark, "g"),
+                        ],
                       ),
                     ),
                   ],
-                ),
-                SizedBox(height: 2.h),
-                _buildAnimatedNutritionBar(
-                  context,
-                  "Calories",
-                  calories,
-                  caloriesGoal,
-                  colorScheme.primary,
-                  isDark,
-                ),
-                SizedBox(height: 1.5.h),
-                _buildAnimatedNutritionBar(
-                  context,
-                  "Sugar",
-                  sugar,
-                  sugarGoal,
-                  AppTheme.getWarningColor(!isDark),
-                  isDark,
-                ),
-                SizedBox(height: 1.5.h),
-                _buildAnimatedNutritionBar(
-                  context,
-                  "Protein",
-                  protein,
-                  proteinGoal,
-                  AppTheme.getSuccessColor(!isDark),
-                  isDark,
                 ),
               ],
             ),
@@ -119,94 +132,74 @@ class NutritionSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAnimatedNutritionBar(
-    BuildContext context,
-    String label,
-    int current,
-    int goal,
-    Color color,
-    bool isDark,
-  ) {
-    final theme = Theme.of(context);
-    final progress = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
-    final unit = label == 'Calories' ? 'kcal' : 'g';
+  Widget _buildRing(double size, int current, int goal, Color color, bool isDark) {
+    if (goal <= 0) goal = 1; // Prevent division by zero
+    double progress = (current / goal).clamp(0.0, 1.0);
+    double remainder = 1.0 - progress;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    return SizedBox(
+      height: size,
+      width: size,
+      child: PieChart(
+        PieChartData(
+          startDegreeOffset: -90,
+          sectionsSpace: 0,
+          centerSpaceRadius: (size / 2) - 10,
+          sections: [
+            PieChartSectionData(
+              value: progress,
+              color: color,
+              radius: 10,
+              showTitle: false,
             ),
-            Text(
-              "$current / $goal $unit",
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: color,
-                shadows: isDark ? AppTheme.textGlow(color, blur: 4) : null,
-              ),
+            PieChartSectionData(
+              value: remainder,
+              color: isDark ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.15),
+              radius: 10,
+              showTitle: false,
             ),
           ],
         ),
-        SizedBox(height: 0.5.h),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: progress),
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, _) {
-              return Stack(
-                children: [
-                  // Track
-                  Container(
-                    height: 1.h,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? color.withValues(alpha: 0.12)
-                          : color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  // Fill
-                  Container(
-                    height: 1.h,
-                    width: double.infinity,
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: value,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              color.withValues(alpha: 0.8),
-                              color,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: isDark
-                              ? [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.5),
-                                    blurRadius: 8,
-                                    spreadRadius: 0,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+        swapAnimationDuration: const Duration(milliseconds: 1500),
+        swapAnimationCurve: Curves.easeOutCubic,
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(BuildContext context, String label, int current, int goal, Color color, bool isDark, String unit) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: isDark ? [BoxShadow(color: color.withValues(alpha: 0.8), blurRadius: 6)] : null,
+          ),
+        ),
+        SizedBox(width: 3.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                "$current / $goal $unit",
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
       ],

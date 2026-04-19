@@ -4,6 +4,7 @@ import 'package:sizer/sizer.dart';
 import 'dart:ui';
 
 import '../../../core/app_export.dart';
+import '../../../widgets/custom_bounce_button.dart';
 
 class QuickActionsSection extends StatelessWidget {
   final VoidCallback onScanBarcode;
@@ -83,14 +84,8 @@ class QuickActionsSection extends StatelessWidget {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GlowButton(
-      glowColor: color,
-      glowIntensity: isDark ? 0.2 : 0.1,
-      borderRadius: 16.0,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
+    return CustomBounceButton(
+      onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(

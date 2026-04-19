@@ -34,6 +34,10 @@ dependencies:
   provider: ^6.1.2
   get_it: ^7.7.0
 
+  # Data Visualization & UI Effects
+  fl_chart: ^0.68.0
+  shimmer: ^3.0.0
+
   # AI & ML (Groq via HTTP)
   http: ^1.2.1
 
