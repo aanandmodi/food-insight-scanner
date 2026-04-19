@@ -124,6 +124,17 @@ class CloudFunctionService {
 
   // ────────────────────────── Chat with AI ──────────────────────────
 
+  Future<Map<String, dynamic>> generateResponseWithMeta({
+    required List<Map<String, String>> messages,
+    required dynamic userProfile,
+  }) async {
+    // Temporary stub for APK build testing
+    await Future.delayed(const Duration(seconds: 1));
+    return {
+      'message': 'AI Chat is currently being connected to the new secure backend! Stay tuned.',
+    };
+  }
+
   /// Sends a chat message to the AI nutritionist and returns the reply.
   ///
   /// The response includes:

@@ -23,7 +23,7 @@ class AiChatAssistant extends StatefulWidget {
 class _AiChatAssistantState extends State<AiChatAssistant> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final GroqService _groqService = CloudFunctionService();
+  final CloudFunctionService _cloudFunctionService = CloudFunctionService();
 
   bool _isLoading = false;
   bool _showTypingIndicator = false;
@@ -92,8 +92,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       
       final profile = context.read<UserProfileProvider>().profile;
       
-      final newReplies = await _groqService.generateQuickReplies(
-        lastUserMessage: lastMessage,
+      final newReplies = await _cloudFunctionService.generateQuickReplies(
+        lastMessage: lastMessage,
         userProfile: profile?.toMap() ?? {},
       );
 
@@ -130,9 +130,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       final profile = context.read<UserProfileProvider>().profile;
 
       // Use the meta variant so we can detect server-side meal logging
-      final result = await _groqService.generateResponseWithMeta(
-        userMessage: message,
-        conversationHistory: conversationHistory,
+      final result = await _cloudFunctionService.generateResponseWithMeta(
+        messages: [],
         userProfile: profile?.toMap() ?? {},
       );
 
