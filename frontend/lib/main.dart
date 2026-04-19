@@ -10,6 +10,9 @@ import 'services/local_database_service.dart';
 // Corrected Path
 import 'widgets/custom_error_widget.dart';
 
+import 'package:provider/provider.dart';
+import 'data/providers/user_profile_provider.dart';
+
 String? firebaseInitError;
 
 /// Attempt to initialize Firebase. Can be called again from the login screen.
@@ -77,7 +80,14 @@ Future<void> main() async {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
     // Run the app.
-    runApp(const MyApp());
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => UserProfileProvider()),
+        ],
+        child: const MyApp(),
+      ),
+    );
   } catch (error, stackTrace) {
     debugPrint("Startup Error: $error");
     runApp(

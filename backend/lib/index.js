@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateQuickReplies = exports.chatWithAI = exports.getAlternatives = exports.generateDietPlan = exports.parseMeal = exports.scanProduct = void 0;
-var scanProduct_1 = require("./scanProduct");
-Object.defineProperty(exports, "scanProduct", { enumerable: true, get: function () { return scanProduct_1.scanProduct; } });
+exports.generateQuickReplies = exports.chatWithAI = exports.getAlternatives = exports.generateDietPlan = exports.parseMeal = exports.analyzeProduct = void 0;
+var analyzeProduct_1 = require("./analyzeProduct");
+Object.defineProperty(exports, "analyzeProduct", { enumerable: true, get: function () { return analyzeProduct_1.analyzeProduct; } });
 var parseMeal_1 = require("./parseMeal");
 Object.defineProperty(exports, "parseMeal", { enumerable: true, get: function () { return parseMeal_1.parseMeal; } });
 var generateDietPlan_1 = require("./generateDietPlan");

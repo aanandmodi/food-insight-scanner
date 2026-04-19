@@ -5,6 +5,8 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/cloud_function_service.dart';
 import '../../models/user_profile.dart'; // Import the UserProfile model
+import 'package:provider/provider.dart';
+import '../../data/providers/user_profile_provider.dart';
 import './widgets/chat_header_widget.dart';
 import './widgets/chat_input_widget.dart';
 import './widgets/message_bubble_widget.dart';
@@ -13,10 +15,7 @@ import './widgets/typing_indicator_widget.dart';
 
 
 class AiChatAssistant extends StatefulWidget {
-  // Add a userProfile parameter to the constructor
-  final UserProfile userProfile;
-
-  const AiChatAssistant({super.key, required this.userProfile});
+  const AiChatAssistant({super.key});
   @override
   State<AiChatAssistant> createState() => _AiChatAssistantState();
 }
@@ -51,12 +50,13 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
     // No client-side API key initialization needed — AI calls go through
     // Cloud Functions which hold the key server-side.
+    final profile = context.read<UserProfileProvider>().profile;
     setState(() {
       _messages.add({
         "id": 1,
         "message":
-            "Hello, ${widget.userProfile.name}! I'm your personal nutrition assistant. "
-            "How can I assist you with your ${widget.userProfile.healthGoals} goal today?",
+            "Hello, ${profile?.name ?? 'User'}! I'm your personal nutrition assistant. "
+            "How can I assist you with your ${profile?.healthGoals ?? 'general wellness'} goal today?",
         "isUser": false,
         "timestamp": DateTime.now(),
       });
@@ -90,10 +90,11 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     try {
       final lastMessage = _messages.last["message"] as String? ?? "Hello";
       
+      final profile = context.read<UserProfileProvider>().profile;
+      
       final newReplies = await _groqService.generateQuickReplies(
         lastUserMessage: lastMessage,
-        // FIX: Use the user profile from the widget
-        userProfile: widget.userProfile.toMap(),
+        userProfile: profile?.toMap() ?? {},
       );
 
       if (mounted) {
@@ -126,12 +127,13 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
     try {
       final conversationHistory = _buildConversationHistory();
+      final profile = context.read<UserProfileProvider>().profile;
 
       // Use the meta variant so we can detect server-side meal logging
       final result = await _groqService.generateResponseWithMeta(
         userMessage: message,
         conversationHistory: conversationHistory,
-        userProfile: widget.userProfile.toMap(),
+        userProfile: profile?.toMap() ?? {},
       );
 
       final displayMessage = result['reply'] as String? ?? 'Sorry, I could not generate a response.';

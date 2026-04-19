@@ -11,6 +11,8 @@ import '../../services/product_service.dart';
 import '../../services/firestore_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
+import 'package:provider/provider.dart';
+import '../../data/providers/user_profile_provider.dart';
 import '../profile/profile_screen.dart';
 import '../barcode_scanner/barcode_scanner.dart';
 import '../ai_chat_assistant/ai_chat_assistant.dart';
@@ -34,16 +36,6 @@ class _HomeDashboardState extends State<HomeDashboard>
   late AnimationController _fabGlowController;
   bool _isRefreshing = false;
 
-  String _userName = 'User';
-  List<String> _userAllergies = [];
-  String? _userHealthGoal;
-  List<String> _userDietaryPrefs = [];
-  int _userAge = 25;
-  String _userGender = '';
-  double? _userHeightCm;
-  double? _userWeightKg;
-
-  // Nutrition data — goals computed dynamically from user metrics
   final Map<String, dynamic> _nutritionData = {
     'calories': 0,
     'caloriesGoal': 2000,
@@ -71,12 +63,14 @@ class _HomeDashboardState extends State<HomeDashboard>
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserProfileProvider>().fetchProfile();
+    });
     _loadUserData();
   }
 
   Future<void> _loadUserData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       final scanHistory = await ProductService().getScanHistory();
 
       // Load Diet Log for today from Firestore
@@ -89,28 +83,6 @@ class _HomeDashboardState extends State<HomeDashboard>
         debugPrint('Error pulling home diet log from Firestore: $e');
       }
 
-      // Read user body metrics for dynamic goal calculation
-      final healthGoal = prefs.getString('user_health_goal');
-      final gender = prefs.getString('user_gender') ?? '';
-      final heightCm = prefs.getDouble('user_height');
-      final weightKg = prefs.getDouble('user_weight');
-      final dobStr = prefs.getString('user_dob');
-      final userAge = UserUtils.calculateAgeFromString(dobStr);
-
-      // Dynamic goals via Mifflin-St Jeor TDEE
-      final calGoal = UserUtils.calculateTDEE(
-        weightKg: weightKg,
-        heightCm: heightCm,
-        age: userAge,
-        gender: gender,
-        healthGoal: healthGoal,
-      );
-      final proteinGoal = UserUtils.calculateProteinGoal(
-        weightKg: weightKg,
-        healthGoal: healthGoal,
-      );
-      final sugarGoal = UserUtils.calculateSugarGoal(calGoal);
-
       // Calculate totals from today's diet log
       int totalCals = 0;
       double totalProtein = 0;
@@ -121,23 +93,12 @@ class _HomeDashboardState extends State<HomeDashboard>
         totalSugar += (entry['sugar'] as num?)?.toDouble() ?? 0;
       }
 
-      setState(() {
-        _userName = prefs.getString('user_name') ?? 'User';
-        _userAllergies = prefs.getStringList('user_allergies') ?? [];
-        _userHealthGoal = healthGoal;
-        _userDietaryPrefs =
-            prefs.getStringList('user_dietary_preferences') ?? [];
-        _userAge = userAge;
-        _userGender = gender;
-        _userHeightCm = heightCm;
-        _userWeightKg = weightKg;
+      final profile = context.read<UserProfileProvider>().profile;
 
+      setState(() {
         _nutritionData['calories'] = totalCals;
-        _nutritionData['caloriesGoal'] = calGoal;
         _nutritionData['protein'] = totalProtein.round();
-        _nutritionData['proteinGoal'] = proteinGoal;
         _nutritionData['sugar'] = totalSugar.round();
-        _nutritionData['sugarGoal'] = sugarGoal;
 
         _dietLogEntries.clear();
         _dietLogEntries.addAll(entries);
@@ -148,7 +109,7 @@ class _HomeDashboardState extends State<HomeDashboard>
             'id': scan['barcode'] ?? '',
             'name': scan['name'] ?? 'Unknown',
             'image': scan['image'] ?? '',
-            'safetyStatus': _determineSafety(scan),
+            'safetyStatus': _determineSafety(scan, profile),
             'scannedAt': scan['scannedAt'] != null
                 ? DateTime.tryParse(scan['scannedAt']) ?? DateTime.now()
                 : DateTime.now(),
@@ -160,10 +121,11 @@ class _HomeDashboardState extends State<HomeDashboard>
     }
   }
 
-  String _determineSafety(Map<String, dynamic> scan) {
+  String _determineSafety(Map<String, dynamic> scan, UserProfile? profile) {
     final allergens = (scan['allergens'] as List?)?.cast<String>() ?? [];
+    final userAllergies = profile?.allergies ?? [];
     for (final allergen in allergens) {
-      for (final userAllergen in _userAllergies) {
+      for (final userAllergen in userAllergies) {
         if (allergen.toLowerCase().contains(userAllergen.toLowerCase())) {
           return 'danger';
         }
@@ -213,21 +175,6 @@ class _HomeDashboardState extends State<HomeDashboard>
     }
   }
 
-  /// Build a UserProfile for passing to AI Chat
-  UserProfile _buildUserProfile() {
-    return UserProfile(
-      name: _userName,
-      allergies: _userAllergies,
-      dietaryPreferences: _userDietaryPrefs.join(', '),
-      healthGoals: _userHealthGoal ?? 'general wellness',
-      age: _userAge,
-      activityLevel: 'moderate',
-      gender: _userGender,
-      heightCm: _userHeightCm,
-      weightKg: _userWeightKg,
-    );
-  }
-
   /// Open the gallery picker and navigate to AI Chat with image context
   Future<void> _handleUploadImage() async {
     try {
@@ -246,7 +193,6 @@ class _HomeDashboardState extends State<HomeDashboard>
         context,
         '/ai-chat-assistant',
         arguments: {
-          ..._buildUserProfile().toMap(),
           'uploadedImagePath': pickedFile.path,
         },
       );
@@ -269,7 +215,6 @@ class _HomeDashboardState extends State<HomeDashboard>
     await Navigator.pushNamed(
       context,
       '/ai-chat-assistant',
-      arguments: _buildUserProfile().toMap(),
     );
     _loadUserData();
   }
@@ -280,6 +225,22 @@ class _HomeDashboardState extends State<HomeDashboard>
   Widget _buildHomeContent() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final profile = context.watch<UserProfileProvider>().profile;
+    // Calculate dynamic goals in build so they reflect the latest profile
+    if (profile != null) {
+      _nutritionData['caloriesGoal'] = UserUtils.calculateTDEE(
+        weightKg: profile.weightKg,
+        heightCm: profile.heightCm,
+        age: profile.age,
+        gender: profile.gender,
+        healthGoal: profile.healthGoals,
+      );
+      _nutritionData['proteinGoal'] = UserUtils.calculateProteinGoal(
+        weightKg: profile.weightKg,
+        healthGoal: profile.healthGoals,
+      );
+      _nutritionData['sugarGoal'] = UserUtils.calculateSugarGoal(_nutritionData['caloriesGoal']);
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -307,7 +268,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                   children: [
                     // Staggered entrance animations
                     GreetingHeader(
-                      userName: _userName,
+                      userName: profile?.name ?? 'User',
                       currentDate: _formatCurrentDate(),
                     )
                         .animate()
@@ -381,7 +342,7 @@ class _HomeDashboardState extends State<HomeDashboard>
         children: [
           _buildHomeContent(),
           const BarcodeScanner(),
-          AiChatAssistant(userProfile: _buildUserProfile()),
+          const AiChatAssistant(),
           const ProfileScreen(),
         ],
       ),

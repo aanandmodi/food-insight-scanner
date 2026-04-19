@@ -7,9 +7,10 @@ import 'package:sizer/sizer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_export.dart';
-import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../core/utils/user_utils.dart';
+import 'package:provider/provider.dart';
+import '../../data/providers/user_profile_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,85 +20,42 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isLoading = true;
-  Map<String, dynamic>? _userProfile;
-  User? _currentUser;
-
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserProfileProvider>().fetchProfile();
+    });
   }
 
   Future<void> _loadProfile() async {
-    setState(() => _isLoading = true);
-    try {
-      _currentUser = AuthService().currentUser;
-
-      _userProfile = await FirestoreService().getUserProfile().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => null,
-      );
-
-      if (_userProfile == null) {
-        final prefs = await SharedPreferences.getInstance();
-        final name = prefs.getString('user_name');
-        if (name != null && name.isNotEmpty) {
-          _userProfile = {
-            'name': name,
-            'gender': prefs.getString('user_gender') ?? '',
-            'dateOfBirth': prefs.getString('user_dob'),
-            'heightCm': prefs.getDouble('user_height'),
-            'weightKg': prefs.getDouble('user_weight'),
-            'diseases': prefs.getStringList('user_diseases') ?? [],
-            'allergies': prefs.getStringList('user_allergies') ?? [],
-            'healthGoal': prefs.getString('user_health_goal') ?? '',
-            'dietaryPreferences': prefs.getStringList('user_dietary_preferences') ?? [],
-          };
-        }
-      }
-    } catch (e) {
-      debugPrint('Error loading profile: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    await context.read<UserProfileProvider>().fetchProfile();
   }
 
-  String _getDisplayName() {
-    if (_userProfile?['name'] != null &&
-        _userProfile!['name'].toString().isNotEmpty) {
-      return _userProfile!['name'];
+  String _getDisplayName(UserProfile? profile) {
+    if (profile?.name != null && profile!.name.isNotEmpty) {
+      return profile.name;
     }
-    if (_currentUser?.displayName != null &&
-        _currentUser!.displayName!.isNotEmpty) {
-      return _currentUser!.displayName!;
-    }
-    if (_currentUser?.isAnonymous == true) return 'Guest User';
     return 'User';
   }
 
-  String _formatDate(String? isoDate) {
-    if (isoDate == null) return 'Not set';
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Not set';
     try {
-      final date = DateTime.parse(isoDate);
       return '${date.day}/${date.month}/${date.year}';
     } catch (e) {
       return 'Not set';
     }
   }
 
-  int? _calculateAge(String? isoDate) {
-    if (isoDate == null) return null;
-    final dob = DateTime.tryParse(isoDate);
+  int? _calculateAge(DateTime? dob) {
     if (dob == null) return null;
     return UserUtils.calculateAge(dob);
   }
 
-  String? _calculateBMI() {
-    final height = (_userProfile?['heightCm'] as num?)?.toDouble();
-    final weight = (_userProfile?['weightKg'] as num?)?.toDouble();
+  String? _calculateBMI(UserProfile? profile) {
+    final height = profile?.heightCm;
+    final weight = profile?.weightKg;
     if (height == null || weight == null || height == 0) return null;
     final heightM = height / 100;
     final bmi = weight / (heightM * heightM);
@@ -109,9 +67,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final displayName = _getDisplayName();
-    final age = _calculateAge(_userProfile?['dateOfBirth']);
-    final bmi = _calculateBMI();
+    
+    final provider = context.watch<UserProfileProvider>();
+    final profile = provider.profile;
+    final isLoading = provider.isLoading;
+
+    final displayName = _getDisplayName(profile);
+    final age = _calculateAge(profile?.dateOfBirth);
+    final bmi = _calculateBMI(profile);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -139,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: _isLoading
+      body: isLoading
           ? Center(
               child: CircularProgressIndicator(color: colorScheme.primary),
             )
@@ -196,10 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           SizedBox(height: 0.5.h),
                           Text(
-                            _currentUser?.email ??
-                                (_currentUser?.isAnonymous == true
-                                    ? 'Anonymous Account'
-                                    : ''),
+                            profile?.email ?? '',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -214,18 +174,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     SizedBox(height: 3.h),
 
                     // Quick Stats Row
-                    if (_userProfile != null)
+                    if (profile != null)
                       Row(
                         children: [
                           if (age != null)
                             Expanded(
                               child: _buildStatChip(context, 'Age', '$age yrs'),
                             ),
-                          if (_userProfile?['gender'] != null &&
-                              _userProfile!['gender'].toString().isNotEmpty)
+                          if (profile.gender.isNotEmpty)
                             Expanded(
                               child: _buildStatChip(
-                                  context, 'Gender', _userProfile!['gender']),
+                                  context, 'Gender', profile.gender),
                             ),
                           if (bmi != null)
                             Expanded(
@@ -242,41 +201,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Detailed Info
                     ...[
                       _buildInfoSection(context, 'Date of Birth',
-                          _formatDate(_userProfile?['dateOfBirth']), Icons.cake),
+                          _formatDate(profile?.dateOfBirth), Icons.cake),
                       _buildInfoSection(
                           context,
                           'Height',
-                          _userProfile?['heightCm'] != null
-                              ? '${(_userProfile!['heightCm'] as num).toStringAsFixed(0)} cm'
+                          profile?.heightCm != null
+                              ? '${profile!.heightCm!.toStringAsFixed(0)} cm'
                               : 'Not set',
                           Icons.height),
                       _buildInfoSection(
                           context,
                           'Weight',
-                          _userProfile?['weightKg'] != null
-                              ? '${(_userProfile!['weightKg'] as num).toStringAsFixed(1)} kg'
+                          profile?.weightKg != null
+                              ? '${profile!.weightKg!.toStringAsFixed(1)} kg'
                               : 'Not set',
                           Icons.monitor_weight_outlined),
                       _buildInfoSection(context, 'Health Goal',
-                          _userProfile?['healthGoal'] ?? 'Not set', Icons.flag),
+                          profile?.healthGoals ?? 'Not set', Icons.flag),
                       _buildInfoSection(
                           context,
                           'Medical Conditions',
-                          (_userProfile?['diseases'] as List?)?.join(', ') ??
+                          profile?.diseases.join(', ') ??
                               'None',
                           Icons.medical_services_outlined),
                       _buildInfoSection(
                           context,
                           'Allergies',
-                          (_userProfile?['allergies'] as List?)?.join(', ') ??
+                          profile?.allergies.join(', ') ??
                               'None',
                           Icons.warning_amber),
                       _buildInfoSection(
                           context,
                           'Dietary Preferences',
-                          (_userProfile?['dietaryPreferences'] as List?)
-                                  ?.join(', ') ??
-                              'None',
+                          profile?.dietaryPreferences ?? 'None',
                           Icons.restaurant),
                     ]
                         .asMap()

@@ -57,29 +57,9 @@ class AppRoutes {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case aiChatAssistant:
-        final args = settings.arguments;
-        if (args is Map<String, dynamic>) {
-          return _buildCinematicRoute(
-            settings: settings,
-            child: AiChatAssistant(
-              userProfile: UserProfile.fromMap(args),
-            ),
-          );
-        }
-        // Fallback: Load profile from SharedPreferences
         return _buildCinematicRoute(
           settings: settings,
-          child: FutureBuilder<UserProfile>(
-            future: _loadUserProfile(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return AiChatAssistant(userProfile: snapshot.data!);
-              }
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            },
-          ),
+          child: const AiChatAssistant(),
         );
       default:
         return null;
@@ -114,26 +94,6 @@ class AppRoutes {
           ),
         );
       },
-    );
-  }
-
-  static Future<UserProfile> _loadUserProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    int userAge = 25;
-    final dobStr = prefs.getString('user_dob');
-    if (dobStr != null) {
-      userAge = UserUtils.calculateAgeFromString(dobStr);
-    }
-
-    return UserProfile(
-      name: prefs.getString('user_name') ?? 'User',
-      allergies: prefs.getStringList('user_allergies') ?? [],
-      dietaryPreferences:
-          (prefs.getStringList('user_dietary_preferences') ?? []).join(', '),
-      healthGoals: prefs.getString('user_health_goal') ?? 'general wellness',
-      age: userAge,
-      activityLevel: 'moderate',
     );
   }
 }

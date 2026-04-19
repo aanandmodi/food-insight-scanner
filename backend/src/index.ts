@@ -1,4 +1,4 @@
-export { scanProduct } from "./scanProduct";
+export { analyzeProduct } from "./analyzeProduct";
 export { parseMeal } from "./parseMeal";
 export { generateDietPlan } from "./generateDietPlan";
 export { getAlternatives } from "./getAlternatives";
