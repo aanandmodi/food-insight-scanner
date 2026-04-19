@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.food_insight_scanner.app-release-61:/drawable-v21_launch_background.xml.flat",
+        "source": "com.food_insight_scanner.app-main-54:/drawable-v21/launch_background.xml"
+    },
+    {
+        "merged": "com.food_insight_scanner.app-release-61:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.food_insight_scanner.app-main-54:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.food_insight_scanner.app-release-61:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.food_insight_scanner.app-main-54:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.food_insight_scanner.app-release-61:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.food_insight_scanner.app-main-54:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.food_insight_scanner.app-release-61:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.food_insight_scanner.app-main-54:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.food_insight_scanner.app-release-61:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.food_insight_scanner.app-main-54:/mipmap-xhdpi/ic_launcher.png"
+    }
+]

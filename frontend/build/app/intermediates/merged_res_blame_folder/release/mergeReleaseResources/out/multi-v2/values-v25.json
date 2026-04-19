@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.food_insight_scanner.app-mergeReleaseResources-59:/values-v25/values-v25.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\aanan\\.gradle\\caches\\8.10\\transforms\\48f1cb2bbfe0d5e1cde98576055ae0b0\\transformed\\appcompat-1.5.0\\res\\values-v25\\values-v25.xml",
+                    "from": {
+                        "startLines": "2,3,4,6",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,126,209,308",
+                        "endLines": "2,3,5,7",
+                        "endColumns": "70,82,12,12",
+                        "endOffsets": "121,204,303,414"
+                    }
+                }
+            ]
+        }
+    ]
+}

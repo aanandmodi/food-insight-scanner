@@ -1,0 +1,313 @@
+-keep class j$.lang.Iterable$-CC {
+  public static void $default$forEach(java.lang.Iterable,java.util.function.Consumer);
+}
+-keep class j$.time.Duration {
+  public int compareTo(j$.time.Duration);
+  public int getNano();
+  public long getSeconds();
+  public static j$.time.Duration ofMillis(long);
+  public static j$.time.Duration ofSeconds(long,long);
+  public long toMillis();
+  j$.time.Duration ZERO;
+}
+-keep class j$.time.Instant {
+  public j$.time.OffsetDateTime atOffset(j$.time.ZoneOffset);
+  public long getEpochSecond();
+  public int getNano();
+  public static j$.time.Instant now();
+  public static j$.time.Instant ofEpochMilli(long);
+  public static j$.time.Instant ofEpochSecond(long,long);
+  public long toEpochMilli();
+}
+-keep class j$.time.LocalDateTime {
+  public java.lang.String format(j$.time.format.DateTimeFormatter);
+}
+-keep class j$.time.OffsetDateTime {
+  public j$.time.LocalDateTime toLocalDateTime();
+}
+-keep class j$.time.TimeConversions {
+  public static java.time.Duration convert(j$.time.Duration);
+  public static j$.time.Duration convert(java.time.Duration);
+}
+-keep class j$.time.ZoneOffset {
+  j$.time.ZoneOffset UTC;
+}
+-keep class j$.time.format.DateTimeFormatter {
+  j$.time.format.DateTimeFormatter ISO_LOCAL_DATE;
+}
+-keep enum j$.time.temporal.ChronoUnit {
+  public j$.time.Duration getDuration();
+  j$.time.temporal.ChronoUnit MILLIS;
+}
+-keep interface j$.util.Collection {
+  public void forEach(java.util.function.Consumer);
+  public j$.util.stream.Stream parallelStream();
+  public boolean removeIf(java.util.function.Predicate);
+  public j$.util.Spliterator spliterator();
+  public j$.util.stream.Stream stream();
+  public java.lang.Object[] toArray(java.util.function.IntFunction);
+}
+-keep class j$.util.Collection$-CC {
+  public static j$.util.stream.Stream $default$parallelStream(java.util.Collection);
+  public static boolean $default$removeIf(java.util.Collection,java.util.function.Predicate);
+  public static j$.util.stream.Stream $default$stream(java.util.Collection);
+  public static java.lang.Object[] $default$toArray(java.util.Collection,java.util.function.IntFunction);
+}
+-keep class j$.util.Collection$-EL {
+  public static j$.util.stream.Stream stream(java.util.Collection);
+}
+-keep interface j$.util.Comparator {
+  public java.util.Comparator reversed();
+  public java.util.Comparator thenComparing(java.util.Comparator);
+  public java.util.Comparator thenComparing(java.util.function.Function);
+  public java.util.Comparator thenComparing(java.util.function.Function,java.util.Comparator);
+  public java.util.Comparator thenComparingDouble(java.util.function.ToDoubleFunction);
+  public java.util.Comparator thenComparingInt(java.util.function.ToIntFunction);
+  public java.util.Comparator thenComparingLong(java.util.function.ToLongFunction);
+}
+-keep class j$.util.Comparator$-CC {
+  public static java.util.Comparator $default$thenComparing(java.util.Comparator,java.util.Comparator);
+  public static java.util.Comparator $default$thenComparing(java.util.Comparator,java.util.function.Function);
+  public static java.util.Comparator $default$thenComparing(java.util.Comparator,java.util.function.Function,java.util.Comparator);
+  public static java.util.Comparator $default$thenComparingDouble(java.util.Comparator,java.util.function.ToDoubleFunction);
+  public static java.util.Comparator $default$thenComparingInt(java.util.Comparator,java.util.function.ToIntFunction);
+  public static java.util.Comparator $default$thenComparingLong(java.util.Comparator,java.util.function.ToLongFunction);
+  public static java.util.Comparator comparing(java.util.function.Function,java.util.Comparator);
+}
+-keep class j$.util.DateRetargetClass {
+  public static j$.time.Instant toInstant(java.util.Date);
+}
+-keep class j$.util.DesugarCollections {
+  public static java.util.List synchronizedList(java.util.List);
+  public static java.util.Map synchronizedMap(java.util.Map);
+  public static java.util.Set synchronizedSet(java.util.Set);
+  public static java.util.Collection unmodifiableCollection(java.util.Collection);
+  public static java.util.List unmodifiableList(java.util.List);
+  public static java.util.Map unmodifiableMap(java.util.Map);
+  public static java.util.Set unmodifiableSet(java.util.Set);
+  public static java.util.SortedMap unmodifiableSortedMap(java.util.SortedMap);
+  public static java.util.SortedSet unmodifiableSortedSet(java.util.SortedSet);
+}
+-keep class j$.util.DesugarTimeZone {
+  public static java.util.TimeZone getTimeZone(java.lang.String);
+}
+-keep interface j$.util.List {
+  public void replaceAll(java.util.function.UnaryOperator);
+  public void sort(java.util.Comparator);
+}
+-keep class j$.util.List$-CC {
+  public static void $default$replaceAll(java.util.List,java.util.function.UnaryOperator);
+  public static void $default$sort(java.util.List,java.util.Comparator);
+}
+-keep interface j$.util.Map {
+  public java.lang.Object compute(java.lang.Object,java.util.function.BiFunction);
+  public java.lang.Object computeIfAbsent(java.lang.Object,java.util.function.Function);
+  public java.lang.Object computeIfPresent(java.lang.Object,java.util.function.BiFunction);
+  public void forEach(java.util.function.BiConsumer);
+  public java.lang.Object getOrDefault(java.lang.Object,java.lang.Object);
+  public java.lang.Object merge(java.lang.Object,java.lang.Object,java.util.function.BiFunction);
+  public java.lang.Object putIfAbsent(java.lang.Object,java.lang.Object);
+  public boolean remove(java.lang.Object,java.lang.Object);
+  public java.lang.Object replace(java.lang.Object,java.lang.Object);
+  public boolean replace(java.lang.Object,java.lang.Object,java.lang.Object);
+  public void replaceAll(java.util.function.BiFunction);
+}
+-keep class j$.util.Map$-CC {
+  public static java.lang.Object $default$compute(java.util.Map,java.lang.Object,java.util.function.BiFunction);
+  public static java.lang.Object $default$computeIfAbsent(java.util.Map,java.lang.Object,java.util.function.Function);
+  public static java.lang.Object $default$computeIfPresent(java.util.Map,java.lang.Object,java.util.function.BiFunction);
+  public static void $default$forEach(java.util.Map,java.util.function.BiConsumer);
+  public static java.lang.Object $default$merge(java.util.Map,java.lang.Object,java.lang.Object,java.util.function.BiFunction);
+  public static java.lang.Object $default$putIfAbsent(java.util.Map,java.lang.Object,java.lang.Object);
+  public static boolean $default$remove(java.util.Map,java.lang.Object,java.lang.Object);
+  public static java.lang.Object $default$replace(java.util.Map,java.lang.Object,java.lang.Object);
+  public static boolean $default$replace(java.util.Map,java.lang.Object,java.lang.Object,java.lang.Object);
+  public static void $default$replaceAll(java.util.Map,java.util.function.BiFunction);
+}
+-keep class j$.util.Map$-EL {
+  public static java.lang.Object getOrDefault(java.util.Map,java.lang.Object,java.lang.Object);
+  public static boolean remove(java.util.Map,java.lang.Object,java.lang.Object);
+}
+-keep class j$.util.Objects {
+  public static boolean equals(java.lang.Object,java.lang.Object);
+  public static int hash(java.lang.Object[]);
+  public static int hashCode(java.lang.Object);
+  public static boolean isNull(java.lang.Object);
+  public static java.lang.Object requireNonNull(java.lang.Object);
+  public static java.lang.Object requireNonNull(java.lang.Object,java.lang.String);
+  public static java.lang.String toString(java.lang.Object);
+}
+-keep class j$.util.Optional {
+  public java.lang.Object get();
+  public boolean isPresent();
+  public java.lang.Object orElse(java.lang.Object);
+}
+-keep interface j$.util.PrimitiveIterator$OfDouble {
+}
+-keep interface j$.util.PrimitiveIterator$OfInt {
+}
+-keep interface j$.util.PrimitiveIterator$OfLong {
+}
+-keep interface j$.util.Set {
+}
+-keep interface j$.util.Spliterator {
+}
+-keep class j$.util.Spliterator$Wrapper {
+  public static java.util.Spliterator convert(j$.util.Spliterator);
+}
+-keep class j$.util.Spliterators {
+  public static j$.util.Spliterator spliterator(java.util.Collection,int);
+  public static j$.util.Spliterator spliteratorUnknownSize(java.util.Iterator,int);
+}
+-keep class j$.util.StringJoiner {
+  public <init>(java.lang.CharSequence,java.lang.CharSequence,java.lang.CharSequence);
+  public j$.util.StringJoiner add(java.lang.CharSequence);
+}
+-keep class j$.util.concurrent.ConcurrentHashMap {
+  public <init>();
+  public <init>(int,float,int);
+  public void clear();
+  public boolean containsKey(java.lang.Object);
+  public java.util.Set entrySet();
+  public java.lang.Object get(java.lang.Object);
+  public boolean isEmpty();
+  public java.lang.Object put(java.lang.Object,java.lang.Object);
+  public java.lang.Object putIfAbsent(java.lang.Object,java.lang.Object);
+  public java.lang.Object remove(java.lang.Object);
+  public boolean remove(java.lang.Object,java.lang.Object);
+  public boolean replace(java.lang.Object,java.lang.Object,java.lang.Object);
+  public int size();
+  public java.lang.String toString();
+  public java.util.Collection values();
+}
+-keep interface j$.util.concurrent.ConcurrentMap {
+  public java.lang.Object compute(java.lang.Object,java.util.function.BiFunction);
+  public java.lang.Object computeIfAbsent(java.lang.Object,java.util.function.Function);
+  public java.lang.Object computeIfPresent(java.lang.Object,java.util.function.BiFunction);
+  public void forEach(java.util.function.BiConsumer);
+  public java.lang.Object getOrDefault(java.lang.Object,java.lang.Object);
+  public java.lang.Object merge(java.lang.Object,java.lang.Object,java.util.function.BiFunction);
+  public void replaceAll(java.util.function.BiFunction);
+}
+-keep class j$.util.concurrent.ConcurrentMap$-CC {
+  public static java.lang.Object $default$compute(java.util.concurrent.ConcurrentMap,java.lang.Object,java.util.function.BiFunction);
+  public static java.lang.Object $default$computeIfAbsent(java.util.concurrent.ConcurrentMap,java.lang.Object,java.util.function.Function);
+  public static java.lang.Object $default$computeIfPresent(java.util.concurrent.ConcurrentMap,java.lang.Object,java.util.function.BiFunction);
+  public static void $default$forEach(java.util.concurrent.ConcurrentMap,java.util.function.BiConsumer);
+  public static java.lang.Object $default$getOrDefault(java.util.concurrent.ConcurrentMap,java.lang.Object,java.lang.Object);
+  public static java.lang.Object $default$merge(java.util.concurrent.ConcurrentMap,java.lang.Object,java.lang.Object,java.util.function.BiFunction);
+  public static void $default$replaceAll(java.util.concurrent.ConcurrentMap,java.util.function.BiFunction);
+}
+-keep interface j$.util.concurrent.Flow$Processor {
+}
+-keep interface j$.util.concurrent.Flow$Publisher {
+  public void subscribe(j$.util.concurrent.Flow$Subscriber);
+}
+-keep interface j$.util.concurrent.Flow$Subscriber {
+  public void onComplete();
+  public void onError(java.lang.Throwable);
+  public void onNext(java.lang.Object);
+  public void onSubscribe(j$.util.concurrent.Flow$Subscription);
+}
+-keep interface j$.util.concurrent.Flow$Subscription {
+  public void cancel();
+  public void request(long);
+}
+-keep class j$.util.concurrent.ThreadLocalRandom {
+  public static j$.util.concurrent.ThreadLocalRandom current();
+  public double nextDouble(double);
+  public int nextInt(int,int);
+  public long nextLong(long);
+  public long nextLong(long,long);
+}
+-keep class j$.util.function.BiConsumer$-CC {
+  public static java.util.function.BiConsumer $default$andThen(java.util.function.BiConsumer,java.util.function.BiConsumer);
+}
+-keep class j$.util.function.BiFunction$-CC {
+  public static java.util.function.BiFunction $default$andThen(java.util.function.BiFunction,java.util.function.Function);
+}
+-keep class j$.util.function.Consumer$-CC {
+  public static java.util.function.Consumer $default$andThen(java.util.function.Consumer,java.util.function.Consumer);
+}
+-keep class j$.util.function.Function$-CC {
+  public static java.util.function.Function $default$andThen(java.util.function.Function,java.util.function.Function);
+  public static java.util.function.Function $default$compose(java.util.function.Function,java.util.function.Function);
+}
+-keep class j$.util.function.Predicate$-CC {
+  public static java.util.function.Predicate $default$and(java.util.function.Predicate,java.util.function.Predicate);
+  public static java.util.function.Predicate $default$negate(java.util.function.Predicate);
+  public static java.util.function.Predicate $default$or(java.util.function.Predicate,java.util.function.Predicate);
+}
+-keep interface j$.util.stream.BaseStream {
+  public void close();
+  public java.util.Iterator iterator();
+}
+-keep interface j$.util.stream.Collector {
+}
+-keep class j$.util.stream.Collector$-CC {
+  public static j$.util.stream.Collector of(java.util.function.Supplier,java.util.function.BiConsumer,java.util.function.BinaryOperator,java.util.function.Function,j$.util.stream.Collector$Characteristics[]);
+  public static j$.util.stream.Collector of(java.util.function.Supplier,java.util.function.BiConsumer,java.util.function.BinaryOperator,j$.util.stream.Collector$Characteristics[]);
+}
+-keep enum j$.util.stream.Collector$Characteristics {
+}
+-keep class j$.util.stream.Collectors {
+  public static j$.util.stream.Collector toList();
+}
+-keep interface j$.util.stream.DoubleStream {
+  public j$.util.PrimitiveIterator$OfDouble iterator();
+  public double[] toArray();
+}
+-keep interface j$.util.stream.IntStream {
+  public j$.util.PrimitiveIterator$OfInt iterator();
+  public int[] toArray();
+}
+-keep class j$.util.stream.IntStream$VivifiedWrapper {
+  public static j$.util.stream.IntStream convert(java.util.stream.IntStream);
+}
+-keep class j$.util.stream.IntStream$Wrapper {
+  public static java.util.stream.IntStream convert(j$.util.stream.IntStream);
+}
+-keep interface j$.util.stream.LongStream {
+  public j$.util.PrimitiveIterator$OfLong iterator();
+  public long[] toArray();
+}
+-keep interface j$.util.stream.Stream {
+  public boolean anyMatch(java.util.function.Predicate);
+  public java.lang.Object collect(j$.util.stream.Collector);
+  public j$.util.stream.Stream filter(java.util.function.Predicate);
+  public j$.util.stream.Stream map(java.util.function.Function);
+}
+-keep class j$.util.stream.Stream$Wrapper {
+  public static java.util.stream.Stream convert(j$.util.stream.Stream);
+}
+-keep class j$.util.stream.StreamSupport {
+  public static j$.util.stream.Stream stream(java.util.function.Supplier,int,boolean);
+}
+-keep interface java.util.function.BiConsumer {
+}
+-keep interface java.util.function.BiFunction {
+  public java.lang.Object apply(java.lang.Object,java.lang.Object);
+}
+-keep interface java.util.function.BinaryOperator {
+}
+-keep interface java.util.function.Consumer {
+}
+-keep interface java.util.function.Function {
+  public java.lang.Object apply(java.lang.Object);
+}
+-keep interface java.util.function.IntFunction {
+}
+-keep interface java.util.function.Predicate {
+  public boolean test(java.lang.Object);
+}
+-keep interface java.util.function.Supplier {
+  public java.lang.Object get();
+}
+-keep interface java.util.function.ToDoubleFunction {
+}
+-keep interface java.util.function.ToIntFunction {
+}
+-keep interface java.util.function.ToLongFunction {
+}
+-keep interface java.util.function.UnaryOperator {
+}

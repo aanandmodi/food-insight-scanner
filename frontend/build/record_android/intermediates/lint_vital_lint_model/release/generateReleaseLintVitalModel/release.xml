@@ -1,0 +1,31 @@
+<variant
+    name="release"
+    package="com.llfbandit.record"
+    minSdkVersion="23"
+    targetSdkVersion="23"
+    mergedManifest="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml"
+    manifestMergeReport="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\outputs\logs\manifest-merger-release-report.txt"
+    proguardFiles="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\default_proguard_files\global\proguard-android.txt-8.5.2"
+    partialResultsDir="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\lint_vital_partial_results\release\lintVitalAnalyzeRelease\out">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+    <sourceProvider
+        manifests="src\main\AndroidManifest.xml"
+        javaDirectories="src\main\java;src\main\kotlin;src\release\java;src\release\kotlin"
+        resDirectories="src\main\res;src\release\res"
+        assetsDirectories="src\main\assets;src\release\assets"/>
+  </sourceProviders>
+  <testSourceProviders>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <artifact
+      classOutputs="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\javac\release\compileReleaseJavaWithJavac\classes;D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\tmp\kotlin-classes\release;D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\compile_r_class_jar\release\generateReleaseRFile\R.jar"
+      type="MAIN"
+      applicationId="com.llfbandit.record"
+      generatedSourceFolders="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\generated\ap_generated_sources\release\out"
+      generatedResourceFolders="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\generated\res\resValues\release"
+      desugaredMethodsFiles="C:\Users\aanan\.gradle\caches\8.10\transforms\8dbf98798c407558e22b1f8821947b28\transformed\D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>

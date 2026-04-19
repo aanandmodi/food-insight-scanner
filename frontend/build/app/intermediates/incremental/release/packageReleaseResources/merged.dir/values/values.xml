@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">food_insight_scanner</string>
+    <string name="default_web_client_id" translatable="false">579993459207-6rcmc0fgucpdc01f3rhvmtlc1oprlou4.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">579993459207</string>
+    <string name="google_api_key" translatable="false">AIzaSyAl1HeoDS0yhuaCpDAFDIhlCcSiarYGpvo</string>
+    <string name="google_app_id" translatable="false">1:579993459207:android:10cf6387d86c313697e8a2</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAl1HeoDS0yhuaCpDAFDIhlCcSiarYGpvo</string>
+    <string name="google_storage_bucket" translatable="false">food-insight-scanner-app.firebasestorage.app</string>
+    <string name="project_id" translatable="false">food-insight-scanner-app</string>
+    <style name="LaunchTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="Theme.MaterialComponents">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

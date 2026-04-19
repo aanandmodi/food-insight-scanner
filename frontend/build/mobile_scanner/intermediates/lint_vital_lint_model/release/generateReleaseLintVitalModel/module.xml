@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\mobile_scanner-5.2.3\android"
+    name=":mobile_scanner"
+    type="LIBRARY"
+    maven="dev.steenbakker.mobile_scanner:mobile_scanner:1.0-SNAPSHOT"
+    agpVersion="8.5.2"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner"
+    bootClassPath="D:\Android\Sdk\platforms\android-34\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="1.8"
+    compileTarget="android-34"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

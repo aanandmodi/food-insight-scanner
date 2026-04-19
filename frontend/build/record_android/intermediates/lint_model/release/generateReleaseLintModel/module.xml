@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\record_android-1.4.2\android"
+    name=":record_android"
+    type="LIBRARY"
+    maven="com.llfbandit.record:record_android:1.0"
+    agpVersion="8.5.2"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android"
+    bootClassPath="D:\Android\Sdk\platforms\android-35\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-35"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>
