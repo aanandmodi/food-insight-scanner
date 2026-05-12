@@ -80,17 +80,17 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
           // Scanning area cutout
           Center(
             child: Container(
-              width: 70.w,
-              height: 35.h,
+              width: 72.w,
+              height: 72.w,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                   width: 2,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(10),
                 child: Container(
                   color: Colors.transparent,
                 ),
@@ -106,8 +106,8 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 return Transform.scale(
                   scale: widget.isScanning ? _pulseAnimation.value : 1.0,
                   child: Container(
-                    width: 70.w,
-                    height: 35.h,
+                    width: 72.w,
+                    height: 72.w,
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: widget.isScanning
@@ -116,10 +116,31 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                                 .withValues(alpha: 0.5),
                         width: 3,
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Stack(
                       children: [
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 2,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.4),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         // Corner indicators
                         Positioned(
                           top: 8,
@@ -221,16 +242,16 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 GestureDetector(
                   onTap: widget.onClose,
                   child: Container(
-                    width: 44,
-                    height: 44,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(22),
+                      color: Colors.white.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(28),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: CustomIconWidget(
                         iconName: 'close',
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         size: 24,
                       ),
                     ),
@@ -241,18 +262,18 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 GestureDetector(
                   onTap: widget.onFlashToggle,
                   child: Container(
-                    width: 44,
-                    height: 44,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(22),
+                      color: Colors.white.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(28),
                     ),
                     child: Center(
                       child: CustomIconWidget(
                         iconName: widget.isFlashOn ? 'flash_on' : 'flash_off',
                         color: widget.isFlashOn
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.white,
+                            : Theme.of(context).colorScheme.onSurface,
                         size: 24,
                       ),
                     ),
@@ -277,8 +298,8 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                   ),
                   child: Text(
                     widget.isScanning
-                        ? 'Scanning for barcode...'
-                        : 'Position barcode within the frame',
+                        ? 'Scanning...'
+                        : 'Align barcode within frame',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
@@ -288,7 +309,7 @@ class _CameraOverlayWidgetState extends State<CameraOverlayWidget>
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  'Make sure the barcode is well-lit and clearly visible',
+                  'Keep barcode centered and well-lit',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.8),
                   ),

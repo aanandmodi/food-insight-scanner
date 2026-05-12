@@ -28,9 +28,9 @@ io.flutter.plugins.firebase.auth.firebase_auth-jetified-credentials-play-service
 io.flutter.plugins.firebase.auth.firebase_auth-lifecycle-runtime-2.7.0-27 C:\Users\aanan\.gradle\caches\8.10\transforms\e74e8f8058ad7df2f9d5bc63e75ff6b6\transformed\lifecycle-runtime-2.7.0\res
 io.flutter.plugins.firebase.auth.firebase_auth-main-28 C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_auth-5.2.0\android\src\main\res
 io.flutter.plugins.firebase.auth.firebase_auth-release-29 C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_auth-5.2.0\android\src\release\res
-io.flutter.plugins.firebase.auth.firebase_auth-pngs-30 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\generated\res\pngs\release
-io.flutter.plugins.firebase.auth.firebase_auth-resValues-31 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\generated\res\resValues\release
-io.flutter.plugins.firebase.auth.firebase_auth-mergeReleaseResources-32 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\incremental\release\mergeReleaseResources\merged.dir
-io.flutter.plugins.firebase.auth.firebase_auth-mergeReleaseResources-33 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-io.flutter.plugins.firebase.auth.firebase_auth-release-34 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_res\release\mergeReleaseResources
-io.flutter.plugins.firebase.auth.firebase_auth-release-35 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\packaged_res\release\packageReleaseResources
+io.flutter.plugins.firebase.auth.firebase_auth-pngs-30 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\generated\res\pngs\release
+io.flutter.plugins.firebase.auth.firebase_auth-resValues-31 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\generated\res\resValues\release
+io.flutter.plugins.firebase.auth.firebase_auth-mergeReleaseResources-32 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\incremental\release\mergeReleaseResources\merged.dir
+io.flutter.plugins.firebase.auth.firebase_auth-mergeReleaseResources-33 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+io.flutter.plugins.firebase.auth.firebase_auth-release-34 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_res\release\mergeReleaseResources
+io.flutter.plugins.firebase.auth.firebase_auth-release-35 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\packaged_res\release\packageReleaseResources

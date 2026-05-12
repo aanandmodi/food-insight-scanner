@@ -11,7 +11,7 @@ class AlternativesWidget extends StatelessWidget {
     required this.alternatives,
   });
 
-  Widget _buildAlternativeCard(Map<String, dynamic> product) {
+  Widget _buildAlternativeCard(BuildContext context, Map<String, dynamic> product) {
     final isBetterChoice = (product['isBetterChoice'] as bool?) ?? false;
     final healthScore = (product['healthScore'] as num?)?.toInt() ?? 0;
 
@@ -124,11 +124,11 @@ class AlternativesWidget extends StatelessWidget {
                         padding: EdgeInsets.symmetric(
                             horizontal: 2.w, vertical: 0.5.h),
                         decoration: BoxDecoration(
-                          color: _getHealthScoreColor(healthScore)
+                          color: _getHealthScoreColor(context, healthScore)
                               .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: _getHealthScoreColor(healthScore)
+                            color: _getHealthScoreColor(context, healthScore)
                                 .withValues(alpha: 0.3),
                           ),
                         ),
@@ -138,14 +138,14 @@ class AlternativesWidget extends StatelessWidget {
                             CustomIconWidget(
                               iconName: 'favorite',
                               size: 12,
-                              color: _getHealthScoreColor(healthScore),
+                              color: _getHealthScoreColor(context, healthScore),
                             ),
                             SizedBox(width: 1.w),
                             Text(
                               '$healthScore/100',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                color: _getHealthScoreColor(healthScore),
+                                color: _getHealthScoreColor(context, healthScore),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -172,7 +172,7 @@ class AlternativesWidget extends StatelessWidget {
     );
   }
 
-  Color _getHealthScoreColor(int score) {
+  Color _getHealthScoreColor(BuildContext context, int score) {
     if (score >= 80) return Theme.of(context).colorScheme.primary;
     if (score >= 60) return Colors.orange;
     return Colors.red;
@@ -252,7 +252,7 @@ class AlternativesWidget extends StatelessWidget {
                     // Navigate to product details of alternative
                     Navigator.pushNamed(context, '/product-details');
                   },
-                  child: _buildAlternativeCard(alternatives[index]),
+                  child: _buildAlternativeCard(context, alternatives[index]),
                 );
               },
             ),

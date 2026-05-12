@@ -10,7 +10,7 @@ class UserProfile {
   final double? weightKg;
   final List<String> diseases;
   final List<String> allergies;
-  final String dietaryPreferences;
+  final List<String> dietaryPreferences;
   final String healthGoals;
   final int age;
   final String activityLevel;
@@ -26,7 +26,7 @@ class UserProfile {
     this.weightKg,
     this.diseases = const [],
     required this.allergies,
-    required this.dietaryPreferences,
+    this.dietaryPreferences = const [],
     required this.healthGoals,
     required this.age,
     required this.activityLevel,
@@ -52,9 +52,7 @@ class UserProfile {
       weightKg: (map['weightKg'] as num?)?.toDouble(),
       diseases: List<String>.from(map['diseases'] ?? []),
       allergies: List<String>.from(map['allergies'] ?? []),
-      dietaryPreferences: map['dietaryPreferences'] is List
-          ? (map['dietaryPreferences'] as List).join(', ')
-          : (map['dietaryPreferences'] as String?) ?? '',
+      dietaryPreferences: _parseDietaryPreferences(map['dietaryPreferences']),
       healthGoals: (map['healthGoals'] ?? map['healthGoal'] ?? '') as String,
       age: (map['age'] as int?) ?? _calculateAge(dob),
       activityLevel: (map['activityLevel'] as String?) ?? 'moderate',
@@ -74,7 +72,7 @@ class UserProfile {
       'weightKg': weightKg,
       'diseases': diseases,
       'allergies': allergies,
-      'dietaryPreferences': dietaryPreferences,
+      'dietaryPreferences': dietaryPreferences, // Saves as array in Firestore
       'healthGoals': healthGoals,
       'age': age,
       'activityLevel': activityLevel,
@@ -93,7 +91,7 @@ class UserProfile {
     double? weightKg,
     List<String>? diseases,
     List<String>? allergies,
-    String? dietaryPreferences,
+    List<String>? dietaryPreferences,
     String? healthGoals,
     int? age,
     String? activityLevel,
@@ -134,6 +132,15 @@ class UserProfile {
     if (bmiValue < 25) return 'Normal';
     if (bmiValue < 30) return 'Overweight';
     return 'Obese';
+  }
+
+  /// Handle both old String format and new List format for backwards compatibility
+  static List<String> _parseDietaryPreferences(dynamic raw) {
+    if (raw is List) return List<String>.from(raw);
+    if (raw is String && raw.isNotEmpty) {
+      return raw.split(',').map((s) => s.trim()).toList();
+    }
+    return [];
   }
 
   static int _calculateAge(DateTime? dateOfBirth) {

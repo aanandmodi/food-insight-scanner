@@ -1,18 +1,18 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
-import 'dart:ui';
+import 'package:provider/provider.dart';
 
-import '../../core/app_export.dart';
+
 import '../../services/product_service.dart';
 import '../../services/firestore_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
-import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
+import '../../theme/app_design_system.dart';
 import '../profile/profile_screen.dart';
 import '../barcode_scanner/barcode_scanner.dart';
 import '../ai_chat_assistant/ai_chat_assistant.dart';
@@ -33,7 +33,6 @@ class _HomeDashboardState extends State<HomeDashboard>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _refreshController;
-  late AnimationController _fabGlowController;
   bool _isRefreshing = false;
 
   final Map<String, dynamic> _nutritionData = {
@@ -59,10 +58,6 @@ class _HomeDashboardState extends State<HomeDashboard>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _fabGlowController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProfileProvider>().fetchProfile();
     });
@@ -93,6 +88,7 @@ class _HomeDashboardState extends State<HomeDashboard>
         totalSugar += (entry['sugar'] as num?)?.toDouble() ?? 0;
       }
 
+      if (!mounted) return;
       final profile = context.read<UserProfileProvider>().profile;
 
       setState(() {
@@ -142,7 +138,6 @@ class _HomeDashboardState extends State<HomeDashboard>
   @override
   void dispose() {
     _refreshController.dispose();
-    _fabGlowController.dispose();
     super.dispose();
   }
 
@@ -189,20 +184,16 @@ class _HomeDashboardState extends State<HomeDashboard>
 
       if (!mounted) return;
 
-      if (!mounted) return;
-
-      // We'll transition to AI Chat via IndexedStack
       setState(() {
         _currentIndex = 2;
       });
-      // Further implementation will pass pickedFile.path to the Chat provider if required.
     } catch (e) {
       debugPrint('Image picker error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to pick image: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            backgroundColor: FoodInsightColors.healthRed,
           ),
         );
       }
@@ -220,8 +211,6 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   /// The Home tab content with staggered cinematic animations
   Widget _buildHomeContent() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final profile = context.watch<UserProfileProvider>().profile;
     // Calculate dynamic goals in build so they reflect the latest profile
     if (profile != null) {
@@ -236,26 +225,19 @@ class _HomeDashboardState extends State<HomeDashboard>
         weightKg: profile.weightKg,
         healthGoal: profile.healthGoals,
       );
-      _nutritionData['sugarGoal'] = UserUtils.calculateSugarGoal(_nutritionData['caloriesGoal']);
+      _nutritionData['sugarGoal'] =
+          UserUtils.calculateSugarGoal(_nutritionData['caloriesGoal']);
     }
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            theme.scaffoldBackgroundColor,
-            theme.scaffoldBackgroundColor,
-          ],
-        ),
+      decoration: const BoxDecoration(
+        gradient: FoodInsightColors.warmBackground,
       ),
       child: SafeArea(
         child: RefreshIndicator(
           onRefresh: _handleRefresh,
-          color: colorScheme.primary,
-          backgroundColor: colorScheme.surface,
+          color: FoodInsightColors.scannerGreen,
+          backgroundColor: Colors.white,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
@@ -269,15 +251,29 @@ class _HomeDashboardState extends State<HomeDashboard>
                       currentDate: _formatCurrentDate(),
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 0.ms, curve: Curves.easeOutCubic)
-                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
-                    SizedBox(height: 1.h),
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 0.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
+                    SizedBox(height: 0.5.h),
                     NutritionSummaryCard(
                       nutritionData: _nutritionData,
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 100.ms, curve: Curves.easeOutCubic)
-                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 100.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
                     SizedBox(height: 2.h),
                     QuickActionsSection(
                       onScanBarcode: () {
@@ -289,8 +285,15 @@ class _HomeDashboardState extends State<HomeDashboard>
                       onChatWithAI: _navigateToAIChat,
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 200.ms, curve: Curves.easeOutCubic)
-                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 200.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
                     SizedBox(height: 2.h),
                     RecentScansSection(
                       recentScans: _recentScans,
@@ -299,9 +302,16 @@ class _HomeDashboardState extends State<HomeDashboard>
                       },
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 300.ms, curve: Curves.easeOutCubic)
-                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
-                    SizedBox(height: 2.h),
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 300.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
+                    SizedBox(height: 1.h),
                     DietLogPreview(
                       recentEntries: _dietLogEntries,
                       onViewAll: () async {
@@ -310,8 +320,15 @@ class _HomeDashboardState extends State<HomeDashboard>
                       },
                     )
                         .animate()
-                        .fadeIn(duration: 500.ms, delay: 400.ms, curve: Curves.easeOutCubic)
-                        .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 400.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
                     SizedBox(height: 10.h),
                   ],
                 ),
@@ -325,12 +342,16 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: FoodInsightColors.warmWhite,
       extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
@@ -341,123 +362,97 @@ class _HomeDashboardState extends State<HomeDashboard>
           const ProfileScreen(),
         ],
       ),
-      // ──────────── Glowing FAB ────────────
-      floatingActionButton: _currentIndex == 0
-          ? AnimatedBuilder(
-              animation: _fabGlowController,
-              builder: (context, child) {
-                final glowValue = _fabGlowController.value;
-                return Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: isDark
-                        ? [
-                            BoxShadow(
-                              color: colorScheme.primary.withValues(
-                                  alpha: 0.3 + glowValue * 0.15),
-                              blurRadius: 20 + glowValue * 10,
-                              spreadRadius: 1 + glowValue * 2,
-                            ),
-                            BoxShadow(
-                              color: colorScheme.primary.withValues(
-                                  alpha: 0.15 + glowValue * 0.1),
-                              blurRadius: 35 + glowValue * 10,
-                              spreadRadius: 0,
-                            ),
-                          ]
-                        : [
-                            BoxShadow(
-                              color: colorScheme.primary.withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                  ),
-                  child: child,
-                );
-              },
-              child: GestureDetector(
-                onTapDown: (_) => HapticFeedback.lightImpact(),
-                child: FloatingActionButton.extended(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _currentIndex = 1;
-                    });
-                  },
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  elevation: 0,
-                  icon: CustomIconWidget(
-                    iconName: 'qr_code_scanner',
-                    size: 6.w,
-                    color: colorScheme.onPrimary,
-                  ),
-                  label: Text(
-                    "Scan Now",
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
+      // ──────────── Skeuomorphic FAB ────────────
+      floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      // ──────────── Floating Glass Bottom Nav ────────────
-      bottomNavigationBar: Container(
-        margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.glassDarkBg
-                    : Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: isDark
-                      ? AppTheme.glassDarkBorder
-                      : Colors.black.withValues(alpha: 0.08),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark
-                        ? colorScheme.primary.withValues(alpha: 0.1)
-                        : Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 30,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+      // ──────────── Frosted Glass Bottom Nav ────────────
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildScanFab() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.35),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: GestureDetector(
+        onTapDown: (_) => HapticFeedback.lightImpact(),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            setState(() {
+              _currentIndex = 1;
+            });
+          },
+          backgroundColor: FoodInsightColors.scannerGreen,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: const Icon(Icons.qr_code_scanner_rounded, size: 22),
+          label: Text(
+            'Scan Now',
+            style: FoodInsightTypography.body(
+              size: 15,
+              weight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
+      child: ClipRRect(
+        borderRadius: FoodInsightRadius.xxlAll,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.82),
+              borderRadius: FoodInsightRadius.xxlAll,
+              border: Border.all(
+                color: FoodInsightColors.embossedShadow.withValues(alpha: 0.3),
+                width: 1,
               ),
-              child: BottomNavigationBar(
-                currentIndex: _currentIndex,
-                onTap: _onBottomNavTap,
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                selectedItemColor: colorScheme.primary,
-                unselectedItemColor: colorScheme.onSurfaceVariant,
-                selectedLabelStyle:
-                    theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle:
-                    theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w400,
-                ),
-                items: [
-                  _buildNavItem('home', 'Home', 0, colorScheme),
-                  _buildNavItem('qr_code_scanner', 'Scan', 1, colorScheme),
-                  _buildNavItem('smart_toy', 'AI Chat', 2, colorScheme),
-                  _buildNavItem('person', 'Profile', 3, colorScheme),
-                ],
+              boxShadow: FoodInsightShadows.floating,
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: _onBottomNavTap,
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              selectedItemColor: FoodInsightColors.scannerGreen,
+              unselectedItemColor: FoodInsightColors.midGray,
+              selectedLabelStyle: FoodInsightTypography.caption(
+                size: 10,
+                weight: FontWeight.w700,
+                color: FoodInsightColors.scannerGreen,
               ),
+              unselectedLabelStyle: FoodInsightTypography.caption(
+                size: 10,
+                weight: FontWeight.w500,
+                color: FoodInsightColors.midGray,
+              ),
+              items: [
+                _buildNavItem(Icons.home_rounded, 'Home', 0),
+                _buildNavItem(Icons.qr_code_scanner_rounded, 'Scan', 1),
+                _buildNavItem(Icons.auto_awesome_rounded, 'AI Chat', 2),
+                _buildNavItem(Icons.person_rounded, 'Profile', 3),
+              ],
             ),
           ),
         ),
@@ -466,7 +461,7 @@ class _HomeDashboardState extends State<HomeDashboard>
   }
 
   BottomNavigationBarItem _buildNavItem(
-      String iconName, String label, int index, ColorScheme colorScheme) {
+      IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
     return BottomNavigationBarItem(
       icon: Column(
@@ -475,13 +470,7 @@ class _HomeDashboardState extends State<HomeDashboard>
           AnimatedScale(
             scale: isSelected ? 1.15 : 1.0,
             duration: const Duration(milliseconds: 200),
-            child: CustomIconWidget(
-              iconName: iconName,
-              size: 6.w,
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-            ),
+            child: Icon(icon, size: 22),
           ),
           if (isSelected)
             Container(
@@ -489,11 +478,11 @@ class _HomeDashboardState extends State<HomeDashboard>
               width: 5,
               height: 5,
               decoration: BoxDecoration(
-                color: colorScheme.primary,
+                color: FoodInsightColors.scannerGreen,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.5),
+                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.5),
                     blurRadius: 6,
                   ),
                 ],

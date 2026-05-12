@@ -1,7 +1,6 @@
 // lib/routes/app_routes.dart
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../core/auth_gate.dart';
 import '../presentation/auth/login_screen/login_screen.dart';
 import '../presentation/auth/signup_screen/signup_screen.dart';
@@ -11,13 +10,11 @@ import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/barcode_scanner/barcode_scanner.dart';
 import '../presentation/ai_chat_assistant/ai_chat_assistant.dart';
 import '../presentation/product_details/product_details.dart';
-import '../models/user_profile.dart';
 import '../presentation/scan_history/scan_history_screen.dart';
 import '../presentation/profile/profile_screen.dart';
 import '../presentation/diet_log/diet_log_screen.dart';
 import '../presentation/settings/settings_screen.dart';
 import '../presentation/shopping_list/shopping_list_screen.dart';
-import '../core/utils/user_utils.dart';
 
 class AppRoutes {
   static const String initial = '/';

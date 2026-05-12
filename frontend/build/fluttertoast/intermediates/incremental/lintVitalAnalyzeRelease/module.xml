@@ -5,7 +5,7 @@
     type="LIBRARY"
     maven="io.github.ponnamkarthik.toast.fluttertoast:fluttertoast:1.0-SNAPSHOT"
     agpVersion="8.5.2"
-    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\fluttertoast"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\fluttertoast"
     bootClassPath="D:\Android\Sdk\platforms\android-36\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
     javaSourceLevel="17"
     compileTarget="android-36"

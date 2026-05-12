@@ -1,47 +1,45 @@
 // lib/theme/app_theme.dart
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// A class that contains all theme configurations for the health and nutrition application.
-/// Cinematic dark-first design with glassmorphism and bloom effects.
+/// Theme configuration aligned with approved prototypes.
 class AppTheme {
   AppTheme._();
 
   // ──────────────────────── LIGHT PALETTE ────────────────────────
-  static const Color primaryLight = Color(0xFF2E7D32);
-  static const Color primaryVariantLight = Color(0xFF1B5E20);
-  static const Color secondaryLight = Color(0xFF66BB6A);
-  static const Color secondaryVariantLight = Color(0xFF4CAF50);
-  static const Color backgroundLight = Color(0xFFFAFAFA);
+  static const Color primaryLight = Color(0xFFBA0034);
+  static const Color primaryVariantLight = Color(0xFFE51245);
+  static const Color secondaryLight = Color(0xFF006E26);
+  static const Color secondaryVariantLight = Color(0xFF64FD7D);
+  static const Color backgroundLight = Color(0xFFF9F9FE);
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color errorLight = Color(0xFFD32F2F);
-  static const Color warningLight = Color(0xFFF57C00);
-  static const Color successLight = Color(0xFF388E3C);
-  static const Color accentLight = Color(0xFFE8F5E8);
+  static const Color errorLight = Color(0xFFBA1A1A);
+  static const Color warningLight = Color(0xFFF59E0B);
+  static const Color successLight = Color(0xFF006E26);
+  static const Color accentLight = Color(0xFFFFDADA);
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
-  static const Color onSecondaryLight = Color(0xFF000000);
-  static const Color onBackgroundLight = Color(0xFF212121);
-  static const Color onSurfaceLight = Color(0xFF212121);
+  static const Color onSecondaryLight = Color(0xFFFFFFFF);
+  static const Color onBackgroundLight = Color(0xFF1A1C1F);
+  static const Color onSurfaceLight = Color(0xFF1A1C1F);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
   // ──────────────────────── DARK PALETTE (Cinematic) ────────────────────────
-  static const Color primaryDark = Color(0xFF34D399);     // Emerald glow
-  static const Color primaryVariantDark = Color(0xFF10B981);
-  static const Color secondaryDark = Color(0xFF6EE7B7);   // Mint
-  static const Color secondaryVariantDark = Color(0xFF34D399);
-  static const Color backgroundDark = Color(0xFF0A0E1A);  // Midnight blue-black
-  static const Color surfaceDark = Color(0xFF111827);      // Dark navy
-  static const Color errorDark = Color(0xFFF87171);
-  static const Color warningDark = Color(0xFFFBBF24);
-  static const Color successDark = Color(0xFF34D399);
-  static const Color accentDark = Color(0xFF064E3B);       // Deep teal
-  static const Color onPrimaryDark = Color(0xFF0A0E1A);
-  static const Color onSecondaryDark = Color(0xFF0A0E1A);
-  static const Color onBackgroundDark = Color(0xFFF9FAFB);
-  static const Color onSurfaceDark = Color(0xFFF9FAFB);
-  static const Color onErrorDark = Color(0xFF0A0E1A);
+  static const Color primaryDark = Color(0xFFFFB3B5);
+  static const Color primaryVariantDark = Color(0xFFE51245);
+  static const Color secondaryDark = Color(0xFF6CFF82);
+  static const Color secondaryVariantDark = Color(0xFF47E266);
+  static const Color backgroundDark = Color(0xFF1A1C1F);
+  static const Color surfaceDark = Color(0xFF2E3034);
+  static const Color errorDark = Color(0xFFFFDAD6);
+  static const Color warningDark = Color(0xFFFCD34D);
+  static const Color successDark = Color(0xFF6CFF82);
+  static const Color accentDark = Color(0xFF40000C);
+  static const Color onPrimaryDark = Color(0xFF40000C);
+  static const Color onSecondaryDark = Color(0xFF002106);
+  static const Color onBackgroundDark = Color(0xFFF0F0F5);
+  static const Color onSurfaceDark = Color(0xFFF0F0F5);
+  static const Color onErrorDark = Color(0xFF93000A);
 
   // Card and dialog colors
   static const Color cardLight = Color(0xFFFFFFFF);
@@ -67,14 +65,19 @@ class AppTheme {
   static const Color textDisabledDark = Color(0xFF4B5563);
 
   // ──────────────────────── GLASSMORPHISM TOKENS ────────────────────────
-  static const Color glassBackground = Color(0x1AFFFFFF);     // 10% white
-  static const Color glassBorder = Color(0x33FFFFFF);         // 20% white
-  static const Color glassBorderLight = Color(0x14000000);    // 8% black for light mode
+  static const Color glassBackground = Color(0xB3FFFFFF);
+  static const Color glassBorder = Color(0x26E6BCBD);
+  static const Color glassBorderLight = Color(0x26E6BCBD);
   static const double glassBlurSigma = 20.0;
 
   // Dark glass (for dark theme)
-  static const Color glassDarkBg = Color(0x26FFFFFF);         // 15% white
-  static const Color glassDarkBorder = Color(0x40FFFFFF);     // 25% white
+  static const Color glassDarkBg = Color(0xB31A1C1F);
+  static const Color glassDarkBorder = Color(0x335D3F40);
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryLight, primaryVariantLight],
+  );
 
   /// Creates a glassmorphic BoxDecoration for dark theme cards.
   static BoxDecoration glassmorphicDecoration({
@@ -164,18 +167,19 @@ class AppTheme {
 
     // AppBar theme for clean professional interface
     appBarTheme: AppBarTheme(
-      backgroundColor: surfaceLight,
-      foregroundColor: textPrimaryLight,
-      elevation: 1.0,
+      backgroundColor: Colors.white.withValues(alpha: 0.9),
+      foregroundColor: onSurfaceLight,
+      elevation: 0,
       shadowColor: shadowLight,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: GoogleFonts.inter(
         fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: textPrimaryLight,
+        fontWeight: FontWeight.w900,
+        color: onSurfaceLight,
+        letterSpacing: -0.5,
       ),
-      iconTheme: const IconThemeData(color: textPrimaryLight),
-      actionsIconTheme: const IconThemeData(color: textPrimaryLight),
+      iconTheme: const IconThemeData(color: Color(0xFF94A3B8)),
+      actionsIconTheme: const IconThemeData(color: Color(0xFF94A3B8)),
     ),
 
     // Card theme with subtle elevation
@@ -225,7 +229,7 @@ class AppTheme {
         elevation: 2.0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(9999.0),
         ),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -240,7 +244,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         side: const BorderSide(color: primaryLight, width: 1.5),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(9999.0),
         ),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -254,7 +258,7 @@ class AppTheme {
         foregroundColor: primaryLight,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(9999.0),
         ),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -268,19 +272,19 @@ class AppTheme {
 
     // Input decoration for form elements
     inputDecorationTheme: InputDecorationTheme(
-      fillColor: surfaceLight,
+      fillColor: surfaceLight.withValues(alpha: 0.8),
       filled: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.0),
-        borderSide: const BorderSide(color: dividerLight, width: 1.0),
+        borderRadius: BorderRadius.circular(9999.0),
+        borderSide: const BorderSide(color: Color(0x26E6BCBD), width: 1.0),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.0),
-        borderSide: const BorderSide(color: dividerLight, width: 1.0),
+        borderRadius: BorderRadius.circular(9999.0),
+        borderSide: const BorderSide(color: Color(0x26E6BCBD), width: 1.0),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(9999.0),
         borderSide: const BorderSide(color: primaryLight, width: 2.0),
       ),
       errorBorder: OutlineInputBorder(
@@ -500,7 +504,7 @@ class AppTheme {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
-        side: BorderSide(color: glassDarkBorder, width: 1),
+        side: const BorderSide(color: glassDarkBorder, width: 1),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
@@ -698,30 +702,20 @@ class AppTheme {
       ),
       elevation: 4.0,
     ),
-    bottomSheetTheme: BoxDecoration(
-      color: surfaceDark,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      border: Border(
-        top: BorderSide(color: glassDarkBorder, width: 1),
-        left: BorderSide(color: glassDarkBorder, width: 1),
-        right: BorderSide(color: glassDarkBorder, width: 1),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: surfaceDark,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+        side: BorderSide(color: glassDarkBorder, width: 1),
       ),
-    ) is BoxDecoration
-        ? BottomSheetThemeData(
-            backgroundColor: surfaceDark,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
-              side: BorderSide(color: glassDarkBorder, width: 1),
-            ),
-          )
-        : const BottomSheetThemeData(),
+    ),
     dialogTheme: DialogThemeData(
       backgroundColor: dialogDark,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20.0),
-        side: BorderSide(color: glassDarkBorder, width: 1),
+        side: const BorderSide(color: glassDarkBorder, width: 1),
       ),
       titleTextStyle: GoogleFonts.inter(
         fontSize: 20,

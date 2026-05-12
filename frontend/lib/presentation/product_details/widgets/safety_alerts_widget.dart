@@ -126,7 +126,7 @@ class SafetyAlertsWidget extends StatelessWidget {
     return alerts;
   }
 
-  Color _getAlertColor(String type) {
+  Color _getAlertColor(BuildContext context, String type) {
     switch (type) {
       case 'danger':
         return Colors.red;
@@ -141,8 +141,8 @@ class SafetyAlertsWidget extends StatelessWidget {
     }
   }
 
-  Widget _buildAlert(Map<String, dynamic> alert) {
-    final color = _getAlertColor(alert['type']);
+  Widget _buildAlert(BuildContext context, Map<String, dynamic> alert) {
+    final color = _getAlertColor(context, alert['type']);
 
     return Container(
       width: double.infinity,
@@ -248,7 +248,7 @@ class SafetyAlertsWidget extends StatelessWidget {
             ],
           ),
           SizedBox(height: 3.h),
-          ...alerts.map((alert) => _buildAlert(alert)),
+          ...alerts.map((alert) => _buildAlert(context, alert)),
         ],
       ),
     );

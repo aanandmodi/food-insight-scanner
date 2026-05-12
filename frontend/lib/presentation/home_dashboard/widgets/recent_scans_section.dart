@@ -1,10 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../../widgets/custom_bounce_button.dart';
+import '../../../theme/app_design_system.dart';
+import '../../../widgets/skeuomorphic/skeu_card.dart';
 
 class RecentScansSection extends StatelessWidget {
   final List<Map<String, dynamic>> recentScans;
@@ -18,9 +17,6 @@ class RecentScansSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Container(
       margin: EdgeInsets.symmetric(vertical: 1.h),
       child: Column(
@@ -32,30 +28,31 @@ class RecentScansSection extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Recent Scans",
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+                  'Recent Scans',
+                  style: FoodInsightTypography.heading(
+                    size: 18,
+                    weight: FontWeight.w700,
                   ),
                 ),
-                TextButton(
-                  onPressed: onViewAll,
+                GestureDetector(
+                  onTap: onViewAll,
                   child: Text(
-                    "View All",
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w500,
+                    'View All →',
+                    style: FoodInsightTypography.caption(
+                      size: 13,
+                      weight: FontWeight.w600,
+                      color: FoodInsightColors.infoBlue,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 1.h),
+          const SizedBox(height: 12),
           recentScans.isEmpty
-              ? _buildEmptyState(context)
+              ? _buildEmptyState()
               : SizedBox(
-                  height: 20.h,
+                  height: 18.h,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -72,156 +69,105 @@ class RecentScansSection extends StatelessWidget {
   }
 
   Widget _buildScanCard(BuildContext context, Map<String, dynamic> scan) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final safetyStatus = scan['safetyStatus'] as String? ?? 'unknown';
 
-    return CustomBounceButton(
+    return GestureDetector(
       onTap: () {
         Navigator.pushNamed(context, '/product-details', arguments: scan);
       },
       child: Container(
-        width: 35.w,
+        width: 34.w,
         margin: EdgeInsets.only(right: 3.w),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: isDark
-                  ? AppTheme.glassmorphicDecoration(borderRadius: 16)
-                  : BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.outline.withValues(alpha: 0.2),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-              child: Padding(
-                padding: EdgeInsets.all(3.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Container(
+        child: SkeuCard(
+          padding: const EdgeInsets.all(12),
+          borderRadius: 20,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: FoodInsightRadius.smAll,
+                    color: FoodInsightColors.cream,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: FoodInsightRadius.smAll,
+                    child: Hero(
+                      tag: 'scan_${scan['id']}',
+                      child: CustomImageWidget(
+                        imageUrl: scan['image'] as String? ?? '',
                         width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : colorScheme.surfaceContainerHighest,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Hero(
-                            tag: 'scan_${scan['id']}',
-                            child: CustomImageWidget(
-                              imageUrl: scan['image'] as String? ?? '',
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
+                        height: double.infinity,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    SizedBox(height: 1.h),
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            scan['name'] as String? ?? 'Unknown Product',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 0.5.h),
-                          Row(
-                            children: [
-                              _buildSafetyIndicator(
-                                context,
-                                scan['safetyStatus'] as String? ?? 'unknown',
-                              ),
-                              SizedBox(width: 2.w),
-                              Expanded(
-                                child: Text(
-                                  _getSafetyText(
-                                      scan['safetyStatus'] as String? ??
-                                          'unknown'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: _getSafetyColor(
-                                      context,
-                                      scan['safetyStatus'] as String? ??
-                                          'unknown',
-                                    ),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Name
+              Text(
+                scan['name'] as String? ?? 'Unknown',
+                style: FoodInsightTypography.caption(
+                  size: 12,
+                  weight: FontWeight.w700,
+                  color: FoodInsightColors.deepCharcoal,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              // Safety badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _getSafetyColor(safetyStatus).withValues(alpha: 0.12),
+                  borderRadius: FoodInsightRadius.pillAll,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: _getSafetyColor(safetyStatus),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _getSafetyText(safetyStatus),
+                      style: FoodInsightTypography.caption(
+                        size: 9,
+                        weight: FontWeight.w700,
+                        color: _getSafetyColor(safetyStatus),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSafetyIndicator(BuildContext context, String status) {
-    final color = _getSafetyColor(context, status);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: isDark
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.6),
-                  blurRadius: 6,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
-      ),
-    );
-  }
-
-  Color _getSafetyColor(BuildContext context, String status) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
+  Color _getSafetyColor(String status) {
     switch (status.toLowerCase()) {
       case 'safe':
-        return AppTheme.getSuccessColor(isLight);
+        return FoodInsightColors.scannerGreen;
       case 'warning':
-        return AppTheme.getWarningColor(isLight);
+        return FoodInsightColors.warningAmber;
       case 'danger':
-        return Theme.of(context).colorScheme.error;
+        return FoodInsightColors.healthRed;
       default:
-        return Theme.of(context).colorScheme.onSurfaceVariant;
+        return FoodInsightColors.midGray;
     }
   }
 
@@ -238,56 +184,38 @@ class RecentScansSection extends StatelessWidget {
     }
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      height: 20.h,
-      margin: EdgeInsets.symmetric(horizontal: 4.w),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: isDark
-                ? AppTheme.glassmorphicDecoration(borderRadius: 16)
-                : BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.2),
-                    ),
-                  ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CustomIconWidget(
-                    iconName: 'qr_code_scanner',
-                    size: 8.w,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  SizedBox(height: 1.h),
-                  Text(
-                    "No scans yet",
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 0.5.h),
-                  Text(
-                    "Start scanning to see your history",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: SkeuCard(
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.qr_code_scanner_rounded,
+                color: FoodInsightColors.midGray,
+                size: 32,
               ),
-            ),
+              const SizedBox(height: 10),
+              Text(
+                'No scans yet',
+                style: FoodInsightTypography.body(
+                  weight: FontWeight.w600,
+                  color: FoodInsightColors.midGray,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Start scanning to see your history',
+                style: FoodInsightTypography.caption(
+                  size: 12,
+                  color: FoodInsightColors.midGray,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),

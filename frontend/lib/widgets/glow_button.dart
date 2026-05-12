@@ -19,7 +19,7 @@ class GlowButton extends StatefulWidget {
     this.onTap,
     this.glowColor,
     this.glowIntensity = 0.3,
-    this.borderRadius = 16.0,
+    this.borderRadius = 999.0,
     this.padding,
     this.enableHaptic = true,
   });
@@ -88,11 +88,11 @@ class _GlowButtonState extends State<GlowButton>
                       glow,
                       intensity: widget.glowIntensity,
                     )
-                  : [
+                  : const [
                       BoxShadow(
-                        color: glow.withValues(alpha: 0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: Color(0x4DBA0034),
+                        blurRadius: 15,
+                        offset: Offset(0, 4),
                       ),
                     ],
             ),

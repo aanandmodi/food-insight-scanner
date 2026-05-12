@@ -25,7 +25,7 @@ Future<bool> retryFirebaseInit() async {
     }
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
+    ).timeout(const Duration(seconds: 12));
     firebaseInitError = null;
     debugPrint('Firebase initialized successfully.');
     return true;
@@ -37,20 +37,20 @@ Future<bool> retryFirebaseInit() async {
 }
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Don't block app startup indefinitely on Firebase init.
+  // If Firebase init hangs/fails on a device, we still render UI and allow retry.
   try {
-    // Ensure that the Flutter binding is initialized before calling any Flutter APIs.
-    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 12));
+    firebaseInitError = null;
+  } catch (e) {
+    firebaseInitError = e.toString();
+    debugPrint('Firebase init failed/timeout at startup: $e');
+  }
 
-    // Initialize Firebase with retry (up to 3 attempts)
-    for (int attempt = 1; attempt <= 3; attempt++) {
-      final success = await retryFirebaseInit();
-      if (success) break;
-      if (attempt < 3) {
-        debugPrint('Firebase init attempt $attempt failed, retrying...');
-        await Future.delayed(const Duration(seconds: 1));
-      }
-    }
-
+  try {
     // Initialize local SQLite database for offline persistence
     try {
       await LocalDatabaseService().initialize();

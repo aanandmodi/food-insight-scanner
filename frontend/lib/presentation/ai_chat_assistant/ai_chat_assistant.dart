@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import '../../core/app_export.dart';
 import '../../services/cloud_function_service.dart';
 import '../../models/user_profile.dart'; // Import the UserProfile model
 import 'package:provider/provider.dart';
@@ -30,6 +29,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   String? _errorMessage;
 
   final List<Map<String, dynamic>> _messages = [];
+  bool _initializedGreeting = false;
   
   // REMOVED: The hardcoded user profile is no longer needed.
   // We will use `widget.userProfile` instead.
@@ -39,10 +39,9 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   @override
   void initState() {
     super.initState();
-    _initializeChat();
   }
 
-  Future<void> _initializeChat() async {
+  Future<void> _initializeChat(UserProfile? profile) async {
     setState(() {
       _isLoading = true;
       _showTypingIndicator = true;
@@ -50,7 +49,6 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
     // No client-side API key initialization needed — AI calls go through
     // Cloud Functions which hold the key server-side.
-    final profile = context.read<UserProfileProvider>().profile;
     setState(() {
       _messages.add({
         "id": 1,
@@ -129,9 +127,9 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       final conversationHistory = _buildConversationHistory();
       final profile = context.read<UserProfileProvider>().profile;
 
-      // Use the meta variant so we can detect server-side meal logging
-      final result = await _cloudFunctionService.generateResponseWithMeta(
-        messages: [],
+      final result = await _cloudFunctionService.chatWithAI(
+        message: message,
+        conversationHistory: conversationHistory,
         userProfile: profile?.toMap() ?? {},
       );
 
@@ -203,6 +201,16 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = context.watch<UserProfileProvider>().profile;
+    if (!_initializedGreeting) {
+      _initializedGreeting = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _messages.isEmpty) {
+          _initializeChat(profile);
+        }
+      });
+    }
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
@@ -235,11 +243,11 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                       onPressed: () {
                         setState(() => _errorMessage = null);
                         if (_messages.length <= 1) {
-                            _initializeChat();
+                            _initializeChat(profile);
                         } else {
                             // Retry the last message by sending it again
                             // Could implement a resend feature, but basic init works too
-                            _initializeChat();
+                            _initializeChat(profile);
                         }
                       },
                       icon: const Icon(Icons.refresh, color: Colors.red, size: 16),

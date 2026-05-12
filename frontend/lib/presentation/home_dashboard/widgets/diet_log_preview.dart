@@ -1,8 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../theme/app_design_system.dart';
+import '../../../widgets/skeuomorphic/skeu_card.dart';
 
 class DietLogPreview extends StatelessWidget {
   final List<Map<String, dynamic>> recentEntries;
@@ -16,199 +17,169 @@ class DietLogPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: EdgeInsets.all(4.w),
-            decoration: isDark
-                ? AppTheme.glassmorphicDecoration()
-                : BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.2),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: SkeuCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Diet Log",
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: onViewAll,
-                      child: Text(
-                        "View All",
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Diet Log',
+                  style: FoodInsightTypography.heading(
+                    size: 18,
+                    weight: FontWeight.w700,
+                  ),
                 ),
-                SizedBox(height: 1.h),
-                recentEntries.isEmpty
-                    ? _buildEmptyState(context)
-                    : Column(
-                        children: recentEntries
-                            .take(3)
-                            .map((entry) => _buildLogEntry(context, entry))
-                            .toList(),
-                      ),
+                GestureDetector(
+                  onTap: onViewAll,
+                  child: Text(
+                    'View All →',
+                    style: FoodInsightTypography.caption(
+                      size: 13,
+                      weight: FontWeight.w600,
+                      color: FoodInsightColors.infoBlue,
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            recentEntries.isEmpty
+                ? _buildEmptyState()
+                : Column(
+                    children: recentEntries
+                        .take(3)
+                        .map((entry) => _buildLogEntry(entry))
+                        .toList(),
+                  ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildLogEntry(BuildContext context, Map<String, dynamic> entry) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
+  Widget _buildLogEntry(Map<String, dynamic> entry) {
     return Container(
-      margin: EdgeInsets.only(bottom: 1.h),
-      padding: EdgeInsets.all(3.w),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
+        color: FoodInsightColors.cream,
+        borderRadius: FoodInsightRadius.mdAll,
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : colorScheme.outline.withValues(alpha: 0.1),
+          color: FoodInsightColors.embossedShadow.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       child: Row(
         children: [
+          // Food image
           Container(
-            width: 12.w,
-            height: 12.w,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : colorScheme.surfaceContainerHighest,
+              borderRadius: FoodInsightRadius.smAll,
+              color: FoodInsightColors.warmWhite,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: FoodInsightRadius.smAll,
               child: CustomImageWidget(
                 imageUrl: entry['image'] as String? ?? '',
-                width: 12.w,
-                height: 12.w,
+                width: 44,
+                height: 44,
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          SizedBox(width: 3.w),
+          const SizedBox(width: 12),
+          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   entry['name'] as String? ?? 'Unknown Food',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+                  style: FoodInsightTypography.body(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: FoodInsightColors.deepCharcoal,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 0.5.h),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Text(
-                      "${entry['calories'] ?? 0} kcal",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
+                      '${entry['calories'] ?? 0} kcal',
+                      style: FoodInsightTypography.caption(
+                        size: 11,
+                        weight: FontWeight.w600,
+                        color: FoodInsightColors.infoBlue,
                       ),
                     ),
-                    SizedBox(width: 2.w),
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colorScheme.onSurfaceVariant,
-                        shape: BoxShape.circle,
+                    if ((entry['time'] as String?)?.isNotEmpty == true) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 3,
+                        height: 3,
+                        decoration: const BoxDecoration(
+                          color: FoodInsightColors.midGray,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 2.w),
-                    Text(
-                      entry['time'] as String? ?? '',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                      const SizedBox(width: 6),
+                      Text(
+                        entry['time'] as String? ?? '',
+                        style: FoodInsightTypography.caption(
+                          size: 11,
+                          color: FoodInsightColors.midGray,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
-          CustomIconWidget(
-            iconName: 'chevron_right',
-            size: 5.w,
-            color: colorScheme.onSurfaceVariant,
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: FoodInsightColors.midGray,
+            size: 20,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 3.h),
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Center(
         child: Column(
           children: [
-            CustomIconWidget(
-              iconName: 'restaurant',
-              size: 8.w,
-              color: colorScheme.onSurfaceVariant,
+            Icon(
+              Icons.restaurant_rounded,
+              color: FoodInsightColors.midGray.withValues(alpha: 0.5),
+              size: 32,
             ),
-            SizedBox(height: 1.h),
+            const SizedBox(height: 10),
             Text(
-              "No entries yet",
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
+              'No entries yet',
+              style: FoodInsightTypography.body(
+                weight: FontWeight.w600,
+                color: FoodInsightColors.midGray,
               ),
             ),
-            SizedBox(height: 0.5.h),
+            const SizedBox(height: 4),
             Text(
-              "Start logging your meals to track progress",
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              'Start logging your meals to track progress',
+              style: FoodInsightTypography.caption(
+                size: 12,
+                color: FoodInsightColors.midGray,
               ),
               textAlign: TextAlign.center,
             ),

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:record/record.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -24,8 +22,6 @@ class ChatInputWidget extends StatefulWidget {
 }
 
 class _ChatInputWidgetState extends State<ChatInputWidget> {
-  final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _isRecording = false;
   bool _hasText = false;
 
   @override
@@ -37,7 +33,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   @override
   void dispose() {
     widget.textController.removeListener(_onTextChanged);
-    _audioRecorder.dispose();
     super.dispose();
   }
 
@@ -47,39 +42,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     });
   }
 
-  Future<void> _startRecording() async {
-    try {
-      if (await _audioRecorder.hasPermission()) {
-        await _audioRecorder.start(const RecordConfig(),
-            path: 'voice_message.m4a');
-        setState(() {
-          _isRecording = true;
-        });
-      } else {
-        await Permission.microphone.request();
-      }
-    } catch (e) {
-      // Handle recording error silently
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    try {
-      final path = await _audioRecorder.stop();
-      setState(() {
-        _isRecording = false;
-      });
-
-      if (path != null) {
-        widget.onVoiceMessage('Voice message recorded');
-      }
-    } catch (e) {
-      setState(() {
-        _isRecording = false;
-      });
-    }
-  }
-
   void _sendMessage() {
     if (widget.textController.text.trim().isNotEmpty && !widget.isLoading) {
       widget.onSendMessage(widget.textController.text.trim());
@@ -87,17 +49,30 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     }
   }
 
+  void _handleVoiceTap() {
+    // Voice recording has been removed to eliminate the `record` package
+    // dependency and its RECORD_AUDIO permission requirement.
+    // Show a snackbar informing the user.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Voice input is coming soon!'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.2.h),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 40,
+            offset: const Offset(0, -10),
           ),
         ],
       ),
@@ -107,8 +82,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(6.w),
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: Theme.of(context).colorScheme.outline
                         .withValues(alpha: 0.3),
@@ -140,23 +115,18 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _hasText
-                          ? null
-                          : (_isRecording ? _stopRecording : _startRecording),
-                      child: Container(
-                        padding: EdgeInsets.all(2.w),
-                        child: CustomIconWidget(
-                          iconName: _hasText
-                              ? 'keyboard'
-                              : (_isRecording ? 'stop' : 'mic'),
-                          color: _isRecording
-                              ? Colors.red
-                              : Theme.of(context).colorScheme.primary,
-                          size: 5.w,
+                    if (!_hasText)
+                      GestureDetector(
+                        onTap: _handleVoiceTap,
+                        child: Container(
+                          padding: EdgeInsets.all(2.w),
+                          child: CustomIconWidget(
+                            iconName: 'mic',
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 5.w,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -168,10 +138,11 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 width: 12.w,
                 height: 12.w,
                 decoration: BoxDecoration(
+                  gradient:
+                      _hasText && !widget.isLoading ? AppTheme.primaryGradient : null,
                   color: _hasText && !widget.isLoading
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.outline
-                          .withValues(alpha: 0.3),
+                      ? null
+                      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: widget.isLoading
@@ -201,4 +172,3 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     );
   }
 }
-

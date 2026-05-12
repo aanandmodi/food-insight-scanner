@@ -1,11 +1,11 @@
 <lint-module
     format="1"
-    dir="D:\Downloads\food_insight_scanner\food_insight_scanner\android\app"
+    dir="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app"
     name=":app"
     type="APP"
     maven="android:app:unspecified"
     agpVersion="8.5.2"
-    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\app"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\app"
     bootClassPath="D:\Android\Sdk\platforms\android-36\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
     javaSourceLevel="1.8"
     compileTarget="android-36"

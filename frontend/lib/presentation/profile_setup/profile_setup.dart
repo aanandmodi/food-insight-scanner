@@ -144,8 +144,12 @@ class _ProfileSetupState extends State<ProfileSetup>
           }
           _heightCm = (cloudProfile['heightCm'] as num?)?.toDouble();
           _weightKg = (cloudProfile['weightKg'] as num?)?.toDouble();
-          if (_heightCm != null) _heightController.text = _heightCm!.toStringAsFixed(0);
-          if (_weightKg != null) _weightController.text = _weightKg!.toStringAsFixed(1);
+          if (_heightCm != null) {
+            _heightController.text = _heightCm!.toStringAsFixed(0);
+          }
+          if (_weightKg != null) {
+            _weightController.text = _weightKg!.toStringAsFixed(1);
+          }
           _selectedDiseases = List<String>.from(cloudProfile['diseases'] ?? []);
           _selectedAllergies = List<String>.from(cloudProfile['allergies'] ?? []);
           _selectedHealthGoal = cloudProfile['healthGoal'];
@@ -159,11 +163,17 @@ class _ProfileSetupState extends State<ProfileSetup>
           _nameController.text = _userName;
           _selectedGender = prefs.getString('user_gender') ?? '';
           final dobStr = prefs.getString('user_dob');
-          if (dobStr != null) _dateOfBirth = DateTime.tryParse(dobStr);
+          if (dobStr != null) {
+            _dateOfBirth = DateTime.tryParse(dobStr);
+          }
           _heightCm = prefs.getDouble('user_height');
           _weightKg = prefs.getDouble('user_weight');
-          if (_heightCm != null) _heightController.text = _heightCm!.toStringAsFixed(0);
-          if (_weightKg != null) _weightController.text = _weightKg!.toStringAsFixed(1);
+          if (_heightCm != null) {
+            _heightController.text = _heightCm!.toStringAsFixed(0);
+          }
+          if (_weightKg != null) {
+            _weightController.text = _weightKg!.toStringAsFixed(1);
+          }
           _selectedDiseases = prefs.getStringList('user_diseases') ?? [];
           _selectedAllergies = prefs.getStringList('user_allergies') ?? [];
           _selectedHealthGoal = prefs.getString('user_health_goal');
@@ -552,15 +562,16 @@ class _ProfileSetupState extends State<ProfileSetup>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Setup Your Profile',
+                  'Food Insight Scanner',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w900,
                     fontSize: 16.sp,
+                    letterSpacing: -0.3,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Step $_currentStep of $_totalSteps',
+                  'Profile setup · Step $_currentStep of $_totalSteps',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -983,7 +994,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                     fontSize: 13,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(999),
                     side: BorderSide(
                       color: isSelected
                           ? Theme.of(context).colorScheme.error

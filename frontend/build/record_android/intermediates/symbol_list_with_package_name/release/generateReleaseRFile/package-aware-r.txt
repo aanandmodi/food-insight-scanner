@@ -1,2 +1,0 @@
-com.llfbandit.record
-drawable ic_mic

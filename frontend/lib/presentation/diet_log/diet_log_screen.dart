@@ -669,7 +669,7 @@ class _AIPlanSheetState extends State<_AIPlanSheet> {
               color: isDark ? AppTheme.surfaceDark : Colors.white,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               border: isDark
-                  ? Border(
+                  ? const Border(
                       top: BorderSide(color: AppTheme.glassDarkBorder),
                       left: BorderSide(color: AppTheme.glassDarkBorder),
                       right: BorderSide(color: AppTheme.glassDarkBorder),

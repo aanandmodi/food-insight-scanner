@@ -209,6 +209,18 @@ class LocalDatabaseService {
     await _database.delete('scan_history');
   }
 
+  /// Delete a scan from local history by barcode.
+  /// No-op if barcode is empty.
+  Future<void> deleteScanByBarcode(String barcode) async {
+    if (barcode.trim().isEmpty) return;
+    final deleted = await _database.delete(
+      'scan_history',
+      where: 'barcode = ?',
+      whereArgs: [barcode],
+    );
+    debugPrint('Deleted $deleted scan_history row(s) for barcode=$barcode');
+  }
+
   /// Clear all local diet log entries (used on sign-out).
   Future<void> clearDietLog() async {
     await _database.delete('diet_log');

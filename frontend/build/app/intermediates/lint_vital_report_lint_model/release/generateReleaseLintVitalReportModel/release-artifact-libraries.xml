@@ -1,17 +1,14 @@
 <libraries>
   <library
-      name="__local_aars__:D:\Downloads\food_insight_scanner\food_insight_scanner\build\app\intermediates\flutter\release\libs.jar:unspecified@jar"
-      jars="D:\Downloads\food_insight_scanner\food_insight_scanner\build\app\intermediates\flutter\release\libs.jar"
-      resolved="__local_aars__:D:\Downloads\food_insight_scanner\food_insight_scanner\build\app\intermediates\flutter\release\libs.jar:unspecified"/>
+      name="__local_aars__:D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\app\intermediates\flutter\release\libs.jar:unspecified@jar"
+      jars="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\app\intermediates\flutter\release\libs.jar"
+      resolved="__local_aars__:D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\app\intermediates\flutter\release\libs.jar:unspecified"/>
   <library
       name=":@@:cloud_functions::release"
       project=":cloud_functions"/>
   <library
       name=":@@:mobile_scanner::release"
       project=":mobile_scanner"/>
-  <library
-      name=":@@:record_android::release"
-      project=":record_android"/>
   <library
       name=":@@:shared_preferences_android::release"
       project=":shared_preferences_android"/>

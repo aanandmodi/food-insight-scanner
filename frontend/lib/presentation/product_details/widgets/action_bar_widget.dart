@@ -108,10 +108,10 @@ class ActionBarWidget extends StatelessWidget {
                       end: Alignment.bottomRight,
                       colors: [
                         Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.secondary,
+                        AppTheme.primaryVariantLight,
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(999),
                     boxShadow: [
                       BoxShadow(
                         color: Theme.of(context).colorScheme.primary

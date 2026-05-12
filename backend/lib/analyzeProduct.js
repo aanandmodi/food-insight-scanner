@@ -47,6 +47,58 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 const groqApiKeySecret = (0, params_1.defineSecret)("GROQ_API_KEY");
+function toNumber(value, fallback = 0) {
+    if (typeof value === "number" && Number.isFinite(value))
+        return value;
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed))
+            return parsed;
+    }
+    return fallback;
+}
+function toStringArray(value) {
+    if (!Array.isArray(value))
+        return [];
+    return value.map((item) => String(item).trim()).filter((item) => item.length > 0);
+}
+function normalizeProductPayload(data, barcode) {
+    try {
+        const nutritionRaw = data?.nutrition ?? {};
+        const aiRaw = data?.aiAnalysis ?? {};
+        return {
+            barcode: String(data?.barcode ?? barcode),
+            name: String(data?.name ?? "Unknown Product"),
+            brand: String(data?.brand ?? "Unknown Brand"),
+            category: String(data?.category ?? "Uncategorized"),
+            image: String(data?.image ?? ""),
+            nutrition: {
+                calories: toNumber(nutritionRaw.calories),
+                sugar: toNumber(nutritionRaw.sugar),
+                protein: toNumber(nutritionRaw.protein),
+                sodium: toNumber(nutritionRaw.sodium),
+                fiber: toNumber(nutritionRaw.fiber),
+                fat: toNumber(nutritionRaw.fat),
+                carbs: toNumber(nutritionRaw.carbs),
+            },
+            ingredients: toStringArray(data?.ingredients),
+            allergens: toStringArray(data?.allergens),
+            servingSize: String(data?.servingSize ?? "Per 100g"),
+            nutriscore: data?.nutriscore ? String(data.nutriscore) : null,
+            novaGroup: data?.novaGroup == null ? null : toNumber(data.novaGroup),
+            quantity: String(data?.quantity ?? ""),
+            aiAnalysis: {
+                summary: String(aiRaw.summary ?? "AI analysis unavailable."),
+                isHealthy: Boolean(aiRaw.isHealthy),
+                warnings: toStringArray(aiRaw.warnings),
+            },
+            lastUpdated: String(data?.lastUpdated ?? new Date().toISOString()),
+        };
+    }
+    catch (error) {
+        throw new https_1.HttpsError("internal", `Failed to normalize product payload: ${String(error)}`);
+    }
+}
 async function fetchFromOpenFoodFacts(barcode) {
     const fetch = (await Promise.resolve().then(() => __importStar(require("node-fetch")))).default;
     const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`;
@@ -131,7 +183,12 @@ exports.analyzeProduct = (0, https_1.onCall)({ region: "asia-south1", timeoutSec
     const cacheRef = db.collection("products").doc(barcode);
     const cached = await cacheRef.get();
     if (cached.exists) {
-        return cached.data();
+        try {
+            return normalizeProductPayload(cached.data(), barcode);
+        }
+        catch (error) {
+            console.error("Cached payload parse failed:", error);
+        }
     }
     // 2. Fetch from Open Food Facts
     const product = await fetchFromOpenFoodFacts(barcode);
@@ -152,7 +209,7 @@ exports.analyzeProduct = (0, https_1.onCall)({ region: "asia-south1", timeoutSec
         aiAnalysis = { summary: "AI analysis unavailable.", isHealthy: false, warnings: [] };
     }
     // 4. Cache in Firestore (Admin SDK bypasses security rules)
-    const result = { ...product, aiAnalysis, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
+    const result = normalizeProductPayload({ ...product, aiAnalysis, lastUpdated: new Date().toISOString() }, barcode);
     await cacheRef.set(result, { merge: true });
     return result;
 });

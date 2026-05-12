@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../services/auth_service.dart';
+import '../../../widgets/prototype_button.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -172,7 +173,7 @@ class _SignupScreenState extends State<SignupScreen>
                             SizedBox(height: 3.h),
                             // Header
                             Text(
-                              'Create Account',
+                              'Create your account',
                               style: theme.textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 shadows: isDark
@@ -277,40 +278,28 @@ class _SignupScreenState extends State<SignupScreen>
                                 .slideY(begin: 0.05, end: 0),
                             SizedBox(height: 4.h),
                             // Sign Up Button
-                            GlowButton(
-                              glowColor: colorScheme.primary,
-                              glowIntensity: isDark ? 0.25 : 0.1,
-                              onTap: _isLoading ? null : _handleSignUp,
-                              child: Container(
-                                width: double.infinity,
-                                height: 7.h,
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: _isLoading
-                                      ? SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                              colorScheme.onPrimary,
-                                            ),
-                                          ),
-                                        )
-                                      : Text(
-                                          'Create Account',
-                                          style: theme.textTheme.titleMedium
-                                              ?.copyWith(
-                                            color: colorScheme.onPrimary,
-                                            fontWeight: FontWeight.w600,
+                            SizedBox(
+                              width: double.infinity,
+                              child: _isLoading
+                                  ? Container(
+                                      height: 7.h,
+                                      decoration: BoxDecoration(
+                                        gradient: AppTheme.primaryGradient,
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            colorScheme.onPrimary,
                                           ),
                                         ),
-                                ),
-                              ),
+                                      ),
+                                    )
+                                  : PrototypeButton(
+                                      label: 'Create Account',
+                                      onPressed: _handleSignUp,
+                                    ),
                             )
                                 .animate()
                                 .fadeIn(duration: 500.ms, delay: 400.ms),

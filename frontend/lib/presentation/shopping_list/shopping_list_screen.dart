@@ -17,41 +17,11 @@ class ShoppingListScreen extends StatefulWidget {
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _items = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadItems();
-  }
-
-  Future<void> _loadItems() async {
-    setState(() => _isLoading = true);
-    try {
-      final items = await _firestoreService.getShoppingList();
-      if (mounted) {
-        setState(() {
-          _items = items;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading shopping list: $e');
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   Future<void> _toggleItem(String id, bool checked) async {
     HapticFeedback.lightImpact();
     try {
       await _firestoreService.toggleShoppingItem(id, checked);
-      setState(() {
-        final idx = _items.indexWhere((item) => item['id'] == id);
-        if (idx != -1) {
-          _items[idx]['checked'] = checked;
-        }
-      });
     } catch (e) {
       debugPrint('Error toggling item: $e');
     }
@@ -60,9 +30,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _deleteItem(String id) async {
     try {
       await _firestoreService.deleteShoppingItem(id);
-      setState(() {
-        _items.removeWhere((item) => item['id'] == id);
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item removed')),
@@ -73,8 +40,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     }
   }
 
-  Future<void> _clearChecked() async {
-    final checkedCount = _items.where((i) => i['checked'] == true).length;
+  Future<void> _clearChecked(List<Map<String, dynamic>> items) async {
+    final checkedCount = items.where((i) => i['checked'] == true).length;
     if (checkedCount == 0) return;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -101,7 +68,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     if (confirmed == true) {
       try {
         await _firestoreService.clearCheckedShoppingItems();
-        _loadItems();
       } catch (e) {
         debugPrint('Error clearing items: $e');
       }
@@ -146,7 +112,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           'brand': '',
           'category': 'Custom',
         });
-        _loadItems();
       } catch (e) {
         debugPrint('Error adding item: $e');
       }
@@ -160,105 +125,113 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final uncheckedItems =
-        _items.where((i) => i['checked'] != true).toList();
-    final checkedItems =
-        _items.where((i) => i['checked'] == true).toList();
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _firestoreService.shoppingListStream(),
+      builder: (context, snapshot) {
+        final items = snapshot.data ?? [];
+        final uncheckedItems =
+            items.where((i) => i['checked'] != true).toList();
+        final checkedItems = items.where((i) => i['checked'] == true).toList();
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Shopping List',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          if (checkedItems.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.cleaning_services_outlined),
-              tooltip: 'Clear checked',
-              onPressed: _clearChecked,
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-          : _items.isEmpty
-              ? _buildEmptyState(context)
-              : RefreshIndicator(
-                  onRefresh: _loadItems,
-                  color: colorScheme.primary,
-                  child: ListView(
-                    padding: EdgeInsets.all(4.w),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      if (uncheckedItems.isNotEmpty) ...[
-                        Text(
-                          'To Buy (${uncheckedItems.length})',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                        ).animate().fadeIn(duration: 400.ms),
-                        SizedBox(height: 1.h),
-                        ...uncheckedItems.asMap().entries.map((e) =>
-                            _buildItemTile(context, e.value)
-                                .animate()
-                                .fadeIn(
-                                    duration: 400.ms,
-                                    delay: Duration(
-                                        milliseconds:
-                                            (e.key * 50).clamp(0, 300)))
-                                .slideY(begin: 0.03, end: 0)),
-                      ],
-                      if (checkedItems.isNotEmpty) ...[
-                        SizedBox(height: 2.h),
-                        Text(
-                          'Completed (${checkedItems.length})',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ).animate().fadeIn(duration: 400.ms),
-                        SizedBox(height: 1.h),
-                        ...checkedItems
-                            .map((item) => _buildItemTile(context, item)),
-                      ],
-                      SizedBox(height: 10.h),
-                    ],
-                  ),
-                ),
-      floatingActionButton: GlowButton(
-        glowColor: colorScheme.primary,
-        glowIntensity: isDark ? 0.25 : 0.1,
-        onTap: _addCustomItem,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
-          decoration: BoxDecoration(
-            color: colorScheme.primary,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, color: colorScheme.onPrimary),
-              SizedBox(width: 2.w),
-              Text(
-                'Add Item',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: AppBar(
+            title: Text(
+              'Shopping List',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            centerTitle: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            actions: [
+              if (checkedItems.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.cleaning_services_outlined),
+                  tooltip: 'Clear checked',
+                  onPressed: () => _clearChecked(items),
+                ),
             ],
           ),
-        ),
-      ),
+          body: (snapshot.connectionState == ConnectionState.waiting)
+              ? Center(
+                  child: CircularProgressIndicator(color: colorScheme.primary),
+                )
+              : items.isEmpty
+                  ? _buildEmptyState(context)
+                  : RefreshIndicator(
+                      onRefresh: () async => setState(() {}),
+                      color: colorScheme.primary,
+                      child: ListView(
+                        padding: EdgeInsets.all(4.w),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          if (uncheckedItems.isNotEmpty) ...[
+                            Text(
+                              'To Buy (${uncheckedItems.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ).animate().fadeIn(duration: 400.ms),
+                            SizedBox(height: 1.h),
+                            ...uncheckedItems.asMap().entries.map((e) =>
+                                _buildItemTile(context, e.value)
+                                    .animate()
+                                    .fadeIn(
+                                        duration: 400.ms,
+                                        delay: Duration(
+                                            milliseconds:
+                                                (e.key * 50).clamp(0, 300)))
+                                    .slideY(begin: 0.03, end: 0)),
+                          ],
+                          if (checkedItems.isNotEmpty) ...[
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Completed (${checkedItems.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ).animate().fadeIn(duration: 400.ms),
+                            SizedBox(height: 1.h),
+                            ...checkedItems
+                                .map((item) => _buildItemTile(context, item)),
+                          ],
+                          SizedBox(height: 10.h),
+                        ],
+                      ),
+                    ),
+          floatingActionButton: GlowButton(
+            glowColor: colorScheme.primary,
+            glowIntensity: isDark ? 0.25 : 0.1,
+            onTap: _addCustomItem,
+            child: Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, color: colorScheme.onPrimary),
+                  SizedBox(width: 2.w),
+                  Text(
+                    'Add Item',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
