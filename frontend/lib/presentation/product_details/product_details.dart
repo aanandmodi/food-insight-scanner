@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../services/cloud_function_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/cloud_function_service.dart';
 import './widgets/action_bar_widget.dart';
 import './widgets/alternatives_widget.dart';
 import './widgets/ingredients_widget.dart';
@@ -70,7 +70,7 @@ class _ProductDetailsState extends State<ProductDetails> {
   }
 
   // AI Alternatives State
-  List<Map<String, dynamic>> _alternatives = [];
+  final List<Map<String, dynamic>> _alternatives = [];
   bool _isLoadingAlternatives = false;
 
   Future<void> _loadAlternatives() async {
@@ -81,21 +81,20 @@ class _ProductDetailsState extends State<ProductDetails> {
     });
 
     try {
-      // Create a profile map for the AI
-      final profileMap = {
+      final profileMap = <String, dynamic>{
         'allergies': userAllergies,
-        'dietaryPreferences': dietaryPreference,
-        'healthGoals': healthGoal,
+        'dietaryPreference': dietaryPreference,
+        'healthGoal': healthGoal,
       };
 
-      final results = await CloudFunctionService().getHealthyAlternatives(
+      final results = await CloudFunctionService().getAlternatives(
         productData: productData,
         userProfile: profileMap,
       );
 
       if (mounted) {
         setState(() {
-          _alternatives = results;
+          _alternatives.addAll(results);
         });
       }
     } catch (e) {
@@ -377,7 +376,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                               ),
                             ),
                             child: CustomIconWidget(
-                              iconName: 'chat',
+                              iconName: 'restaurant',
                               size: 24,
                               color: colorScheme.primary,
                             ),
@@ -452,7 +451,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 400.ms),
                         SizedBox(height: 3.h),
-                        // Alternatives
+                        // AI insights alternatives
                         if (_isLoadingAlternatives)
                           Padding(
                             padding: EdgeInsets.symmetric(vertical: 2.h),

@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Firebase Cloud Functions backend",
-  "main": "src/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
     "serve": "npm run build && firebase emulators:start --only functions",

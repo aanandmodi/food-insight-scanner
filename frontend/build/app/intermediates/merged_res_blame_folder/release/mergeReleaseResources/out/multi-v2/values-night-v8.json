@@ -4,6 +4,25 @@
             "outputFile": "com.food_insight_scanner.app-mergeReleaseResources-59:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
+                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\frontend\\android\\app\\src\\main\\res\\values-night\\styles.xml",
+                    "from": {
+                        "startLines": "4,14",
+                        "startColumns": "4,4",
+                        "startOffsets": "224,863",
+                        "endLines": "8,16",
+                        "endColumns": "12,12",
+                        "endOffsets": "516,1016"
+                    },
+                    "to": {
+                        "startLines": "2,6",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,232",
+                        "endLines": "5,8",
+                        "endColumns": "12,12",
+                        "endOffsets": "227,383"
+                    }
+                },
+                {
                     "source": "C:\\Users\\aanan\\.gradle\\caches\\8.10\\transforms\\3710ea4f898d96471c48f59f874a5216\\transformed\\material-1.9.0\\res\\values-night-v8\\values-night-v8.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34",
@@ -35,25 +54,6 @@
                         "startOffsets": "388,458,542,626,722,824,926,3781",
                         "endColumns": "69,83,83,95,101,101,93,88",
                         "endOffsets": "453,537,621,717,819,921,1015,3865"
-                    }
-                },
-                {
-                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\android\\app\\src\\main\\res\\values-night\\styles.xml",
-                    "from": {
-                        "startLines": "4,14",
-                        "startColumns": "4,4",
-                        "startOffsets": "224,863",
-                        "endLines": "8,16",
-                        "endColumns": "12,12",
-                        "endOffsets": "516,1016"
-                    },
-                    "to": {
-                        "startLines": "2,6",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,232",
-                        "endLines": "5,8",
-                        "endColumns": "12,12",
-                        "endOffsets": "227,383"
                     }
                 }
             ]

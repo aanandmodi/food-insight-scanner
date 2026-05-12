@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
-import 'dart:ui';
 
-import '../../../core/app_export.dart';
-import '../../../widgets/custom_bounce_button.dart';
+import '../../../theme/app_design_system.dart';
+import '../../../widgets/skeuomorphic/skeu_card.dart';
 
 class QuickActionsSection extends StatelessWidget {
   final VoidCallback onScanBarcode;
@@ -20,152 +19,166 @@ class QuickActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Quick Actions",
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              'Quick Actions',
+              style: FoodInsightTypography.heading(
+                size: 18,
+                weight: FontWeight.w700,
+              ),
             ),
           ),
-          SizedBox(height: 1.5.h),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: _buildGlassActionButton(
-                  context,
-                  "Scan Barcode",
-                  "qr_code_scanner",
-                  colorScheme.primary,
-                  onScanBarcode,
+                child: _SkeuActionTile(
+                  icon: Icons.qr_code_scanner_rounded,
+                  label: 'Scan\nBarcode',
+                  color: FoodInsightColors.scannerGreen,
+                  onTap: onScanBarcode,
                 ),
               ),
-              SizedBox(width: 3.w),
+              const SizedBox(width: 12),
               Expanded(
-                child: _buildGlassActionButton(
-                  context,
-                  "Upload Image",
-                  "photo_camera",
-                  AppTheme.getSuccessColor(
-                      theme.brightness == Brightness.light),
-                  onUploadImage,
+                child: _SkeuActionTile(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Upload\nImage',
+                  color: FoodInsightColors.infoBlue,
+                  onTap: onUploadImage,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SkeuActionTile(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'AI\nAssistant',
+                  color: FoodInsightColors.purpleAccent,
+                  onTap: onChatWithAI,
                 ),
               ),
             ],
-          ),
-          SizedBox(height: 2.h),
-          _buildGlassActionButton(
-            context,
-            "Chat with AI Assistant",
-            "smart_toy",
-            AppTheme.getWarningColor(theme.brightness == Brightness.light),
-            onChatWithAI,
-            isFullWidth: true,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildGlassActionButton(
-    BuildContext context,
-    String title,
-    String iconName,
-    Color color,
-    VoidCallback onTap, {
-    bool isFullWidth = false,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+/// Individual skeuomorphic action tile with press animation
+class _SkeuActionTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
 
-    return CustomBounceButton(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            height: isFullWidth ? 8.h : 12.h,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        color.withValues(alpha: 0.15),
-                        color.withValues(alpha: 0.05),
-                      ]
-                    : [
-                        color.withValues(alpha: 0.1),
-                        color.withValues(alpha: 0.05),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark
-                    ? color.withValues(alpha: 0.35)
-                    : color.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(3.w),
-              child: isFullWidth
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CustomIconWidget(
-                          iconName: iconName,
-                          size: 6.w,
-                          color: color,
-                        ),
-                        SizedBox(width: 3.w),
-                        Text(
-                          title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: color,
-                            shadows: isDark
-                                ? AppTheme.textGlow(color, blur: 4)
-                                : null,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CustomIconWidget(
-                          iconName: iconName,
-                          size: 8.w,
-                          color: color,
-                        ),
-                        SizedBox(height: 1.h),
-                        Text(
-                          title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: color,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+  const _SkeuActionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_SkeuActionTile> createState() => _SkeuActionTileState();
+}
+
+class _SkeuActionTileState extends State<_SkeuActionTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.94).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        HapticFeedback.lightImpact();
+        _controller.forward();
+      },
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scale.value,
+            child: child,
+          );
+        },
+        child: SkeuCard(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+          borderRadius: 20,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              widget.color.withValues(alpha: 0.05),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Icon with colored background circle
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withValues(alpha: 0.12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      spreadRadius: 1,
                     ),
-            ),
+                  ],
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: widget.color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                widget.label,
+                style: FoodInsightTypography.caption(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: FoodInsightColors.deepCharcoal,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+              ),
+            ],
           ),
         ),
       ),

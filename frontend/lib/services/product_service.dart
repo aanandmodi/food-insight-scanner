@@ -87,4 +87,13 @@ class ProductService {
       debugPrint('Error clearing local history: $e');
     }
   }
+
+  /// Deletes a scan from local-only history (used when offline/guest).
+  Future<void> deleteLocalScan(String barcode) async {
+    try {
+      await _localDb.deleteScanByBarcode(barcode);
+    } catch (e) {
+      debugPrint('Error deleting local scan: $e');
+    }
+  }
 }

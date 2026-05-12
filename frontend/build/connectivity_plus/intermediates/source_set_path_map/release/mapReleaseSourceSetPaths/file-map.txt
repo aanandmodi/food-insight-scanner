@@ -20,8 +20,8 @@ dev.fluttercommunity.plus.connectivity.connectivity_plus-fragment-1.7.1-18 C:\Us
 dev.fluttercommunity.plus.connectivity.connectivity_plus-lifecycle-runtime-2.7.0-19 C:\Users\aanan\.gradle\caches\8.10\transforms\e74e8f8058ad7df2f9d5bc63e75ff6b6\transformed\lifecycle-runtime-2.7.0\res
 dev.fluttercommunity.plus.connectivity.connectivity_plus-main-20 C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-6.1.5\android\src\main\res
 dev.fluttercommunity.plus.connectivity.connectivity_plus-release-21 C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-6.1.5\android\src\release\res
-dev.fluttercommunity.plus.connectivity.connectivity_plus-pngs-22 D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\generated\res\pngs\release
-dev.fluttercommunity.plus.connectivity.connectivity_plus-resValues-23 D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\generated\res\resValues\release
-dev.fluttercommunity.plus.connectivity.connectivity_plus-mergeReleaseResources-24 D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\incremental\release\mergeReleaseResources\merged.dir
-dev.fluttercommunity.plus.connectivity.connectivity_plus-mergeReleaseResources-25 D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-dev.fluttercommunity.plus.connectivity.connectivity_plus-release-26 D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\merged_res\release\mergeReleaseResources
+dev.fluttercommunity.plus.connectivity.connectivity_plus-pngs-22 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\generated\res\pngs\release
+dev.fluttercommunity.plus.connectivity.connectivity_plus-resValues-23 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\generated\res\resValues\release
+dev.fluttercommunity.plus.connectivity.connectivity_plus-mergeReleaseResources-24 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\incremental\release\mergeReleaseResources\merged.dir
+dev.fluttercommunity.plus.connectivity.connectivity_plus-mergeReleaseResources-25 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+dev.fluttercommunity.plus.connectivity.connectivity_plus-release-26 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\merged_res\release\mergeReleaseResources

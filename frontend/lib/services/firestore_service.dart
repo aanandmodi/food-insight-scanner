@@ -46,6 +46,53 @@ class FirestoreService {
     }
   }
 
+  // ──────────────────────────── Live Streams ────────────────────────────
+
+  /// Live stream of scan history (most recent first).
+  /// Returns an empty stream if Firebase/Auth aren't ready.
+  Stream<List<Map<String, dynamic>>> scanHistoryStream({int limit = 50}) {
+    final db = _firestore;
+    final uid = _userId;
+    if (db == null || uid == null) return const Stream.empty();
+
+    return db
+        .collection('scan_history')
+        .doc(uid)
+        .collection('scans')
+        .orderBy('scannedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    });
+  }
+
+  /// Live stream of shopping list items (most recent first).
+  /// Returns an empty stream if Firebase/Auth aren't ready.
+  Stream<List<Map<String, dynamic>>> shoppingListStream() {
+    final db = _firestore;
+    final uid = _userId;
+    if (db == null || uid == null) return const Stream.empty();
+
+    return db
+        .collection('shopping_list')
+        .doc(uid)
+        .collection('items')
+        .orderBy('addedAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    });
+  }
+
   // ──────────────────────────── User Profile ────────────────────────────
 
   /// Save or update user profile in Firestore

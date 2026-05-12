@@ -1,21 +1,21 @@
 -- Merging decision tree log ---
 application
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:12:5-50:19
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:12:5-50:19
-MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
-MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:12:5-50:19
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:12:5-50:19
+MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
 MERGED from [com.google.android.material:material:1.9.0] C:\Users\aanan\.gradle\caches\8.10\transforms\3710ea4f898d96471c48f59f874a5216\transformed\material-1.9.0\AndroidManifest.xml:24:5-20
 MERGED from [com.google.android.material:material:1.9.0] C:\Users\aanan\.gradle\caches\8.10\transforms\3710ea4f898d96471c48f59f874a5216\transformed\material-1.9.0\AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\aanan\.gradle\caches\8.10\transforms\aebde5a1c2aad1785181449c1c247ae8\transformed\constraintlayout-2.0.1\AndroidManifest.xml:9:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\aanan\.gradle\caches\8.10\transforms\aebde5a1c2aad1785181449c1c247ae8\transformed\constraintlayout-2.0.1\AndroidManifest.xml:9:5-20
-MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:5-32:19
-MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:5-32:19
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:5-32:19
+MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:5-32:19
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-13:19
 MERGED from [androidx.camera:camera-core:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\bd9fb723e56983c7b6be6f7d232b4738\transformed\jetified-camera-core-1.3.3\AndroidManifest.xml:23:5-34:19
 MERGED from [androidx.camera:camera-core:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\bd9fb723e56983c7b6be6f7d232b4738\transformed\jetified-camera-core-1.3.3\AndroidManifest.xml:23:5-34:19
 MERGED from [androidx.camera:camera-camera2:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\56cb554bc3b8b9f4fd7b0d5bb8d24955\transformed\jetified-camera-camera2-1.3.3\AndroidManifest.xml:23:5-34:19
@@ -85,49 +85,48 @@ MERGED from [com.google.android.odml:image:1.0.0-beta1] C:\Users\aanan\.gradle\c
 MERGED from [com.google.android.play:core-common:2.0.3] C:\Users\aanan\.gradle\caches\8.10\transforms\7ffbf3c6ca2fb8ed0ced003f43be2643\transformed\jetified-core-common-2.0.3\AndroidManifest.xml:11:5-19:19
 MERGED from [com.google.android.play:core-common:2.0.3] C:\Users\aanan\.gradle\caches\8.10\transforms\7ffbf3c6ca2fb8ed0ced003f43be2643\transformed\jetified-core-common-2.0.3\AndroidManifest.xml:11:5-19:19
 	android:extractNativeLibs
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] C:\Users\aanan\.gradle\caches\8.10\transforms\95e8485f46bdd61521d73e9bfaaf364c\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 	android:label
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:13:13-49
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:13:13-49
 	android:icon
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:15:13-47
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:15:13-47
 	android:enableOnBackInvokedCallback
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:16:13-55
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:16:13-55
 	android:name
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:14:13-46
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:14:13-46
 manifest
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:1:1-57:12
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:1:1-57:12
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:1:1-57:12
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:1:1-57:12
-MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-13:12
-MERGED from [:record_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-9:12
-MERGED from [:shared_preferences_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\shared_preferences_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:1:1-57:12
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:1:1-57:12
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:1:1-57:12
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:1:1-57:12
+MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-13:12
+MERGED from [:shared_preferences_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\shared_preferences_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
 MERGED from [com.google.android.material:material:1.9.0] C:\Users\aanan\.gradle\caches\8.10\transforms\3710ea4f898d96471c48f59f874a5216\transformed\material-1.9.0\AndroidManifest.xml:17:1-26:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\aanan\.gradle\caches\8.10\transforms\aebde5a1c2aad1785181449c1c247ae8\transformed\constraintlayout-2.0.1\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.preference:preference:1.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\f0392f14455c5eb557bbff77c8ea8255\transformed\preference-1.2.1\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.appcompat:appcompat-resources:1.5.0] C:\Users\aanan\.gradle\caches\8.10\transforms\0c6bfbb387366b9b1eb0230860f5fe76\transformed\jetified-appcompat-resources-1.5.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.appcompat:appcompat:1.5.0] C:\Users\aanan\.gradle\caches\8.10\transforms\48f1cb2bbfe0d5e1cde98576055ae0b0\transformed\appcompat-1.5.0\AndroidManifest.xml:17:1-22:12
-MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-34:12
+MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-34:12
 MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.1.0] C:\Users\aanan\.gradle\caches\8.10\transforms\b756de9336552f38a0b88ec53b6b51ff\transformed\coordinatorlayout-1.1.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.drawerlayout:drawerlayout:1.1.1] C:\Users\aanan\.gradle\caches\8.10\transforms\e1fec4580c22d632aac4003c986a184f\transformed\drawerlayout-1.1.1\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.dynamicanimation:dynamicanimation:1.0.0] C:\Users\aanan\.gradle\caches\8.10\transforms\228d555d67cc86a7c337badc75d8377b\transformed\dynamicanimation-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\aanan\.gradle\caches\8.10\transforms\ca2a9497b019fa005c7c8fd8efb8e5ac\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\aanan\.gradle\caches\8.10\transforms\b451d12f3c64eb957609feafeb151836\transformed\vectordrawable-1.1.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] C:\Users\aanan\.gradle\caches\8.10\transforms\87de8bf13b6251ee3b8a59aef377a230\transformed\jetified-viewpager2-1.0.0\AndroidManifest.xml:17:1-24:12
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
-MERGED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-9:12
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
-MERGED from [:flutter_plugin_android_lifecycle] D:\Downloads\food_insight_scanner\food_insight_scanner\build\flutter_plugin_android_lifecycle\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
-MERGED from [:fluttertoast] D:\Downloads\food_insight_scanner\food_insight_scanner\build\fluttertoast\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
-MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-9:12
-MERGED from [:path_provider_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\path_provider_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
-MERGED from [:permission_handler_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\permission_handler_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
-MERGED from [:sqflite_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\sqflite_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
+MERGED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-9:12
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-15:12
+MERGED from [:flutter_plugin_android_lifecycle] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\flutter_plugin_android_lifecycle\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
+MERGED from [:fluttertoast] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\fluttertoast\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
+MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-9:12
+MERGED from [:path_provider_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\path_provider_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
+MERGED from [:permission_handler_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\permission_handler_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
+MERGED from [:sqflite_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\sqflite_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-core:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\bd9fb723e56983c7b6be6f7d232b4738\transformed\jetified-camera-core-1.3.3\AndroidManifest.xml:17:1-36:12
 MERGED from [androidx.camera:camera-camera2:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\56cb554bc3b8b9f4fd7b0d5bb8d24955\transformed\jetified-camera-camera2-1.3.3\AndroidManifest.xml:17:1-36:12
 MERGED from [androidx.camera:camera-lifecycle:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\6caa78689be11feb0f37718e3a3280ce\transformed\jetified-camera-lifecycle-1.3.3\AndroidManifest.xml:2:1-7:12
@@ -222,17 +221,17 @@ MERGED from [com.google.firebase:protolite-well-known-types:18.0.1] C:\Users\aan
 MERGED from [com.google.android.odml:image:1.0.0-beta1] C:\Users\aanan\.gradle\caches\8.10\transforms\6e0ef3b7a75483931ea2d097b2232775\transformed\jetified-image-1.0.0-beta1\AndroidManifest.xml:2:1-9:12
 MERGED from [com.google.android.play:core-common:2.0.3] C:\Users\aanan\.gradle\caches\8.10\transforms\7ffbf3c6ca2fb8ed0ced003f43be2643\transformed\jetified-core-common-2.0.3\AndroidManifest.xml:2:1-21:12
 	package
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
 	android:versionName
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
 	android:versionCode
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
 	xmlns:android
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:1:11-69
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:1:11-69
 uses-permission#android.permission.INTERNET
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:7:5-66
-MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-67
-MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-67
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:7:5-66
+MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-67
+MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-67
 MERGED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:25:5-67
 MERGED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:25:5-67
 MERGED from [com.google.firebase:firebase-firestore:25.1.4] C:\Users\aanan\.gradle\caches\8.10\transforms\7c4b9ecc848fa7a3d7d9dbd5577ba55c\transformed\jetified-firebase-firestore-25.1.4\AndroidManifest.xml:11:5-67
@@ -250,93 +249,91 @@ MERGED from [com.google.android.gms:play-services-cloud-messaging:16.0.0] C:\Use
 MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\159beeedc7ba96bad66ad35939fdbbfb\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:26:5-67
 MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\159beeedc7ba96bad66ad35939fdbbfb\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:26:5-67
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:7:22-64
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:7:22-64
 uses-permission#android.permission.CAMERA
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:8:5-64
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-65
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-65
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:8:5-64
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-65
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-65
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:8:22-62
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:8:22-62
 uses-feature#android.hardware.camera
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:9:5-83
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:5-11:36
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:5-11:36
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:9:5-83
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:5-11:36
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:5-11:36
 	android:required
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:9:58-81
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:9:58-81
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:9:19-57
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:9:19-57
 uses-feature#android.hardware.camera.autofocus
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:10:5-94
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:10:5-94
 	android:required
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:10:68-92
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:10:68-92
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:10:19-67
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:10:19-67
 queries
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:51:5-56:15
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:51:5-56:15
 intent#action:name:android.intent.action.PROCESS_TEXT+data:mimeType:text/plain
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:52:9-55:18
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:52:9-55:18
 action#android.intent.action.PROCESS_TEXT
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:53:13-72
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:53:13-72
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:53:21-70
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:53:21-70
 data
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:54:13-50
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:54:13-50
 	android:mimeType
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:54:19-48
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:54:19-48
 activity#com.food_insight_scanner.app.MainActivity
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:17:9-44:20
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:17:9-44:20
 	android:launchMode
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:20:17-47
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:20:17-47
 	android:hardwareAccelerated
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:24:17-51
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:24:17-51
 	android:windowSoftInputMode
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:26:17-59
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:26:17-59
 	android:exported
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:19:17-40
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:19:17-40
 	android:configChanges
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:23:17-167
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:23:17-167
 	android:theme
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:22:17-51
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:22:17-51
 	android:taskAffinity
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:21:17-40
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:21:17-40
 	android:usesCleartextTraffic
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:25:17-52
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:25:17-52
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:18:17-45
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:18:17-45
 meta-data#io.flutter.embedding.android.NormalTheme
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:31:13-34:15
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:31:13-34:15
 	android:resource
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:33:21-58
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:33:21-58
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:32:21-76
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:32:21-76
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:40:13-43:29
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:40:13-43:29
 action#android.intent.action.MAIN
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:41:17-68
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:41:17-68
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:41:25-66
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:41:25-66
 category#android.intent.category.LAUNCHER
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:42:17-76
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:42:17-76
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:42:27-74
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:42:27-74
 meta-data#flutterEmbedding
-ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:47:9-49:36
+ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:47:9-49:36
 	android:value
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:49:17-34
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:49:17-34
 	android:name
-		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml:48:17-48
+		ADDED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml:48:17-48
 uses-sdk
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
-INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
-MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:record_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:record_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:shared_preferences_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\shared_preferences_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:shared_preferences_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\shared_preferences_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
+INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
+MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:mobile_scanner] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\mobile_scanner\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:shared_preferences_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\shared_preferences_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:shared_preferences_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\shared_preferences_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
 MERGED from [com.google.android.material:material:1.9.0] C:\Users\aanan\.gradle\caches\8.10\transforms\3710ea4f898d96471c48f59f874a5216\transformed\material-1.9.0\AndroidManifest.xml:20:5-22:41
 MERGED from [com.google.android.material:material:1.9.0] C:\Users\aanan\.gradle\caches\8.10\transforms\3710ea4f898d96471c48f59f874a5216\transformed\material-1.9.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\aanan\.gradle\caches\8.10\transforms\aebde5a1c2aad1785181449c1c247ae8\transformed\constraintlayout-2.0.1\AndroidManifest.xml:5:5-7:41
@@ -347,8 +344,8 @@ MERGED from [androidx.appcompat:appcompat-resources:1.5.0] C:\Users\aanan\.gradl
 MERGED from [androidx.appcompat:appcompat-resources:1.5.0] C:\Users\aanan\.gradle\caches\8.10\transforms\0c6bfbb387366b9b1eb0230860f5fe76\transformed\jetified-appcompat-resources-1.5.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.appcompat:appcompat:1.5.0] C:\Users\aanan\.gradle\caches\8.10\transforms\48f1cb2bbfe0d5e1cde98576055ae0b0\transformed\appcompat-1.5.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.appcompat:appcompat:1.5.0] C:\Users\aanan\.gradle\caches\8.10\transforms\48f1cb2bbfe0d5e1cde98576055ae0b0\transformed\appcompat-1.5.0\AndroidManifest.xml:20:5-44
-MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:6:5-44
-MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:6:5-44
+MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:6:5-44
+MERGED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:6:5-44
 MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.1.0] C:\Users\aanan\.gradle\caches\8.10\transforms\b756de9336552f38a0b88ec53b6b51ff\transformed\coordinatorlayout-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.1.0] C:\Users\aanan\.gradle\caches\8.10\transforms\b756de9336552f38a0b88ec53b6b51ff\transformed\coordinatorlayout-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.drawerlayout:drawerlayout:1.1.1] C:\Users\aanan\.gradle\caches\8.10\transforms\e1fec4580c22d632aac4003c986a184f\transformed\drawerlayout-1.1.1\AndroidManifest.xml:20:5-22:41
@@ -361,26 +358,26 @@ MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\aanan\.gradl
 MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\aanan\.gradle\caches\8.10\transforms\b451d12f3c64eb957609feafeb151836\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] C:\Users\aanan\.gradle\caches\8.10\transforms\87de8bf13b6251ee3b8a59aef377a230\transformed\jetified-viewpager2-1.0.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] C:\Users\aanan\.gradle\caches\8.10\transforms\87de8bf13b6251ee3b8a59aef377a230\transformed\jetified-viewpager2-1.0.0\AndroidManifest.xml:20:5-22:41
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:flutter_plugin_android_lifecycle] D:\Downloads\food_insight_scanner\food_insight_scanner\build\flutter_plugin_android_lifecycle\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:flutter_plugin_android_lifecycle] D:\Downloads\food_insight_scanner\food_insight_scanner\build\flutter_plugin_android_lifecycle\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:fluttertoast] D:\Downloads\food_insight_scanner\food_insight_scanner\build\fluttertoast\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:fluttertoast] D:\Downloads\food_insight_scanner\food_insight_scanner\build\fluttertoast\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:path_provider_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\path_provider_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:path_provider_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\path_provider_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:permission_handler_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\permission_handler_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:permission_handler_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\permission_handler_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:sqflite_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\sqflite_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
-MERGED from [:sqflite_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\sqflite_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:flutter_plugin_android_lifecycle] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\flutter_plugin_android_lifecycle\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:flutter_plugin_android_lifecycle] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\flutter_plugin_android_lifecycle\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:fluttertoast] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\fluttertoast\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:fluttertoast] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\fluttertoast\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:google_sign_in_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\google_sign_in_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:path_provider_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\path_provider_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:path_provider_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\path_provider_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:permission_handler_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\permission_handler_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:permission_handler_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\permission_handler_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:sqflite_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\sqflite_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
+MERGED from [:sqflite_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\sqflite_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:5:5-44
 MERGED from [androidx.camera:camera-core:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\bd9fb723e56983c7b6be6f7d232b4738\transformed\jetified-camera-core-1.3.3\AndroidManifest.xml:21:5-44
 MERGED from [androidx.camera:camera-core:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\bd9fb723e56983c7b6be6f7d232b4738\transformed\jetified-camera-core-1.3.3\AndroidManifest.xml:21:5-44
 MERGED from [androidx.camera:camera-camera2:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\56cb554bc3b8b9f4fd7b0d5bb8d24955\transformed\jetified-camera-camera2-1.3.3\AndroidManifest.xml:21:5-44
@@ -570,17 +567,17 @@ MERGED from [com.google.android.play:core-common:2.0.3] C:\Users\aanan\.gradle\c
 	tools:overrideLibrary
 		ADDED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:23:9-148
 	android:targetSdkVersion
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\android\app\src\main\AndroidManifest.xml
+		INJECTED from D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\android\app\src\main\AndroidManifest.xml
 service#com.google.firebase.components.ComponentDiscoveryService
-ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
-MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
-MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
-MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+MERGED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+MERGED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
+MERGED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:9-12:19
 MERGED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:66:9-72:19
 MERGED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:66:9-72:19
 MERGED from [com.google.firebase:firebase-firestore:25.1.4] C:\Users\aanan\.gradle\caches\8.10\transforms\7c4b9ecc848fa7a3d7d9dbd5577ba55c\transformed\jetified-firebase-firestore-25.1.4\AndroidManifest.xml:14:9-23:19
@@ -602,63 +599,59 @@ MERGED from [com.google.firebase:firebase-common:21.0.0] C:\Users\aanan\.gradle\
 	android:directBootAware
 		ADDED from [com.google.firebase:firebase-common:21.0.0] C:\Users\aanan\.gradle\caches\8.10\transforms\68852136ebde03e9cb62252db0a2c990\transformed\jetified-firebase-common-21.0.0\AndroidManifest.xml:32:13-43
 	android:name
-		ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:18-89
+		ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:8:18-89
 meta-data#com.google.firebase.components:io.flutter.plugins.firebase.functions.FlutterFirebaseAppRegistrar
-ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
+ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
 	android:value
-		ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
+		ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
 	android:name
-		ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-128
-uses-permission#android.permission.RECORD_AUDIO
-ADDED from [:record_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-71
-	android:name
-		ADDED from [:record_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\record_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:22-68
+		ADDED from [:cloud_functions] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_functions\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-128
 provider#io.flutter.plugins.imagepicker.ImagePickerFileProvider
-ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:9-17:20
+ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:9-17:20
 	android:grantUriPermissions
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:13:13-47
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:13:13-47
 	android:authorities
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:13-74
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:13-74
 	android:exported
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:12:13-37
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:12:13-37
 	android:name
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:13-82
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:13-82
 meta-data#android.support.FILE_PROVIDER_PATHS
-ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:14:13-16:75
+ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:14:13-16:75
 	android:resource
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:16:17-72
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:16:17-72
 	android:name
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:15:17-67
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:15:17-67
 service#com.google.android.gms.metadata.ModuleDependencies
-ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:19:9-31:19
+ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:19:9-31:19
 	android:enabled
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:21:13-36
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:21:13-36
 	android:exported
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:22:13-37
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:22:13-37
 	tools:ignore
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:23:13-40
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:23:13-40
 	android:name
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:20:13-78
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:20:13-78
 intent-filter#action:name:com.google.android.gms.metadata.MODULE_DEPENDENCIES
-ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:24:13-26:29
+ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:24:13-26:29
 action#com.google.android.gms.metadata.MODULE_DEPENDENCIES
-ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:25:17-94
+ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:25:17-94
 	android:name
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:25:25-91
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:25:25-91
 meta-data#photopicker_activity:0:required
-ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:28:13-30:36
+ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:28:13-30:36
 	android:value
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:30:17-33
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:30:17-33
 	android:name
-		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:29:17-63
+		ADDED from [:image_picker_android] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:29:17-63
 meta-data#com.google.firebase.components:io.flutter.plugins.firebase.firestore.FlutterFirebaseFirestoreRegistrar
-ADDED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
+ADDED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
 	android:value
-		ADDED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
+		ADDED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
 	android:name
-		ADDED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-134
+		ADDED from [:cloud_firestore] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-134
 uses-permission#android.permission.ACCESS_NETWORK_STATE
-ADDED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-79
+ADDED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:5-79
 MERGED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:26:5-79
 MERGED from [com.google.firebase:firebase-auth:23.2.1] C:\Users\aanan\.gradle\caches\8.10\transforms\02b5b42a81dfc678c7232cb726002bc3\transformed\jetified-firebase-auth-23.2.1\AndroidManifest.xml:26:5-79
 MERGED from [com.google.firebase:firebase-firestore:25.1.4] C:\Users\aanan\.gradle\caches\8.10\transforms\7c4b9ecc848fa7a3d7d9dbd5577ba55c\transformed\jetified-firebase-firestore-25.1.4\AndroidManifest.xml:10:5-79
@@ -678,19 +671,19 @@ MERGED from [com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\
 MERGED from [io.grpc:grpc-android:1.62.2] C:\Users\aanan\.gradle\caches\8.10\transforms\a644c017ed9ff2d8600f3e3dcb6573cc\transformed\jetified-grpc-android-1.62.2\AndroidManifest.xml:7:5-79
 MERGED from [io.grpc:grpc-android:1.62.2] C:\Users\aanan\.gradle\caches\8.10\transforms\a644c017ed9ff2d8600f3e3dcb6573cc\transformed\jetified-grpc-android-1.62.2\AndroidManifest.xml:7:5-79
 	android:name
-		ADDED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:22-76
+		ADDED from [:connectivity_plus] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\connectivity_plus\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:7:22-76
 meta-data#com.google.firebase.components:io.flutter.plugins.firebase.auth.FlutterFirebaseAuthRegistrar
-ADDED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
+ADDED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
 	android:value
-		ADDED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
+		ADDED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
 	android:name
-		ADDED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-124
+		ADDED from [:firebase_auth] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_auth\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-124
 meta-data#com.google.firebase.components:io.flutter.plugins.firebase.core.FlutterFirebaseCoreRegistrar
-ADDED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
+ADDED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:9:13-11:85
 	android:value
-		ADDED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
+		ADDED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:11:17-82
 	android:name
-		ADDED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-124
+		ADDED from [:firebase_core] D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml:10:17-124
 service#androidx.camera.core.impl.MetadataHolderService
 ADDED from [androidx.camera:camera-core:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\bd9fb723e56983c7b6be6f7d232b4738\transformed\jetified-camera-core-1.3.3\AndroidManifest.xml:29:9-33:78
 MERGED from [androidx.camera:camera-camera2:1.3.3] C:\Users\aanan\.gradle\caches\8.10\transforms\56cb554bc3b8b9f4fd7b0d5bb8d24955\transformed\jetified-camera-camera2-1.3.3\AndroidManifest.xml:24:9-33:19

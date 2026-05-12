@@ -1,12 +1,11 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
+import '../../core/app_export.dart';
+import '../../theme/app_design_system.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,49 +14,163 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  bool _isInitialized = false;
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   String _loadingText = 'Initializing core modules...';
+  bool _hasError = false;
+  int _retryCount = 0;
+  static const int _maxAutoRetries = 3;
+
+  // Animation controllers
+  late AnimationController _logoController;
+  late AnimationController _beamController;
+  late AnimationController _progressController;
+  late AnimationController _pulseController;
+
+  // Animations
+  late Animation<double> _logoScale;
+  late Animation<double> _beamPosition;
+  late Animation<double> _titleSlide;
+  late Animation<double> _titleFade;
+  late Animation<double> _taglineFade;
 
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+    _startAnimationSequence();
     _initializeApp();
+  }
+
+  void _setupAnimations() {
+    // Logo ring scale-in with elastic curve
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _logoScale = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
+    );
+
+    // Scanning beam sweep
+    _beamController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _beamPosition = Tween<double>(begin: -1.0, end: 1.0).animate(
+      CurvedAnimation(parent: _beamController, curve: Curves.easeInOut),
+    );
+
+    // Progress ring
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    // Pulse for error/glow states
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    // Title animations derived from logo controller timing
+    _titleSlide = Tween<double>(begin: 20.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _titleFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.5, 0.85, curve: Curves.easeOut),
+      ),
+    );
+    _taglineFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.7, 1.0, curve: Curves.easeOut),
+      ),
+    );
+  }
+
+  void _startAnimationSequence() {
+    // 1. Logo rings scale in immediately
+    _logoController.forward();
+
+    // 2. Scanning beam starts after 400ms, loops
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        _beamController.repeat();
+      }
+    });
+
+    // 3. Pulse glow starts
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        _pulseController.repeat(reverse: true);
+      }
+    });
+  }
+
+  void _updateProgress(double value, String text) {
+    if (!mounted) return;
+    setState(() {
+      _loadingText = text;
+    });
+    _progressController.animateTo(value,
+        duration: FoodInsightAnimations.medium,
+        curve: FoodInsightAnimations.emphasizedDecelerate);
   }
 
   Future<void> _initializeApp() async {
     try {
-      // 1. Initial wait for animation
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _updateProgress(0.2, 'Connecting to Firebase...');
 
-      // 2. Mock or real init processes
-      if (mounted) setState(() => _loadingText = 'Connecting to backend...');
-      // Ensure Firebase is initialized
-      try {
-         await Firebase.initializeApp();
-      } catch (e) {
-         // Already initialized or platform issue
-      }
       await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      _updateProgress(0.5, 'Loading your profile...');
 
-      if (mounted) setState(() => _loadingText = 'Loading preferences...');
       final hasProfile = await _checkUserProfile();
-      
-      if (mounted) setState(() => _loadingText = 'Ready');
-      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      _updateProgress(0.8, 'Preparing your experience...');
+
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _updateProgress(1.0, 'Ready!');
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
 
       final currentUser = FirebaseAuth.instance.currentUser;
-      
-      _isInitialized = true;
       _navigateToNextScreen(hasProfile, currentUser);
     } catch (e) {
       debugPrint('Initialization error: $e');
       if (mounted) {
-        setState(() => _loadingText = 'Ready');
+        setState(() {
+          _hasError = true;
+          _loadingText = 'Initialization failed';
+        });
+        if (_retryCount < _maxAutoRetries) {
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              _retryInitialization();
+            }
+          });
+        }
       }
-      _isInitialized = true;
-      _navigateToNextScreen(false, null);
     }
+  }
+
+  void _retryInitialization() {
+    _retryCount++;
+    setState(() {
+      _hasError = false;
+      _loadingText = 'Retrying... (attempt $_retryCount)';
+    });
+    _initializeApp();
   }
 
   Future<bool> _checkUserProfile() async {
@@ -76,147 +189,405 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  void dispose() {
+    _logoController.dispose();
+    _beamController.dispose();
+    _progressController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
+      const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
     );
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Background Glow
-          if (isDark)
-            Positioned(
-              top: MediaQuery.of(context).size.height * 0.3,
-              left: -50,
-              right: -50,
-              child: Container(
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.mintGreen.withValues(alpha: 0.1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.emeraldGreen.withValues(alpha: 0.15),
-                      blurRadius: 100,
-                      spreadRadius: 50,
-                    ),
-                  ],
-                ),
-              ),
-            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-             .fade(duration: 2000.ms)
-             .scaleXY(begin: 0.9, end: 1.1, duration: 3000.ms, curve: Curves.easeInOut),
-
-          // Main Content
-          SafeArea(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   const Spacer(flex: 3),
-
-                   // Logo
-                   Container(
-                     width: 35.w,
-                     height: 35.w,
-                     decoration: BoxDecoration(
-                       shape: BoxShape.circle,
-                       color: isDark ? AppTheme.glassDarkBg : Colors.white,
-                       border: Border.all(
-                         color: isDark ? AppTheme.glassDarkBorder : theme.colorScheme.primary.withValues(alpha: 0.2),
-                         width: 2,
-                       ),
-                       boxShadow: isDark ? AppTheme.glowBoxShadow(AppTheme.emeraldGreen, intensity: 0.2, blur: 30) : [
-                         BoxShadow(
-                           color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                           blurRadius: 20,
-                           offset: const Offset(0, 10),
-                         )
-                       ],
-                     ),
-                     child: Center(
-                       child: CustomIconWidget(
-                         iconName: 'fastfood',
-                         size: 20.w,
-                         color: AppTheme.emeraldGreen,
-                       ).animate()
-                         .scaleXY(begin: 0.8, end: 1.0, duration: 600.ms, curve: Curves.easeOutBack)
-                         .then()
-                         .shimmer(duration: 1200.ms, delay: 500.ms, color: Colors.white54),
-                     ),
-                   ).animate()
-                     .fadeIn(duration: 800.ms)
-                     .slideY(begin: 0.1, end: 0, duration: 800.ms, curve: Curves.easeOutCubic),
-
-                   SizedBox(height: 3.h),
-
-                   // App Title
-                   Text(
-                     'NutriCore',
-                     style: theme.textTheme.headlineLarge?.copyWith(
-                       fontWeight: FontWeight.w900,
-                       letterSpacing: -0.5,
-                       color: isDark ? Colors.white : theme.colorScheme.primary,
-                       shadows: isDark ? AppTheme.textGlow(AppTheme.emeraldGreen, blur: 8) : null,
-                     ),
-                   ).animate()
-                     .fadeIn(duration: 600.ms, delay: 300.ms)
-                     .slideY(begin: 0.1, end: 0, duration: 600.ms, curve: Curves.easeOutCubic),
-
-                   SizedBox(height: 1.h),
-
-                   Text(
-                     'Intelligent Food Insight Scanner',
-                     style: theme.textTheme.titleMedium?.copyWith(
-                       color: theme.colorScheme.onSurfaceVariant,
-                       letterSpacing: 0.5,
-                     ),
-                   ).animate()
-                     .fadeIn(duration: 600.ms, delay: 500.ms)
-                     .slideY(begin: 0.1, end: 0, duration: 600.ms, curve: Curves.easeOutCubic),
-
-                   const Spacer(flex: 2),
-
-                   // Loading Status
-                   Column(
-                     children: [
-                       SizedBox(
-                         width: 10.w,
-                         height: 10.w,
-                         child: CircularProgressIndicator(
-                           strokeWidth: 3,
-                           valueColor: AlwaysStoppedAnimation<Color>(AppTheme.emeraldGreen),
-                         ),
-                       ),
-                       SizedBox(height: 2.h),
-                       Text(
-                         _loadingText,
-                         style: theme.textTheme.bodyMedium?.copyWith(
-                           color: theme.colorScheme.onSurfaceVariant,
-                           fontStyle: FontStyle.italic,
-                         ),
-                       ).animate(key: ValueKey(_loadingText))
-                         .fadeIn(duration: 300.ms),
-                     ],
-                   ).animate()
-                     .fadeIn(duration: 800.ms, delay: 800.ms),
-
-                   const Spacer(),
-                ],
-              ),
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: FoodInsightColors.splashGradient,
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 3),
+                // ── Scanner Logo with layered rings ──
+                _buildScannerLogo(),
+                const SizedBox(height: 32),
+                // ── App Name ──
+                _buildTitle(),
+                const SizedBox(height: 8),
+                // ── Tagline ──
+                _buildTagline(),
+                const Spacer(flex: 2),
+                // ── Loading / Error State ──
+                _buildLoadingState(),
+                const SizedBox(height: 40),
+                const Spacer(),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
+
+  Widget _buildScannerLogo() {
+    return AnimatedBuilder(
+      animation: _logoController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _logoScale.value,
+          child: child,
+        );
+      },
+      child: SizedBox(
+        width: 160,
+        height: 160,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Outer matte ring
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, _) {
+                return Container(
+                  width: 160,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: FoodInsightColors.scannerReticle
+                          .withValues(alpha: 0.2 + _pulseController.value * 0.1),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FoodInsightColors.scannerReticle
+                            .withValues(alpha: 0.1 + _pulseController.value * 0.05),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            // Inner glossy ring
+            Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF1A1A2E),
+                    Color(0xFF0D0D0D),
+                  ],
+                ),
+                border: Border.all(
+                  color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 20,
+                    spreadRadius: -2,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+            ),
+            // Center lens with gloss highlight
+            Container(
+              width: 100,
+              height: 100,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  center: Alignment(-0.3, -0.3),
+                  colors: [
+                    Color(0xFF1A2A1A),
+                    Color(0xFF0A0F0A),
+                  ],
+                ),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Gloss highlight
+                  Positioned(
+                    top: 12,
+                    left: 20,
+                    child: Container(
+                      width: 30,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.15),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Scanner icon
+                  const Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: FoodInsightColors.scannerReticle,
+                    size: 44,
+                  ),
+                ],
+              ),
+            ),
+            // Scanning beam
+            AnimatedBuilder(
+              animation: _beamController,
+              builder: (context, _) {
+                return Positioned(
+                  top: 30 + (_beamPosition.value + 1) / 2 * 100,
+                  left: 35,
+                  right: 35,
+                  child: Container(
+                    height: 1.5,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          FoodInsightColors.scannerReticle.withValues(alpha: 0.8),
+                          Colors.transparent,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: FoodInsightColors.scannerReticle.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Progress ring around the logo
+            AnimatedBuilder(
+              animation: _progressController,
+              builder: (context, _) {
+                return SizedBox(
+                  width: 155,
+                  height: 155,
+                  child: CustomPaint(
+                    painter: _ProgressRingPainter(
+                      progress: _progressController.value,
+                      color: FoodInsightColors.scannerGreen,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return AnimatedBuilder(
+      animation: _logoController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _titleFade.value,
+          child: Transform.translate(
+            offset: Offset(0, _titleSlide.value),
+            child: child,
+          ),
+        );
+      },
+      child: Text(
+        'Food Insight Scanner',
+        style: FoodInsightTypography.display(
+          size: 28,
+          weight: FontWeight.w800,
+          color: FoodInsightColors.warmWhite,
+          letterSpacing: -0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagline() {
+    return AnimatedBuilder(
+      animation: _logoController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _taglineFade.value,
+          child: child,
+        );
+      },
+      child: Text(
+        'Personal nutrition intelligence',
+        style: FoodInsightTypography.body(
+          size: 14,
+          weight: FontWeight.w500,
+          color: FoodInsightColors.midGray,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    if (_hasError) {
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _hasError = false;
+          });
+          _retryInitialization();
+        },
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: FoodInsightColors.healthRed.withValues(alpha: 0.15),
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: FoodInsightColors.healthRed,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Something went wrong',
+              style: FoodInsightTypography.body(
+                weight: FontWeight.w600,
+                color: FoodInsightColors.healthRed,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap to retry',
+              style: FoodInsightTypography.caption(
+                color: FoodInsightColors.midGray,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Status text
+        AnimatedSwitcher(
+          duration: FoodInsightAnimations.fast,
+          child: Text(
+            _loadingText,
+            key: ValueKey(_loadingText),
+            style: FoodInsightTypography.caption(
+              size: 13,
+              weight: FontWeight.w500,
+              color: FoodInsightColors.midGray,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Minimal progress dots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            return AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, _) {
+                final delay = index * 0.3;
+                final animValue =
+                    ((_pulseController.value + delay) % 1.0).clamp(0.0, 1.0);
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: FoodInsightColors.scannerGreen
+                        .withValues(alpha: 0.3 + animValue * 0.7),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FoodInsightColors.scannerGreen
+                            .withValues(alpha: animValue * 0.5),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+/// Custom painter for the progress ring around the logo
+class _ProgressRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _ProgressRingPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Track
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi,
+      false,
+      Paint()
+        ..color = color.withValues(alpha: 0.1)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round,
+    );
+
+    if (progress > 0) {
+      // Progress arc
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ProgressRingPainter old) =>
+      old.progress != progress;
 }

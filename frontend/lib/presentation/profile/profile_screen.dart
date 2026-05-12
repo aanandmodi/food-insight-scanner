@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/app_export.dart';
-import '../../services/firestore_service.dart';
 import '../../core/utils/user_utils.dart';
 import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
+import '../../models/user_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,6 +62,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return bmi.toStringAsFixed(1);
   }
 
+  /// Link anonymous (guest) account with Google credentials
+  Future<void> _linkAnonymousAccountWithGoogle() async {
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.currentUser?.linkWithCredential(credential);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account linked! Your data is now saved permanently.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {}); // Refresh to hide the banner
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to link account: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -80,9 +110,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'My Profile',
+          'Food Insight Scanner',
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.3,
           ),
         ),
         centerTitle: true,
@@ -114,6 +145,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: EdgeInsets.all(5.w),
                 child: Column(
                   children: [
+                    // Anonymous account linking banner
+                    if (FirebaseAuth.instance.currentUser?.isAnonymous == true)
+                      Card(
+                        color: isDark
+                            ? Colors.orange.withValues(alpha: 0.15)
+                            : Colors.orange.shade50,
+                        child: ListTile(
+                          leading: const Icon(Icons.warning_amber_rounded,
+                              color: Colors.orange),
+                          title: const Text('Guest Account'),
+                          subtitle: const Text(
+                              'Link with Google to save your data permanently'),
+                          trailing: TextButton(
+                            onPressed: _linkAnonymousAccountWithGoogle,
+                            child: const Text('Link Now'),
+                          ),
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(duration: 400.ms)
+                          .slideY(begin: -0.05, end: 0),
+
                     // Avatar & Name
                     Center(
                       child: Column(
@@ -150,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             displayName,
                             style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                               shadows: isDark
                                   ? AppTheme.textGlow(colorScheme.primary, blur: 6)
                                   : null,
@@ -233,7 +286,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildInfoSection(
                           context,
                           'Dietary Preferences',
-                          profile?.dietaryPreferences ?? 'None',
+                          profile?.dietaryPreferences.isNotEmpty == true
+                              ? profile!.dietaryPreferences.join(', ')
+                              : 'None',
                           Icons.restaurant),
                     ]
                         .asMap()
@@ -243,8 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             .fadeIn(
                                 duration: 400.ms,
                                 delay: Duration(milliseconds: 200 + e.key * 60))
-                            .slideY(begin: 0.03, end: 0))
-                        .toList(),
+                            .slideY(begin: 0.03, end: 0)),
 
                     SizedBox(height: 4.h),
                   ],
@@ -262,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 1.w),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
@@ -271,7 +325,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? AppTheme.glassmorphicDecoration(borderRadius: 12)
                 : BoxDecoration(
                     color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
             child: Column(
               children: [
@@ -309,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 1.5.h),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Container(
@@ -318,7 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? AppTheme.glassmorphicDecoration(borderRadius: 12)
                 : BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.03),

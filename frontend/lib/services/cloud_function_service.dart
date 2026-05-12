@@ -19,6 +19,51 @@ class CloudFunctionService {
   /// Default timeout for callable function invocations.
   static const Duration _timeout = Duration(seconds: 30);
 
+  Map<String, dynamic>? _parseProductPayload(dynamic rawData) {
+    try {
+      if (rawData is! Map) return null;
+      final data = Map<String, dynamic>.from(rawData);
+      final nutritionRaw = (data['nutrition'] is Map)
+          ? Map<String, dynamic>.from(data['nutrition'] as Map)
+          : <String, dynamic>{};
+      final aiRaw = (data['aiAnalysis'] is Map)
+          ? Map<String, dynamic>.from(data['aiAnalysis'] as Map)
+          : <String, dynamic>{};
+
+      return {
+        'barcode': '${data['barcode'] ?? ''}',
+        'name': '${data['name'] ?? 'Unknown Product'}',
+        'brand': '${data['brand'] ?? 'Unknown Brand'}',
+        'category': '${data['category'] ?? 'Uncategorized'}',
+        'image': '${data['image'] ?? ''}',
+        'nutrition': {
+          'calories': (nutritionRaw['calories'] as num?)?.toDouble() ?? 0,
+          'sugar': (nutritionRaw['sugar'] as num?)?.toDouble() ?? 0,
+          'protein': (nutritionRaw['protein'] as num?)?.toDouble() ?? 0,
+          'sodium': (nutritionRaw['sodium'] as num?)?.toDouble() ?? 0,
+          'fiber': (nutritionRaw['fiber'] as num?)?.toDouble() ?? 0,
+          'fat': (nutritionRaw['fat'] as num?)?.toDouble() ?? 0,
+          'carbs': (nutritionRaw['carbs'] as num?)?.toDouble() ?? 0,
+        },
+        'ingredients': (data['ingredients'] as List?)?.cast<dynamic>().map((e) => '$e').toList() ?? <String>[],
+        'allergens': (data['allergens'] as List?)?.cast<dynamic>().map((e) => '$e').toList() ?? <String>[],
+        'servingSize': '${data['servingSize'] ?? 'Per 100g'}',
+        'nutriscore': data['nutriscore'],
+        'novaGroup': data['novaGroup'],
+        'quantity': '${data['quantity'] ?? ''}',
+        'aiAnalysis': {
+          'summary': '${aiRaw['summary'] ?? 'AI analysis unavailable.'}',
+          'isHealthy': aiRaw['isHealthy'] == true,
+          'warnings': (aiRaw['warnings'] as List?)?.cast<dynamic>().map((e) => '$e').toList() ?? <String>[],
+        },
+        'lastUpdated': '${data['lastUpdated'] ?? ''}',
+      };
+    } catch (e) {
+      debugPrint('parse product payload error: $e');
+      return null;
+    }
+  }
+
   // ─────────────────────────── Scan Product ───────────────────────────
 
   /// Looks up a product by barcode via the Cloud Function.
@@ -33,11 +78,14 @@ class CloudFunctionService {
         options: HttpsCallableOptions(timeout: _timeout),
       );
       final result = await callable.call<Map<String, dynamic>>({'barcode': barcode});
-      return result.data;
+      return _parseProductPayload(result.data);
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'not-found') return null;
       debugPrint('scanProduct error: ${e.code} – ${e.message}');
       rethrow;
+    } on FormatException catch (e) {
+      debugPrint('scanProduct format error: ${e.message}');
+      return null;
     } catch (e) {
       debugPrint('scanProduct error: $e');
       rethrow;
@@ -128,11 +176,43 @@ class CloudFunctionService {
     required List<Map<String, String>> messages,
     required dynamic userProfile,
   }) async {
-    // Temporary stub for APK build testing
-    await Future.delayed(const Duration(seconds: 1));
-    return {
-      'message': 'AI Chat is currently being connected to the new secure backend! Stay tuned.',
-    };
+    try {
+      // Build conversation history from messages list
+      final historyBuffer = StringBuffer();
+      String lastUserMessage = '';
+      for (final msg in messages) {
+        final role = msg['role'] ?? 'user';
+        final content = msg['content'] ?? '';
+        historyBuffer.writeln('${role == 'user' ? 'User' : 'Assistant'}: $content');
+        if (role == 'user') lastUserMessage = content;
+      }
+
+      final callable = _functions.httpsCallable(
+        'chatWithAI',
+        options: HttpsCallableOptions(timeout: _timeout),
+      );
+      final result = await callable.call<Map<String, dynamic>>({
+        'message': lastUserMessage,
+        'conversationHistory': historyBuffer.toString(),
+        'userProfile': userProfile is Map ? userProfile : null,
+      });
+
+      return {
+        'message': result.data['reply'] as String? ?? 'I couldn\'t generate a response.',
+        'mealLogged': result.data['mealLogged'] ?? false,
+        'mealData': result.data['mealData'],
+      };
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('generateResponseWithMeta error: ${e.code} – ${e.message}');
+      return {
+        'message': 'I\'m having trouble connecting to the AI service. Please try again.',
+      };
+    } catch (e) {
+      debugPrint('generateResponseWithMeta error: $e');
+      return {
+        'message': 'An error occurred. Please check your connection and try again.',
+      };
+    }
   }
 
   /// Sends a chat message to the AI nutritionist and returns the reply.

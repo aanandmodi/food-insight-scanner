@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
-import '../../../theme/app_theme.dart';
-
 class QuickReplyWidget extends StatelessWidget {
   final List<String> suggestions;
   final Function(String) onSuggestionTap;
@@ -18,7 +15,7 @@ class QuickReplyWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return suggestions.isNotEmpty
         ? Container(
-            height: 6.h,
+            height: 5.6.h,
             margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -31,8 +28,8 @@ class QuickReplyWidget extends StatelessWidget {
                     padding:
                         EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(6.w),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(999),
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outline
                             .withValues(alpha: 0.3),
@@ -41,8 +38,8 @@ class QuickReplyWidget extends StatelessWidget {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),

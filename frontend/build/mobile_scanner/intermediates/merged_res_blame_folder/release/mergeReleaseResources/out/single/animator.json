@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "dev.steenbakker.mobile_scanner-release-30:/animator/fragment_open_exit.xml",
+        "source": "dev.steenbakker.mobile_scanner-fragment-1.7.1-23:/animator/fragment_open_exit.xml"
+    },
+    {
+        "merged": "dev.steenbakker.mobile_scanner-release-30:/animator/fragment_fade_exit.xml",
+        "source": "dev.steenbakker.mobile_scanner-fragment-1.7.1-23:/animator/fragment_fade_exit.xml"
+    },
+    {
+        "merged": "dev.steenbakker.mobile_scanner-release-30:/animator/fragment_fade_enter.xml",
+        "source": "dev.steenbakker.mobile_scanner-fragment-1.7.1-23:/animator/fragment_fade_enter.xml"
+    },
+    {
+        "merged": "dev.steenbakker.mobile_scanner-release-30:/animator/fragment_close_exit.xml",
+        "source": "dev.steenbakker.mobile_scanner-fragment-1.7.1-23:/animator/fragment_close_exit.xml"
+    },
+    {
+        "merged": "dev.steenbakker.mobile_scanner-release-30:/animator/fragment_close_enter.xml",
+        "source": "dev.steenbakker.mobile_scanner-fragment-1.7.1-23:/animator/fragment_close_enter.xml"
+    },
+    {
+        "merged": "dev.steenbakker.mobile_scanner-release-30:/animator/fragment_open_enter.xml",
+        "source": "dev.steenbakker.mobile_scanner-fragment-1.7.1-23:/animator/fragment_open_enter.xml"
+    }
+]

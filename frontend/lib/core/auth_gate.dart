@@ -2,11 +2,11 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../presentation/auth/login_screen.dart';
+import '../presentation/auth/login_screen/login_screen.dart';
 import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/profile_setup/profile_setup.dart';
-import './services/auth_service.dart';
-import './services/firestore_service.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 
 /// A widget that listens to authentication state changes and shows the
 /// appropriate screen, checking for profile completion as well.

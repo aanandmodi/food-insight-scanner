@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BioScan - AI Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#00531a",
+                    "outline": "#916e6f",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#d9dade",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e8e8ed",
+                    "secondary-container": "#64fd7d",
+                    "tertiary": "#0058bc",
+                    "on-secondary-fixed": "#002106",
+                    "on-primary-fixed": "#40000c",
+                    "background": "#f9f9fe",
+                    "on-surface-variant": "#5d3f40",
+                    "surface-tint": "#be0036",
+                    "secondary-fixed": "#6cff82",
+                    "on-tertiary-container": "#fefcff",
+                    "outline-variant": "#e6bcbd",
+                    "on-surface": "#1a1c1f",
+                    "surface-container": "#ededf2",
+                    "on-primary-fixed-variant": "#920027",
+                    "inverse-primary": "#ffb3b5",
+                    "surface-bright": "#f9f9fe",
+                    "tertiary-fixed": "#d8e2ff",
+                    "primary-fixed-dim": "#ffb3b5",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "on-primary-container": "#fffbff",
+                    "on-tertiary-fixed-variant": "#004493",
+                    "secondary-fixed-dim": "#47e266",
+                    "surface-variant": "#e2e2e7",
+                    "tertiary-container": "#0070eb",
+                    "surface-container-highest": "#e2e2e7",
+                    "on-background": "#1a1c1f",
+                    "on-error-container": "#93000a",
+                    "inverse-surface": "#2e3034",
+                    "surface-container-low": "#f3f3f8",
+                    "primary": "#ba0034",
+                    "surface-container-lowest": "#ffffff",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "secondary": "#006e26",
+                    "primary-container": "#e51245",
+                    "inverse-on-surface": "#f0f0f5",
+                    "on-tertiary-fixed": "#001a41",
+                    "surface": "#f9f9fe",
+                    "on-secondary-container": "#007328",
+                    "primary-fixed": "#ffdada"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9f9fe;
+            color: #1a1c1f;
+        }
+        
+        /* Custom Scrollbar for Chat Area */
+        .chat-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #e2e2e7;
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 backdrop-blur-md bg-white/90 dark:bg-slate-950/90 shadow-[inset_0_-1px_0_rgba(230,188,189,0.15)] shadow-[0_10px_30px_-10px_rgba(26,28,31,0.08)]">
+<button aria-label="Profile" class="text-slate-400 hover:opacity-80 transition-opacity Active: scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-2xl">account_circle</span>
+</button>
+<h1 class="font-['Inter'] font-bold tracking-tight text-slate-900 dark:text-slate-100 text-xl font-black text-slate-900 dark:text-slate-50 tracking-tighter">BioScan</h1>
+<button aria-label="History" class="text-slate-400 hover:opacity-80 transition-opacity Active: scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-2xl">history</span>
+</button>
+</header>
+<!-- Main Chat Container -->
+<main class="flex-1 overflow-y-auto chat-scroll pt-24 pb-32 px-4 md:px-8 max-w-3xl mx-auto w-full flex flex-col space-y-6">
+<!-- Context/Time Marker -->
+<div class="text-center w-full">
+<span class="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant/60 bg-surface-container-low px-3 py-1 rounded-full">Today, 9:41 AM</span>
+</div>
+<!-- AI Welcome Message -->
+<div class="flex items-end space-x-3 w-full max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 shadow-[0_4px_10px_rgba(26,28,31,0.05)]">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">vital_signs</span>
+</div>
+<div class="bg-surface-container-lowest text-on-surface rounded-2xl rounded-bl-sm p-4 shadow-[0_10px_30px_-10px_rgba(26,28,31,0.08)] shadow-[inset_2px_2px_0_rgba(255,255,255,0.8),inset_-2px_-2px_0_rgba(26,28,31,0.02)]">
+<p class="text-base leading-relaxed font-body">Hello! I'm your BioScan AI assistant. Based on your recent nutrition scan, it looks like you're tracking your protein intake. How can I help you optimize your diet today?</p>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-end justify-end space-x-3 w-full max-w-[85%] self-end">
+<div class="bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl rounded-br-sm p-4 shadow-[0_10px_30px_-10px_rgba(186,0,52,0.3)] shadow-[inset_2px_2px_0_rgba(255,255,255,0.2),inset_-2px_-2px_0_rgba(0,0,0,0.1)]">
+<p class="text-base leading-relaxed font-body">I just scanned a Greek yogurt. Is that enough protein for post-workout, or should I add something else?</p>
+</div>
+</div>
+<!-- AI Response with Data Card -->
+<div class="flex items-end space-x-3 w-full max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 shadow-[0_4px_10px_rgba(26,28,31,0.05)]">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">vital_signs</span>
+</div>
+<div class="flex flex-col space-y-3 w-full">
+<div class="bg-surface-container-lowest text-on-surface rounded-2xl rounded-bl-sm p-4 shadow-[0_10px_30px_-10px_rgba(26,28,31,0.08)] shadow-[inset_2px_2px_0_rgba(255,255,255,0.8),inset_-2px_-2px_0_rgba(26,28,31,0.02)]">
+<p class="text-base leading-relaxed font-body">A typical serving of Greek yogurt has about 15g of protein. For optimal muscle recovery after your heavy lifting session, you generally want closer to 25-30g.</p>
+</div>
+<!-- Interactive Tactile Card inside Chat -->
+<div class="bg-surface-container-lowest rounded-lg p-5 shadow-[0_10px_30px_-10px_rgba(26,28,31,0.08)] shadow-[inset_2px_2px_0_rgba(255,255,255,0.8),inset_-2px_-2px_0_rgba(26,28,31,0.02)] flex flex-col space-y-4 w-full">
+<div class="flex justify-between items-center">
+<span class="text-sm font-semibold uppercase tracking-widest text-on-surface-variant">Suggestion</span>
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+</div>
+<div>
+<h3 class="text-lg font-headline font-bold text-on-surface mb-1">Add Almonds or Chia Seeds</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed">Boosts protein by ~6g and adds healthy fats to slow absorption.</p>
+</div>
+<button class="bg-surface-container-high hover:bg-surface-variant transition-colors text-on-surface font-semibold py-3 px-6 rounded-full shadow-[inset_2px_2px_0_rgba(255,255,255,0.5),inset_-2px_-2px_0_rgba(26,28,31,0.05)] flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-sm">restaurant</span>
+<span>Log Addition</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Typing Indicator (AI) -->
+<div class="flex items-end space-x-3 w-full max-w-[85%] opacity-70">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 shadow-[0_4px_10px_rgba(26,28,31,0.05)]">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">vital_signs</span>
+</div>
+<div class="bg-surface-container-lowest text-on-surface rounded-2xl rounded-bl-sm p-4 px-5 shadow-[0_10px_30px_-10px_rgba(26,28,31,0.08)] shadow-[inset_2px_2px_0_rgba(255,255,255,0.8),inset_-2px_-2px_0_rgba(26,28,31,0.02)] flex items-center space-x-1.5 h-12">
+<div class="w-2 h-2 bg-on-surface-variant/40 rounded-full"></div>
+<div class="w-2 h-2 bg-on-surface-variant/40 rounded-full"></div>
+<div class="w-2 h-2 bg-on-surface-variant/40 rounded-full"></div>
+</div>
+</div>
+<!-- Bottom spacing buffer -->
+<div class="h-8"></div>
+</main>
+<!-- Glassmorphism Input Bar -->
+<div class="fixed bottom-[88px] left-0 w-full z-40 px-4 md:px-8 max-w-3xl left-1/2 -translate-x-1/2">
+<div class="bg-surface-container-lowest/80 backdrop-blur-2xl rounded-full p-2 flex items-center shadow-[0_-10px_40px_rgba(0,0,0,0.05)] shadow-[inset_1px_1px_0_rgba(255,255,255,0.4)] border-t border-outline-variant/15">
+<button aria-label="Attach File" class="p-3 text-on-surface-variant hover:text-primary transition-colors rounded-full flex-shrink-0">
+<span class="material-symbols-outlined">add</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/50 px-2 font-body text-base outline-none" placeholder="Ask about your health data..." type="text"/>
+<button aria-label="Send Message" class="p-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-full flex-shrink-0 shadow-[inset_2px_2px_0_rgba(255,255,255,0.2),inset_-2px_-2px_0_rgba(0,0,0,0.1)] hover:opacity-90 transition-opacity ml-2 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">arrow_upward</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-4 backdrop-blur-3xl bg-white/70 dark:bg-slate-900/70 border-t border-white/20 dark:border-slate-800/20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] rounded-t-[2.5rem] md:hidden">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-[#FF2D55] transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform">home</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest hidden">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-[#FF2D55] transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform">qr_code_scanner</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest hidden">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-gradient-to-br from-[#ba0034] to-[#e51245] text-white rounded-full px-5 py-2 shadow-[0_4px_15px_rgba(186,0,52,0.3)] Active: scale-90 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest hidden">Nutrition</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-[#FF2D55] transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform">person</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest hidden">Profile</span>
+</a>
+</nav>
+</body></html>

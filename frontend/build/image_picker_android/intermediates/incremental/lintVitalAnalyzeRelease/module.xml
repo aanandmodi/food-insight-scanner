@@ -5,7 +5,7 @@
     type="LIBRARY"
     maven="io.flutter.plugins.imagepicker:image_picker_android:1.0-SNAPSHOT"
     agpVersion="8.5.2"
-    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\image_picker_android"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\image_picker_android"
     bootClassPath="D:\Android\Sdk\platforms\android-35\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
     javaSourceLevel="11"
     compileTarget="android-35"

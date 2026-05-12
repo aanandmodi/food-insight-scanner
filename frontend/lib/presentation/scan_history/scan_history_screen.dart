@@ -15,45 +15,23 @@ class ScanHistoryScreen extends StatefulWidget {
 }
 
 class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _scanHistory = [];
+  final FirestoreService _firestore = FirestoreService();
+  final ProductService _productService = ProductService();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
-    try {
-      final history = await ProductService().getScanHistory();
-      if (mounted) {
-        setState(() {
-          _scanHistory = history;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading history: $e');
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _deleteHistoryItem(int index) async {
-    final scan = _scanHistory[index];
+  Future<void> _deleteScan(Map<String, dynamic> scan) async {
     final scanId = scan['id'] as String?;
+    final barcode = (scan['barcode'] as String?) ?? '';
 
-    setState(() {
-      _scanHistory.removeAt(index);
-    });
-
-    if (scanId != null) {
+    // Prefer cloud delete if we have a Firestore doc id.
+    if (scanId != null && scanId.isNotEmpty) {
       try {
-        await FirestoreService().deleteScan(scanId);
+        await _firestore.deleteScan(scanId);
       } catch (e) {
         debugPrint('Error deleting scan from Firestore: $e');
       }
+    } else if (barcode.isNotEmpty) {
+      // Offline/guest mode: delete from local SQLite so it doesn't reappear.
+      await _productService.deleteLocalScan(barcode);
     }
 
     if (mounted) {
@@ -67,7 +45,6 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -82,10 +59,48 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-          : _scanHistory.isEmpty
-              ? Center(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _firestore.scanHistoryStream(limit: 50),
+        builder: (context, snapshot) {
+          // If Firebase isn't ready (guest/offline), the stream is empty.
+          // Fall back to local SQLite history (still dynamic via refresh).
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: colorScheme.primary),
+            );
+          }
+
+          if (snapshot.hasData && (snapshot.data?.isNotEmpty ?? false)) {
+            final scans = snapshot.data!;
+            return ListView.separated(
+              padding: EdgeInsets.all(4.w),
+              itemCount: scans.length,
+              separatorBuilder: (context, index) => SizedBox(height: 2.h),
+              itemBuilder: (context, index) {
+                final scan = scans[index];
+                return _buildHistoryItem(context, scan)
+                    .animate()
+                    .fadeIn(
+                      duration: 400.ms,
+                      delay: Duration(milliseconds: (index * 50).clamp(0, 300)),
+                    )
+                    .slideY(begin: 0.03, end: 0);
+              },
+            );
+          }
+
+          return FutureBuilder<List<Map<String, dynamic>>>(
+            future: _productService.getScanHistory(),
+            builder: (context, localSnapshot) {
+              if (localSnapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: CircularProgressIndicator(color: colorScheme.primary),
+                );
+              }
+
+              final localScans = localSnapshot.data ?? [];
+              if (localScans.isEmpty) {
+                return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -110,32 +125,38 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                       ),
                     ],
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadHistory,
-                  color: colorScheme.primary,
-                  child: ListView.separated(
-                    padding: EdgeInsets.all(4.w),
-                    itemCount: _scanHistory.length,
-                    separatorBuilder: (context, index) =>
-                        SizedBox(height: 2.h),
-                    itemBuilder: (context, index) {
-                      final scan = _scanHistory[index];
-                      return _buildHistoryItem(context, scan, index)
-                          .animate()
-                          .fadeIn(
-                              duration: 400.ms,
-                              delay: Duration(
-                                  milliseconds: (index * 50).clamp(0, 300)))
-                          .slideY(begin: 0.03, end: 0);
-                    },
-                  ),
+                );
+              }
+
+              return RefreshIndicator(
+                onRefresh: () async => setState(() {}),
+                color: colorScheme.primary,
+                child: ListView.separated(
+                  padding: EdgeInsets.all(4.w),
+                  itemCount: localScans.length,
+                  separatorBuilder: (context, index) => SizedBox(height: 2.h),
+                  itemBuilder: (context, index) {
+                    final scan = localScans[index];
+                    return _buildHistoryItem(context, scan)
+                        .animate()
+                        .fadeIn(
+                          duration: 400.ms,
+                          delay: Duration(
+                              milliseconds: (index * 50).clamp(0, 300)),
+                        )
+                        .slideY(begin: 0.03, end: 0);
+                  },
                 ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildHistoryItem(
-      BuildContext context, Map<String, dynamic> scan, int index) {
+      BuildContext context, Map<String, dynamic> scan) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -154,7 +175,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         ),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      onDismissed: (_) => _deleteHistoryItem(index),
+      onDismissed: (_) => _deleteScan(scan),
       child: GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();

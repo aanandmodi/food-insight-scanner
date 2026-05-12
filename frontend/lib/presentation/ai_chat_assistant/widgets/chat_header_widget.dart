@@ -41,8 +41,8 @@ class ChatHeaderWidget extends StatelessWidget {
             ),
             SizedBox(width: 3.w),
             Container(
-              width: 12.w,
-              height: 12.w,
+              width: 11.w,
+              height: 11.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -55,7 +55,7 @@ class ChatHeaderWidget extends StatelessWidget {
                 ),
               ),
               child: CustomIconWidget(
-                iconName: 'smart_toy',
+                iconName: 'vital_signs',
                 color: Colors.white,
                 size: 6.w,
               ),
@@ -66,7 +66,7 @@ class ChatHeaderWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'NutriBot Assistant',
+                    'Food Insight Scanner AI',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.onSurface,

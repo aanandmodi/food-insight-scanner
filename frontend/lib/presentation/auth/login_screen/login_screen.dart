@@ -8,6 +8,7 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../services/auth_service.dart';
 import '../../../main.dart' show firebaseInitError;
+import '../../../widgets/prototype_button.dart';
 
 enum _AuthMethod { none, email, google, guest }
 
@@ -273,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 .fadeIn(duration: 500.ms, delay: 200.ms),
                             SizedBox(height: 0.5.h),
                             Text(
-                              'Sign in to continue',
+                              'Welcome back',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -445,35 +446,27 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildSignInButton(ThemeData theme, ColorScheme colorScheme, bool isDark) {
-    return GlowButton(
-      glowColor: colorScheme.primary,
-      glowIntensity: isDark ? 0.25 : 0.1,
-      onTap: _isLoading ? null : _handleEmailSignIn,
-      child: Container(
+    if (_isLoading && _activeMethod == _AuthMethod.email) {
+      return Container(
         width: double.infinity,
         height: 6.5.h,
         decoration: BoxDecoration(
-          color: colorScheme.primary,
-          borderRadius: BorderRadius.circular(12),
+          gradient: AppTheme.primaryGradient,
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Center(
-          child: _isLoading && _activeMethod == _AuthMethod.email
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
-                  ),
-                )
-              : Text(
-                  'Sign In',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+          ),
         ),
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: PrototypeButton(
+        label: 'Sign In',
+        onPressed: _isLoading ? null : _handleEmailSignIn,
       ),
     );
   }

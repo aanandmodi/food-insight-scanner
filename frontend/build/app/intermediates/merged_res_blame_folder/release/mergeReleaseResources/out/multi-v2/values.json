@@ -228,25 +228,6 @@
                     }
                 },
                 {
-                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\android\\app\\src\\main\\res\\values\\styles.xml",
-                    "from": {
-                        "startLines": "3,13",
-                        "startColumns": "4,4",
-                        "startOffsets": "176,815",
-                        "endLines": "7,15",
-                        "endColumns": "12,12",
-                        "endOffsets": "468,968"
-                    },
-                    "to": {
-                        "startLines": "5517,5613",
-                        "startColumns": "4,4",
-                        "startOffsets": "388595,395061",
-                        "endLines": "5520,5615",
-                        "endColumns": "12,12",
-                        "endOffsets": "388767,395212"
-                    }
-                },
-                {
                     "source": "C:\\Users\\aanan\\.gradle\\caches\\8.10\\transforms\\b3b3cc79e36cc0f0051b374f2477b402\\transformed\\jetified-window-1.2.0\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2,3,9,17,25,37,43,49,50,51,52,53,54,55,61,66,74,89",
@@ -263,6 +244,23 @@
                         "endLines": "3,141,149,157,491,497,503,504,505,506,507,513,1767,9373,9378,12186,12201,12217",
                         "endColumns": "58,11,11,11,11,11,11,52,59,51,44,38,59,24,24,24,24,24",
                         "endOffsets": "261,7271,7490,7709,24490,24678,24865,24918,24978,25030,25075,25365,117543,644083,644241,763366,763980,764634"
+                    }
+                },
+                {
+                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\frontend\\build\\app\\generated\\res\\processReleaseGoogleServices\\values\\values.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8",
+                        "startColumns": "4,4,4,4,4,4,4",
+                        "startOffsets": "55,199,281,385,494,614,730",
+                        "endColumns": "143,81,103,108,119,115,84",
+                        "endOffsets": "194,276,380,489,609,725,810"
+                    },
+                    "to": {
+                        "startLines": "1985,1997,1998,1999,2000,2001,2119",
+                        "startColumns": "4,4,4,4,4,4,4",
+                        "startOffsets": "133085,134129,134211,134315,134424,134544,151354",
+                        "endColumns": "143,81,103,108,119,115,84",
+                        "endOffsets": "133224,134206,134310,134419,134539,134655,151434"
                     }
                 },
                 {
@@ -336,6 +334,25 @@
                     }
                 },
                 {
+                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\frontend\\android\\app\\src\\main\\res\\values\\styles.xml",
+                    "from": {
+                        "startLines": "3,13",
+                        "startColumns": "4,4",
+                        "startOffsets": "176,815",
+                        "endLines": "7,15",
+                        "endColumns": "12,12",
+                        "endOffsets": "468,968"
+                    },
+                    "to": {
+                        "startLines": "5517,5613",
+                        "startColumns": "4,4",
+                        "startOffsets": "388595,395061",
+                        "endLines": "5520,5615",
+                        "endColumns": "12,12",
+                        "endOffsets": "388767,395212"
+                    }
+                },
+                {
                     "source": "C:\\Users\\aanan\\.gradle\\caches\\8.10\\transforms\\87de8bf13b6251ee3b8a59aef377a230\\transformed\\jetified-viewpager2-1.0.0\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2",
@@ -355,6 +372,23 @@
                     }
                 },
                 {
+                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\frontend\\android\\app\\src\\main\\res\\values\\strings.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "57",
+                        "endColumns": "57",
+                        "endOffsets": "110"
+                    },
+                    "to": {
+                        "startLines": "1946",
+                        "startColumns": "4",
+                        "startOffsets": "128461",
+                        "endColumns": "57",
+                        "endOffsets": "128514"
+                    }
+                },
+                {
                     "source": "C:\\Users\\aanan\\.gradle\\caches\\8.10\\transforms\\98025499f4d1d738a7c1afa46cbbcbf7\\transformed\\jetified-savedstate-1.2.1\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2",
@@ -369,23 +403,6 @@
                         "startOffsets": "121201",
                         "endColumns": "53",
                         "endOffsets": "121250"
-                    }
-                },
-                {
-                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\android\\app\\src\\main\\res\\values\\strings.xml",
-                    "from": {
-                        "startLines": "2",
-                        "startColumns": "4",
-                        "startOffsets": "57",
-                        "endColumns": "57",
-                        "endOffsets": "110"
-                    },
-                    "to": {
-                        "startLines": "1946",
-                        "startColumns": "4",
-                        "startOffsets": "128461",
-                        "endColumns": "57",
-                        "endOffsets": "128514"
                     }
                 },
                 {
@@ -437,23 +454,6 @@
                         "startOffsets": "128378",
                         "endColumns": "82",
                         "endOffsets": "128456"
-                    }
-                },
-                {
-                    "source": "D:\\Downloads\\food_insight_scanner\\food_insight_scanner\\build\\app\\generated\\res\\processReleaseGoogleServices\\values\\values.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8",
-                        "startColumns": "4,4,4,4,4,4,4",
-                        "startOffsets": "55,199,281,385,494,614,730",
-                        "endColumns": "143,81,103,108,119,115,84",
-                        "endOffsets": "194,276,380,489,609,725,810"
-                    },
-                    "to": {
-                        "startLines": "1985,1997,1998,1999,2000,2001,2119",
-                        "startColumns": "4,4,4,4,4,4,4",
-                        "startOffsets": "133085,134129,134211,134315,134424,134544,151354",
-                        "endColumns": "143,81,103,108,119,115,84",
-                        "endOffsets": "133224,134206,134310,134419,134539,134655,151434"
                     }
                 },
                 {

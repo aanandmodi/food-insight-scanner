@@ -23,9 +23,9 @@ io.flutter.plugins.firebase.firestore.cloud_firestore-fragment-1.7.1-21 C:\Users
 io.flutter.plugins.firebase.firestore.cloud_firestore-lifecycle-runtime-2.7.0-22 C:\Users\aanan\.gradle\caches\8.10\transforms\e74e8f8058ad7df2f9d5bc63e75ff6b6\transformed\lifecycle-runtime-2.7.0\res
 io.flutter.plugins.firebase.firestore.cloud_firestore-main-23 C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore-5.4.0\android\src\main\res
 io.flutter.plugins.firebase.firestore.cloud_firestore-release-24 C:\Users\aanan\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore-5.4.0\android\src\release\res
-io.flutter.plugins.firebase.firestore.cloud_firestore-pngs-25 D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\generated\res\pngs\release
-io.flutter.plugins.firebase.firestore.cloud_firestore-resValues-26 D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\generated\res\resValues\release
-io.flutter.plugins.firebase.firestore.cloud_firestore-mergeReleaseResources-27 D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\incremental\release\mergeReleaseResources\merged.dir
-io.flutter.plugins.firebase.firestore.cloud_firestore-mergeReleaseResources-28 D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-io.flutter.plugins.firebase.firestore.cloud_firestore-release-29 D:\Downloads\food_insight_scanner\food_insight_scanner\build\cloud_firestore\intermediates\merged_res\release\mergeReleaseResources
-io.flutter.plugins.firebase.firestore.cloud_firestore-release-30 D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core\intermediates\packaged_res\release\packageReleaseResources
+io.flutter.plugins.firebase.firestore.cloud_firestore-pngs-25 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\generated\res\pngs\release
+io.flutter.plugins.firebase.firestore.cloud_firestore-resValues-26 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\generated\res\resValues\release
+io.flutter.plugins.firebase.firestore.cloud_firestore-mergeReleaseResources-27 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\incremental\release\mergeReleaseResources\merged.dir
+io.flutter.plugins.firebase.firestore.cloud_firestore-mergeReleaseResources-28 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+io.flutter.plugins.firebase.firestore.cloud_firestore-release-29 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\cloud_firestore\intermediates\merged_res\release\mergeReleaseResources
+io.flutter.plugins.firebase.firestore.cloud_firestore-release-30 D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core\intermediates\packaged_res\release\packageReleaseResources

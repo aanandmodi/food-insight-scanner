@@ -5,7 +5,7 @@
     type="LIBRARY"
     maven="io.flutter.plugins.flutter_plugin_android_lifecycle:flutter_plugin_android_lifecycle:1.0"
     agpVersion="8.5.2"
-    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\flutter_plugin_android_lifecycle"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\flutter_plugin_android_lifecycle"
     bootClassPath="D:\Android\Sdk\platforms\android-35\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
     javaSourceLevel="11"
     compileTarget="android-35"

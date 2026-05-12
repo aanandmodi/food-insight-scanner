@@ -5,7 +5,7 @@
     type="LIBRARY"
     maven="io.flutter.plugins.firebase.core:firebase_core:1.0-SNAPSHOT"
     agpVersion="8.5.2"
-    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\build\firebase_core"
+    buildFolder="D:\Downloads\food_insight_scanner\food_insight_scanner\frontend\build\firebase_core"
     bootClassPath="D:\Android\Sdk\platforms\android-34\android.jar;D:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
     javaSourceLevel="17"
     compileTarget="android-34"

@@ -28,6 +28,58 @@ interface ParsedProduct {
   quantity: string;
 }
 
+function toNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item).trim()).filter((item) => item.length > 0);
+}
+
+function normalizeProductPayload(data: any, barcode: string) {
+  try {
+    const nutritionRaw = data?.nutrition ?? {};
+    const aiRaw = data?.aiAnalysis ?? {};
+
+    return {
+      barcode: String(data?.barcode ?? barcode),
+      name: String(data?.name ?? "Unknown Product"),
+      brand: String(data?.brand ?? "Unknown Brand"),
+      category: String(data?.category ?? "Uncategorized"),
+      image: String(data?.image ?? ""),
+      nutrition: {
+        calories: toNumber(nutritionRaw.calories),
+        sugar: toNumber(nutritionRaw.sugar),
+        protein: toNumber(nutritionRaw.protein),
+        sodium: toNumber(nutritionRaw.sodium),
+        fiber: toNumber(nutritionRaw.fiber),
+        fat: toNumber(nutritionRaw.fat),
+        carbs: toNumber(nutritionRaw.carbs),
+      },
+      ingredients: toStringArray(data?.ingredients),
+      allergens: toStringArray(data?.allergens),
+      servingSize: String(data?.servingSize ?? "Per 100g"),
+      nutriscore: data?.nutriscore ? String(data.nutriscore) : null,
+      novaGroup: data?.novaGroup == null ? null : toNumber(data.novaGroup),
+      quantity: String(data?.quantity ?? ""),
+      aiAnalysis: {
+        summary: String(aiRaw.summary ?? "AI analysis unavailable."),
+        isHealthy: Boolean(aiRaw.isHealthy),
+        warnings: toStringArray(aiRaw.warnings),
+      },
+      lastUpdated: String(data?.lastUpdated ?? new Date().toISOString()),
+    };
+  } catch (error) {
+    throw new HttpsError("internal", `Failed to normalize product payload: ${String(error)}`);
+  }
+}
+
 async function fetchFromOpenFoodFacts(barcode: string): Promise<ParsedProduct | null> {
   const fetch = (await import("node-fetch")).default;
 
@@ -123,7 +175,11 @@ export const analyzeProduct = onCall(
     const cacheRef = db.collection("products").doc(barcode);
     const cached = await cacheRef.get();
     if (cached.exists) {
-      return cached.data();
+      try {
+        return normalizeProductPayload(cached.data(), barcode);
+      } catch (error) {
+        console.error("Cached payload parse failed:", error);
+      }
     }
 
     // 2. Fetch from Open Food Facts
@@ -146,7 +202,10 @@ export const analyzeProduct = onCall(
     }
 
     // 4. Cache in Firestore (Admin SDK bypasses security rules)
-    const result = { ...product, aiAnalysis, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
+    const result = normalizeProductPayload(
+      { ...product, aiAnalysis, lastUpdated: new Date().toISOString() },
+      barcode
+    );
     await cacheRef.set(result, { merge: true });
 
     return result;
