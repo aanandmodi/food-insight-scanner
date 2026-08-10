@@ -153,14 +153,15 @@ class AlternativesWidget extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        (product['price'] as String?) ?? '\$0.00',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurface,
+                      if (product['price'] != null)
+                        Text(
+                          product['price'] as String,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -250,7 +251,7 @@ class AlternativesWidget extends StatelessWidget {
                 return GestureDetector(
                   onTap: () {
                     // Navigate to product details of alternative
-                    Navigator.pushNamed(context, '/product-details');
+                    Navigator.pushNamed(context, '/product-details', arguments: alternatives[index]);
                   },
                   child: _buildAlternativeCard(context, alternatives[index]),
                 );

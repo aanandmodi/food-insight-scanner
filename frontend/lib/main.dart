@@ -129,7 +129,7 @@ class MyApp extends StatelessWidget {
     // Sizer is used for responsive UI design.
     return Sizer(builder: (context, orientation, screenType) {
       return MaterialApp(
-        title: 'Food Insight Scanner',
+        title: 'Food Insight',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.dark,

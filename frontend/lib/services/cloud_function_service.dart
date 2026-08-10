@@ -1,23 +1,49 @@
 // lib/core/services/cloud_function_service.dart
 
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../core/config/env.dart';
 
-/// Unified service for calling Firebase Cloud Functions.
-///
-/// All AI and product-lookup logic now lives server-side;
-/// this service is the only client-side gateway to that logic.
 class CloudFunctionService {
   static final CloudFunctionService _instance = CloudFunctionService._internal();
   factory CloudFunctionService() => _instance;
   CloudFunctionService._internal();
 
-  /// The Firebase Functions instance configured for the correct region.
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'asia-south1');
+  static const String _groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
-  /// Default timeout for callable function invocations.
-  static const Duration _timeout = Duration(seconds: 30);
+  Future<Map<String, dynamic>> _callGroq({
+    required String model,
+    required List<Map<String, dynamic>> messages,
+    double temperature = 0.7,
+    int? maxTokens,
+    double? topP,
+    Map<String, dynamic>? responseFormat,
+  }) async {
+    final response = await http.post(
+      Uri.parse(_groqApiUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${Env.groqApiKey}',
+      },
+      body: jsonEncode({
+        'model': model,
+        'messages': messages,
+        'temperature': temperature,
+        if (maxTokens != null) 'max_tokens': maxTokens,
+        if (topP != null) 'top_p': topP,
+        if (responseFormat != null) 'response_format': responseFormat,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Groq API error: ${response.statusCode} - ${response.body}');
+    }
+
+    return jsonDecode(response.body);
+  }
 
   Map<String, dynamic>? _parseProductPayload(dynamic rawData) {
     try {
@@ -65,50 +91,154 @@ class CloudFunctionService {
   }
 
   // ─────────────────────────── Scan Product ───────────────────────────
-
-  /// Looks up a product by barcode via the Cloud Function.
-  /// The function checks the Firestore cache, fetches from Open Food Facts
-  /// if needed, runs an AI analysis, and returns the complete product data.
-  ///
-  /// Returns `null` if the product was not found.
   Future<Map<String, dynamic>?> scanProduct(String barcode) async {
+    return _fetchAndAnalyzeProduct(barcode, asJson: false);
+  }
+
+  // ─────────────────────────── Analyze Product ───────────────────────────
+  Future<Map<String, dynamic>?> analyzeProduct(String barcode) async {
+    return _fetchAndAnalyzeProduct(barcode, asJson: true);
+  }
+
+  Future<Map<String, dynamic>?> _fetchAndAnalyzeProduct(String barcode, {required bool asJson}) async {
     try {
-      final callable = _functions.httpsCallable(
-        'scanProduct',
-        options: HttpsCallableOptions(timeout: _timeout),
+      // 1. Fetch from Open Food Facts
+      final url = Uri.parse('https://world.openfoodfacts.org/api/v2/product/$barcode.json');
+      final res = await http.get(
+        url,
+        headers: {"User-Agent": "FoodInsightScanner/1.0 (FlutterClient)"},
       );
-      final result = await callable.call<Map<String, dynamic>>({'barcode': barcode});
-      return _parseProductPayload(result.data);
-    } on FirebaseFunctionsException catch (e) {
-      if (e.code == 'not-found') return null;
-      debugPrint('scanProduct error: ${e.code} – ${e.message}');
-      rethrow;
-    } on FormatException catch (e) {
-      debugPrint('scanProduct format error: ${e.message}');
-      return null;
+
+      if (res.statusCode != 200) return null;
+      final jsonResponse = jsonDecode(res.body);
+      if (jsonResponse['status'] != 1 || jsonResponse['product'] == null) return null;
+
+      final raw = jsonResponse['product'];
+      final nutriments = raw['nutriments'] ?? {};
+      final ingredientsText = raw['ingredients_text']?.toString() ?? "";
+      final allergensTags = raw['allergens_tags'] as List? ?? [];
+      
+      final nutrition = {
+        'calories': (nutriments['energy-kcal_100g'] ?? 0).toDouble(),
+        'sugar': (nutriments['sugars_100g'] ?? 0).toDouble(),
+        'protein': (nutriments['proteins_100g'] ?? 0).toDouble(),
+        'sodium': (nutriments['sodium_100g'] ?? 0).toDouble(),
+        'fiber': (nutriments['fiber_100g'] ?? 0).toDouble(),
+        'fat': (nutriments['fat_100g'] ?? 0).toDouble(),
+        'carbs': (nutriments['carbohydrates_100g'] ?? 0).toDouble(),
+      };
+
+      final ingredients = ingredientsText.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+
+      final product = {
+        'barcode': barcode,
+        'name': raw['product_name']?.toString() ?? "Unknown Product",
+        'brand': raw['brands']?.toString() ?? "Unknown Brand",
+        'category': raw['categories']?.toString() ?? "Uncategorized",
+        'image': raw['image_front_url']?.toString() ?? raw['image_url']?.toString() ?? "",
+        'nutrition': nutrition,
+        'ingredients': ingredients,
+        'allergens': allergensTags.map((t) => t.toString().replaceAll('en:', '')).toList(),
+        'servingSize': raw['serving_size']?.toString() ?? "Per 100g",
+        'nutriscore': raw['nutriscore_grade'],
+        'novaGroup': raw['nova_group'],
+        'quantity': raw['quantity']?.toString() ?? "",
+      };
+
+      // 2. AI Analysis
+      dynamic aiAnalysis;
+      try {
+        final messages = [
+          if (asJson)
+            {
+              "role": "system",
+              "content": "You are an expert nutritionist. Provide a strict health analysis of the scanned product and format your response ONLY as valid JSON.\n{\n  \"summary\": \"2-3 sentences concise health analysis mentioning positives and negatives\",\n  \"isHealthy\": boolean,\n  \"warnings\": [\"Array of short warnings if any\"]\n}",
+            }
+          else
+            {
+              "role": "system",
+              "content": "You are an expert nutritionist. Provide a concise health analysis of the scanned product in 2-3 sentences. Mention positives and negatives.",
+            },
+          {
+            "role": "user",
+            "content": "Analyze: ${product['name']} by ${product['brand']}.\nNutrition per 100g: ${jsonEncode(product['nutrition'])}\nIngredients: ${ingredients.join(", ")}",
+          }
+        ];
+
+        final aiResponse = await _callGroq(
+          model: 'llama-3.1-8b-instant',
+          messages: messages,
+          temperature: asJson ? 0.2 : 0.5,
+          maxTokens: 256,
+          responseFormat: asJson ? {"type": "json_object"} : null,
+        );
+        
+        final content = aiResponse['choices']?[0]?['message']?['content'] ?? (asJson ? "{}" : "");
+        aiAnalysis = asJson ? jsonDecode(content) : content;
+      } catch (e) {
+        debugPrint('AI analysis failed: $e');
+        aiAnalysis = asJson ? {'summary': 'AI analysis unavailable.', 'isHealthy': false, 'warnings': []} : 'AI analysis unavailable.';
+      }
+
+      // 3. Cache in Firestore
+      final result = {
+        ...product,
+        'aiAnalysis': aiAnalysis,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      };
+      
+      try {
+        await FirebaseFirestore.instance.collection('products').doc(barcode).set(
+          result,
+          SetOptions(merge: true),
+        );
+      } catch (e) {
+        debugPrint('Firestore cache failed: $e');
+      }
+      
+      result['lastUpdated'] = DateTime.now().toIso8601String();
+      if (asJson) {
+         return _parseProductPayload(result);
+      } else {
+         return result;
+      }
     } catch (e) {
-      debugPrint('scanProduct error: $e');
-      rethrow;
+      debugPrint('analyzeProduct error: $e');
+      return null;
     }
   }
 
   // ─────────────────────────── Parse Meal ───────────────────────────
-
-  /// Parses a natural-language meal description into structured macros.
-  ///
-  /// Returns `{ name, calories, protein, sugar, fat, carbs }` or `null`
-  /// if parsing failed.
   Future<Map<String, dynamic>?> parseMeal(String description) async {
     try {
-      final callable = _functions.httpsCallable(
-        'parseMeal',
-        options: HttpsCallableOptions(timeout: const Duration(seconds: 20)),
+      final response = await _callGroq(
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            "role": "system",
+            "content": "You are a nutrition parser. Given a meal description, estimate the macronutrients for a typical Indian serving size. Return ONLY a valid JSON object with these exact keys: {\"name\": \"Brief Meal Name\", \"calories\": <int>, \"protein\": <number>, \"sugar\": <number>, \"fat\": <number>, \"carbs\": <number>}. No markdown, no explanation, just the JSON object.",
+          },
+          {
+            "role": "user",
+            "content": "Analyze this meal: \"$description\"",
+          }
+        ],
+        temperature: 0.1,
+        maxTokens: 256,
       );
-      final result = await callable.call<Map<String, dynamic>>({'description': description});
-      return result.data;
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('parseMeal error: ${e.code} – ${e.message}');
-      return null;
+
+      final raw = response['choices']?[0]?['message']?['content'] ?? "";
+      final cleaned = raw.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+      
+      final parsed = jsonDecode(cleaned);
+      return {
+        'name': parsed['name'] ?? description,
+        'calories': (parsed['calories'] ?? 0).toInt(),
+        'protein': (parsed['protein'] ?? 0).toDouble(),
+        'sugar': (parsed['sugar'] ?? 0).toDouble(),
+        'fat': (parsed['fat'] ?? 0).toDouble(),
+        'carbs': (parsed['carbs'] ?? 0).toDouble(),
+      };
     } catch (e) {
       debugPrint('parseMeal error: $e');
       return null;
@@ -116,25 +246,54 @@ class CloudFunctionService {
   }
 
   // ────────────────────────── Generate Diet Plan ──────────────────────────
-
-  /// Generates a next-day meal plan based on the day's intake summary.
   Future<Map<String, dynamic>> generateDietPlan({
     required Map<String, dynamic> dailySummary,
     Map<String, dynamic>? userProfile,
   }) async {
     try {
-      final callable = _functions.httpsCallable(
-        'generateDietPlan',
-        options: HttpsCallableOptions(timeout: _timeout),
+      final prompt = '''Create a detailed meal plan for TOMORROW based on my intake today and my goals.
+
+Today's Intake Summary:
+- Calories: ${dailySummary['calories'] ?? 0}
+- Protein: ${dailySummary['protein'] ?? 0}g
+- Sugar: ${dailySummary['sugar'] ?? 0}g
+
+My Profile:
+${userProfile != null ? jsonEncode(userProfile) : "None"}
+
+Output strictly a JSON object with this structure:
+{
+  "summary": "Short overview text...",
+  "meals": [
+    { "type": "Breakfast", "name": "...", "calories": 300, "protein": 10, "description": "..." },
+    { "type": "Lunch",     "name": "...", "calories": 500, "protein": 25, "description": "..." },
+    { "type": "Dinner",    "name": "...", "calories": 600, "protein": 30, "description": "..." },
+    { "type": "Snack",     "name": "...", "calories": 150, "protein": 5,  "description": "..." }
+  ],
+  "totalCalories": 1550,
+  "totalProtein": 70
+}''';
+
+      final response = await _callGroq(
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            "role": "system",
+            "content": "You are a nutritionist. Create a meal plan for the next day. Output strictly valid JSON. No markdown.",
+          },
+          {
+            "role": "user",
+            "content": prompt,
+          }
+        ],
+        temperature: 0.7,
+        maxTokens: 1500,
       );
-      final result = await callable.call<Map<String, dynamic>>({
-        'dailySummary': dailySummary,
-        'userProfile': userProfile,
-      });
-      return result.data;
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('generateDietPlan error: ${e.code} – ${e.message}');
-      return {'error': e.message ?? 'Failed to generate diet plan'};
+
+      final raw = response['choices']?[0]?['message']?['content'] ?? "{}";
+      final cleaned = raw.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+      
+      return jsonDecode(cleaned);
     } catch (e) {
       debugPrint('generateDietPlan error: $e');
       return {'error': e.toString()};
@@ -142,25 +301,56 @@ class CloudFunctionService {
   }
 
   // ────────────────────────── Get Alternatives ──────────────────────────
-
-  /// Returns a list of healthier Indian-market product alternatives.
   Future<List<Map<String, dynamic>>> getAlternatives({
     required Map<String, dynamic> productData,
     Map<String, dynamic>? userProfile,
   }) async {
     try {
-      final callable = _functions.httpsCallable(
-        'getAlternatives',
-        options: HttpsCallableOptions(timeout: const Duration(seconds: 20)),
+      final prompt = '''Based on this product: "${productData['name']}" (Brand: ${productData['brand'] ?? "Unknown"}), suggest 3 healthier alternatives specifically available in the **Indian Market**.
+
+User Context:
+${userProfile != null ? jsonEncode(userProfile) : "None"}
+
+Output strictly a JSON object. Each object must have:
+- "name": string (Indian product name)
+- "brand": string (Popular Indian brands like Amul, Britannia, Tata Sampann, Yoga Bar, etc.)
+- "image": string (use a placeholder URL like "https://placehold.co/200x200?text=Healthy+Choice")
+- "isBetterChoice": boolean (always true)
+- "healthScore": number (80-100)
+- "price": string (estimate realistic price in INR, e.g. "₹45.00" or "Rs. 150")
+
+Example format:
+{
+  "alternatives": [
+    {"name": "...", "brand": "...", "image": "...", "isBetterChoice": true, "healthScore": 90, "price": "₹120"}
+  ]
+}''';
+
+      final response = await _callGroq(
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            "role": "system",
+            "content": "You are a nutritionist. Suggest healthier food alternatives as a strict JSON object with an 'alternatives' array. No markdown.",
+          },
+          {
+            "role": "user",
+            "content": prompt,
+          }
+        ],
+        temperature: 0.6,
+        maxTokens: 1024,
       );
-      final result = await callable.call<Map<String, dynamic>>({
-        'productData': productData,
-        'userProfile': userProfile,
-      });
-      final data = result.data;
-      if (data['alternatives'] is List) {
+
+      final raw = response['choices']?[0]?['message']?['content'] ?? "{}";
+      final cleaned = raw.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+      
+      final parsed = jsonDecode(cleaned);
+      if (parsed is List) {
+        return List<Map<String, dynamic>>.from(parsed.map((e) => Map<String, dynamic>.from(e)));
+      } else if (parsed is Map && parsed['alternatives'] is List) {
         return List<Map<String, dynamic>>.from(
-          (data['alternatives'] as List).map((e) => Map<String, dynamic>.from(e as Map)),
+          (parsed['alternatives'] as List).map((e) => Map<String, dynamic>.from(e as Map))
         );
       }
       return [];
@@ -171,13 +361,11 @@ class CloudFunctionService {
   }
 
   // ────────────────────────── Chat with AI ──────────────────────────
-
   Future<Map<String, dynamic>> generateResponseWithMeta({
     required List<Map<String, String>> messages,
     required dynamic userProfile,
   }) async {
     try {
-      // Build conversation history from messages list
       final historyBuffer = StringBuffer();
       String lastUserMessage = '';
       for (final msg in messages) {
@@ -187,26 +375,11 @@ class CloudFunctionService {
         if (role == 'user') lastUserMessage = content;
       }
 
-      final callable = _functions.httpsCallable(
-        'chatWithAI',
-        options: HttpsCallableOptions(timeout: _timeout),
+      return await chatWithAI(
+        message: lastUserMessage,
+        conversationHistory: historyBuffer.toString(),
+        userProfile: userProfile is Map ? Map<String, dynamic>.from(userProfile) : null,
       );
-      final result = await callable.call<Map<String, dynamic>>({
-        'message': lastUserMessage,
-        'conversationHistory': historyBuffer.toString(),
-        'userProfile': userProfile is Map ? userProfile : null,
-      });
-
-      return {
-        'message': result.data['reply'] as String? ?? 'I couldn\'t generate a response.',
-        'mealLogged': result.data['mealLogged'] ?? false,
-        'mealData': result.data['mealData'],
-      };
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('generateResponseWithMeta error: ${e.code} – ${e.message}');
-      return {
-        'message': 'I\'m having trouble connecting to the AI service. Please try again.',
-      };
     } catch (e) {
       debugPrint('generateResponseWithMeta error: $e');
       return {
@@ -215,31 +388,116 @@ class CloudFunctionService {
     }
   }
 
-  /// Sends a chat message to the AI nutritionist and returns the reply.
-  ///
-  /// The response includes:
-  /// - `reply` – the AI's response text
-  /// - `mealLogged` – whether a meal was auto-logged
-  /// - `mealData` – the logged meal data (if any)
   Future<Map<String, dynamic>> chatWithAI({
     required String message,
     String? conversationHistory,
     Map<String, dynamic>? userProfile,
   }) async {
     try {
-      final callable = _functions.httpsCallable(
-        'chatWithAI',
-        options: HttpsCallableOptions(timeout: _timeout),
+      String systemPrompt = '''You are an energetic, friendly, and expert nutrition assistant for an Indian food insight scanner app. Your role is to provide personalized dietary advice in a warm, humanized, and highly conversational tone.
+
+**Your Personality & Formatting Rules:**
+- **Be Conversational & Energetic:** Talk to the user like a helpful friend. Use fun emojis! 🥑🚀🥗
+- **Visual Formatting:** Whenever comparing products or breaking down macros (Calories, Protein, Carbs, Fat), always use **Markdown Tables**.
+- **Keep it Clear:** Use bullet points and short, readable paragraphs.
+- **Prioritize Safety:** Always warn about allergens and dietary restrictions.
+
+**CRITICAL: Meal Logging Detection**
+If the user tells you they just ate something (e.g. "I just had a masala dosa" or "I ate an apple"), you must do TWO things:
+1. Respond to them normally in a friendly way.
+2. At the very END of your response, output a strict JSON block exactly in this format on its own line:
+[LOG_MEAL: {"name": "Meal Name", "calories": 250, "protein": 5, "sugar": 2, "fat": 10, "carbs": 30}]
+Never use markdown blocks for the JSON. Just output the exact text string format above so it can be silently logged.''';
+
+      if (userProfile != null) {
+        systemPrompt += "\n--- User Profile Context ---\n";
+        if (userProfile['name'] != null) systemPrompt += "- Name: ${userProfile['name']}\n";
+        if (userProfile['allergies'] != null && (userProfile['allergies'] as List).isNotEmpty) {
+          systemPrompt += "- Allergies: ${(userProfile['allergies'] as List).join(", ")}\n";
+          systemPrompt += "- IMPORTANT: Always warn about these allergens.\n";
+        }
+        if (userProfile['dietaryPreferences'] != null) {
+          systemPrompt += "- Dietary Preference: ${userProfile['dietaryPreferences']}\n";
+        }
+        if (userProfile['healthGoals'] != null) {
+          systemPrompt += "- Health Goals: ${userProfile['healthGoals']}\n";
+        }
+      }
+
+      final groqMessages = <Map<String, dynamic>>[
+        {"role": "system", "content": systemPrompt}
+      ];
+
+      if (conversationHistory != null && conversationHistory.isNotEmpty) {
+        final lines = conversationHistory.split('\n');
+        for (final line in lines) {
+          if (line.startsWith("User: ")) {
+            groqMessages.add({"role": "user", "content": line.substring(6)});
+          } else if (line.startsWith("Assistant: ")) {
+            groqMessages.add({"role": "assistant", "content": line.substring(11)});
+          }
+        }
+      }
+      
+      // Make sure the last user message is present
+      if (groqMessages.isEmpty || groqMessages.last['role'] != 'user' || groqMessages.last['content'] != message) {
+          groqMessages.add({"role": "user", "content": message});
+      }
+
+      final response = await _callGroq(
+        model: 'llama-3.3-70b-versatile',
+        messages: groqMessages,
+        temperature: 0.7,
+        maxTokens: 1024,
+        topP: 0.95,
       );
-      final result = await callable.call<Map<String, dynamic>>({
-        'message': message,
-        'conversationHistory': conversationHistory,
-        'userProfile': userProfile,
-      });
-      return result.data;
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('chatWithAI error: ${e.code} – ${e.message}');
-      rethrow;
+
+      String reply = response['choices']?[0]?['message']?['content'] ?? "I apologize, but I could not generate a response.";
+      
+      bool mealLogged = false;
+      Map<String, dynamic>? mealData;
+
+      final logMatch = RegExp(r'\[LOG_MEAL:\s*(\{.*?\})\s*\]', dotAll: true).firstMatch(reply);
+      if (logMatch != null) {
+        try {
+          final macros = jsonDecode(logMatch.group(1)!);
+          final now = DateTime.now();
+          final dateString = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+          final timeString = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+          final entry = {
+            'name': macros['name'] ?? "AI Logged Meal",
+            'mealType': "Snack",
+            'calories': (macros['calories'] ?? 0).toInt(),
+            'protein': (macros['protein'] ?? 0).toDouble(),
+            'sugar': (macros['sugar'] ?? 0).toDouble(),
+            'fat': (macros['fat'] ?? 0).toDouble(),
+            'carbs': (macros['carbs'] ?? 0).toDouble(),
+            'brand': "Conversational AI",
+            'time': timeString,
+            'date': dateString,
+            'createdAt': FieldValue.serverTimestamp(),
+          };
+
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          if (uid != null) {
+            await FirebaseFirestore.instance.collection("diet_log").doc(uid).collection("entries").add(entry);
+          }
+
+          mealLogged = true;
+          // Don't send FieldValue to client
+          mealData = Map.from(entry)..remove('createdAt'); 
+          reply = reply.replaceFirst(logMatch.group(0)!, "").trim();
+        } catch (e) {
+          debugPrint("Failed to parse LOG_MEAL intent: $e");
+        }
+      }
+
+      return {
+        'reply': reply,
+        'mealLogged': mealLogged,
+        'mealData': mealData,
+      };
     } catch (e) {
       debugPrint('chatWithAI error: $e');
       rethrow;
@@ -247,26 +505,42 @@ class CloudFunctionService {
   }
 
   // ────────────────────────── Quick Replies ──────────────────────────
-
-  /// Gets context-aware quick-reply suggestions.
   Future<List<String>> generateQuickReplies({
     required String lastMessage,
     Map<String, dynamic>? userProfile,
   }) async {
     try {
-      final callable = _functions.httpsCallable(
-        'generateQuickReplies',
-        options: HttpsCallableOptions(timeout: const Duration(seconds: 15)),
+      final prompt = 'Based on the user\'s last message and profile, suggest 4 relevant quick reply options for a nutrition assistant app.\n\n'
+          'User\'s last message: "$lastMessage"\n'
+          '${userProfile != null ? "User Profile: " + jsonEncode(userProfile) : ""}\n\n'
+          'Generate 4 short, actionable quick-reply suggestions.\n'
+          'Return ONLY the suggestions, one per line, without numbering or bullets.';
+
+      final response = await _callGroq(
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            "role": "system",
+            "content": "You are a helpful nutrition assistant. Respond with only 4 suggestions, one per line.",
+          },
+          {
+            "role": "user",
+            "content": prompt,
+          }
+        ],
+        temperature: 0.8,
+        maxTokens: 256,
       );
-      final result = await callable.call<Map<String, dynamic>>({
-        'lastMessage': lastMessage,
-        'userProfile': userProfile,
-      });
-      final data = result.data;
-      if (data['replies'] is List) {
-        return List<String>.from(data['replies'] as List);
-      }
-      return _defaultReplies;
+
+      final text = response['choices']?[0]?['message']?['content'] ?? "";
+      final replies = text
+          .split('\n')
+          .map((l) => l.toString().trim())
+          .where((l) => l.isNotEmpty)
+          .take(4)
+          .toList();
+
+      return replies.isNotEmpty ? List<String>.from(replies) : _defaultReplies;
     } catch (e) {
       debugPrint('generateQuickReplies error: $e');
       return _defaultReplies;

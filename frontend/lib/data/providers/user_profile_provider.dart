@@ -12,6 +12,16 @@ class UserProfileProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  UserProfileProvider() {
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        fetchProfile();
+      } else {
+        clearProfile();
+      }
+    });
+  }
+
   /// Fetches the user profile from Firestore once and stores it in memory.
   Future<void> fetchProfile() async {
     final user = FirebaseAuth.instance.currentUser;

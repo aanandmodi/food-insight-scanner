@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_export.dart';
 import '../../services/firestore_service.dart';
 import '../../services/cloud_function_service.dart';
+import '../../core/utils/user_utils.dart';
 import '../home_dashboard/widgets/nutrition_summary_card.dart';
 
 class DietLogScreen extends StatefulWidget {
@@ -62,15 +63,26 @@ class _DietLogScreenState extends State<DietLogScreen> {
         debugPrint('Firestore profile failed: $e');
       }
       
-      int calGoal = 2000;
-      int proteinGoal = 150;
+      final weightKg = profile?['weightKg'] as num? ?? prefs.getDouble('user_weight') ?? 70.0;
+      final heightCm = profile?['heightCm'] as num? ?? prefs.getDouble('user_height') ?? 170.0;
+      final age = profile?['age'] as int? ?? prefs.getInt('user_age') ?? 25;
+      final gender = profile?['gender'] as String? ?? prefs.getString('user_gender') ?? 'Male';
+      final healthGoal = profile?['healthGoal'] as String? ?? prefs.getString('user_health_goal') ?? '';
+
+      final calGoal = UserUtils.calculateTDEE(
+        weightKg: weightKg.toDouble(),
+        heightCm: heightCm.toDouble(),
+        age: age,
+        gender: gender,
+        healthGoal: healthGoal,
+      );
       
-      final healthGoal = profile?['healthGoal'] as String? ?? prefs.getString('user_health_goal');
-      if (healthGoal == 'Lose Weight') calGoal = 1800;
-      if (healthGoal == 'Build Muscle') {
-        calGoal = 2500;
-        proteinGoal = 180;
-      }
+      final proteinGoal = UserUtils.calculateProteinGoal(
+        weightKg: weightKg.toDouble(),
+        healthGoal: healthGoal,
+      );
+      
+      final sugarGoal = UserUtils.calculateSugarGoal(calGoal);
 
       _userProfile = profile ?? {
         'healthGoal': healthGoal,
@@ -96,7 +108,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
             'protein': totalProtein.round(),
             'proteinGoal': proteinGoal,
             'sugar': totalSugar.round(),
-            'sugarGoal': 50,
+            'sugarGoal': sugarGoal,
           };
         });
       }

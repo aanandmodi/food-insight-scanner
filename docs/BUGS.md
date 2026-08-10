@@ -32,6 +32,19 @@ This document tracks known issues, workarounds, and resolved bugs for the **Food
 | `scanProduct` function not deployed | Missing export in `index.ts` | Added export statement to `index.ts` | May 2026 |
 | TypeScript compilation errors | Type mismatches in function signatures | Fixed type annotations across all function files | May 2026 |
 
+### 🚀 Major Redesign & Overhaul (August 2026)
+
+| Bug | Root Cause | Resolution | Date |
+|-----|-----------|------------|------|
+| `TextEditingController` disposal errors | Missing dispose in `diet_log_screen.dart` | Fixed controller disposal when adding manual entries | Aug 2026 |
+| Offline persistence broken | Aggressive 5-second `Future.timeout` blocks in `firestore_service.dart` | Removed timeout blocks | Aug 2026 |
+| Profile not fetching on login | Missing auth state listener | Wired `UserProfileProvider` to `FirebaseAuth.instance.authStateChanges()` | Aug 2026 |
+| Back-button tab-switching behavior | Improper routing in `barcode_scanner.dart` & `ai_chat_assistant.dart` | Fixed navigation and state handling | Aug 2026 |
+| Alternative product click navigation | Missing arguments on click | Fixed passing arguments on product click | Aug 2026 |
+| Static fake nutrition goals | Hardcoded mock data | Wired up dynamic `UserUtils.calculateTDEE()` everywhere | Aug 2026 |
+| Profile offline fallback missing | No local cache for profile | Wired `SharedPreferences` as an offline profile fallback mechanism | Aug 2026 |
+| 10 additional minor bugs | Various | Resolved 10 additional UI and state bugs across the app | Aug 2026 |
+
 ---
 
 ## Known Issues / Limitations

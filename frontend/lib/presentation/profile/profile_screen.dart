@@ -110,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Food Insight Scanner',
+          'Food Insight',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w900,
             letterSpacing: -0.3,

@@ -301,7 +301,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
           // Camera overlay with scanning reticle
           if (_hasPermission && _isInitialized)
             CameraOverlayWidget(
-              onClose: () => Navigator.of(context).pop(),
+              onClose: () => Navigator.maybePop(context),
               onFlashToggle: _toggleFlash,
               isFlashOn: _isFlashOn,
               isScanning: _isScanning,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// ─────────────────────────────────────────────────────────────
-///  FOOD INSIGHT SCANNER — APPLE × SKEUOMORPHIC DESIGN SYSTEM
+///  FOOD INSIGHT — APPLE × SKEUOMORPHIC DESIGN SYSTEM
 /// ─────────────────────────────────────────────────────────────
 
 class FoodInsightColors {
