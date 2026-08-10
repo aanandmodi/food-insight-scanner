@@ -13,8 +13,11 @@ import './widgets/quick_reply_widget.dart';
 import './widgets/typing_indicator_widget.dart';
 
 
+import 'package:image_picker/image_picker.dart';
+
 class AiChatAssistant extends StatefulWidget {
-  const AiChatAssistant({super.key});
+  final XFile? initialImage;
+  const AiChatAssistant({super.key, this.initialImage});
   @override
   State<AiChatAssistant> createState() => _AiChatAssistantState();
 }
@@ -216,7 +219,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       body: Column(
         children: [
           ChatHeaderWidget(
-            onBackPressed: () => Navigator.pop(context),
+            onBackPressed: () => Navigator.maybePop(context),
           ),
           if (_errorMessage != null)
             Container(

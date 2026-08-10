@@ -92,3 +92,6 @@ analyze_output.txt
 analyze.log
 stitch_nutriscan_ai/
 
+
+# API Keys and Secrets
+**/env.dart

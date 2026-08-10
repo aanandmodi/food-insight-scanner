@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 
 import '../../core/app_export.dart';
 import '../../theme/app_design_system.dart';
+import 'package:provider/provider.dart';
+import '../../data/providers/user_profile_provider.dart';
+import '../../services/firestore_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -117,27 +120,34 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeApp() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
       _updateProgress(0.2, 'Connecting to services...');
-
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
-      _updateProgress(0.5, 'Loading your profile...');
-
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
-      _updateProgress(0.8, 'Preparing your experience...');
-
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
+      await Firebase.initializeApp();
+      
+      _updateProgress(0.5, 'Checking authentication...');
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      _updateProgress(0.8, 'Loading your profile...');
+      bool profileComplete = false;
+      if (currentUser != null) {
+        profileComplete = await FirestoreService().isProfileCompleted();
+        if (mounted) {
+          final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+          await profileProvider.fetchProfile();
+        }
+      }
+      
       _updateProgress(1.0, 'Ready!');
-
       await Future.delayed(const Duration(milliseconds: 500));
+      
       if (!mounted) return;
 
-      // Navigate to auth gate — it handles auth state and routing
-      Navigator.pushReplacementNamed(context, AppRoutes.authGate);
+      if (currentUser == null) {
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      } else if (!profileComplete) {
+        Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
+      }
     } catch (e) {
       debugPrint('Initialization error: $e');
       if (mounted) {
@@ -391,7 +401,7 @@ class _SplashScreenState extends State<SplashScreen>
         );
       },
       child: Text(
-        'Food Insight Scanner',
+        'Food Insight',
         style: FoodInsightTypography.display(
           size: 28,
           weight: FontWeight.w800,

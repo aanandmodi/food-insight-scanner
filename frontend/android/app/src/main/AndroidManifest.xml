@@ -10,7 +10,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
     <application
-            android:label="food_insight_scanner"
+            android:label="Food Insight"
             android:name="${applicationName}"
             android:icon="@mipmap/ic_launcher"
             android:enableOnBackInvokedCallback="true">

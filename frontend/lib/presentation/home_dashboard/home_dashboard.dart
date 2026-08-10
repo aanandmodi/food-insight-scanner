@@ -50,6 +50,7 @@ class _HomeDashboardState extends State<HomeDashboard>
   final List<Map<String, dynamic>> _dietLogEntries = [];
 
   final ImagePicker _imagePicker = ImagePicker();
+  XFile? _selectedImage;
 
   @override
   void initState() {
@@ -185,6 +186,7 @@ class _HomeDashboardState extends State<HomeDashboard>
       if (!mounted) return;
 
       setState(() {
+        _selectedImage = pickedFile;
         _currentIndex = 2;
       });
     } catch (e) {
@@ -358,7 +360,7 @@ class _HomeDashboardState extends State<HomeDashboard>
         children: [
           _buildHomeContent(),
           const BarcodeScanner(),
-          const AiChatAssistant(),
+          AiChatAssistant(initialImage: _selectedImage),
           const ProfileScreen(),
         ],
       ),

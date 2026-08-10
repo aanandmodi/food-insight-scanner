@@ -1,14 +1,14 @@
 // lib/core/services/product_service.dart
 
 import 'package:flutter/foundation.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'firestore_service.dart';
 import 'local_database_service.dart';
+import 'cloud_function_service.dart';
 
-/// Service that fetches real product data via Cloud Functions.
+/// Service that fetches real product data via CloudFunctionService.
 ///
-/// Delegates to the `analyzeProduct` Cloud Function which
-/// handles OFF fetching, AI analysis, and Admin-SDK Firestore caching.
+/// Delegates to the `analyzeProduct` method which
+/// handles OFF fetching, AI analysis, and Firestore caching.
 ///
 /// Local scan history is persisted in SQLite via [LocalDatabaseService].
 class ProductService {
@@ -18,14 +18,12 @@ class ProductService {
 
   final LocalDatabaseService _localDb = LocalDatabaseService();
 
-  /// Looks up a product by its barcode via Cloud Function.
+  /// Looks up a product by its barcode via CloudFunctionService.
   /// Returns null if not found.
   Future<Map<String, dynamic>?> getProductByBarcode(String barcode) async {
     try {
-      debugPrint('Fetching product via Cloud Function: $barcode');
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('analyzeProduct');
-      final result = await callable.call({'barcode': barcode});
-      final data = result.data as Map?;
+      debugPrint('Fetching product via CloudFunctionService: $barcode');
+      final data = await CloudFunctionService().analyzeProduct(barcode);
       if (data != null) {
         return Map<String, dynamic>.from(data);
       }

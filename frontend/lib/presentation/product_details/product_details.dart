@@ -6,8 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import 'package:provider/provider.dart';
 import '../../services/firestore_service.dart';
 import '../../services/cloud_function_service.dart';
+import '../../data/providers/user_profile_provider.dart';
 import './widgets/action_bar_widget.dart';
 import './widgets/alternatives_widget.dart';
 import './widgets/ingredients_widget.dart';
@@ -183,23 +185,19 @@ class _ProductDetailsState extends State<ProductDetails> {
   }
 
   void _navigateToAIChat() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userName = prefs.getString('user_name') ?? 'User';
-    final allergies = prefs.getStringList('user_allergies') ?? [];
-    final goal = prefs.getString('user_health_goal') ?? '';
-    final dietPrefs = prefs.getStringList('user_dietary_preferences') ?? [];
-
+    final profile = context.read<UserProfileProvider>().profile;
+    
     if (mounted) {
       Navigator.pushNamed(
         context,
         '/ai-chat-assistant',
         arguments: {
-          'name': userName,
-          'allergies': allergies,
-          'dietaryPreferences': dietPrefs.join(', '),
-          'healthGoals': goal,
-          'age': 25,
-          'activityLevel': 'moderate',
+          'name': profile?.name ?? 'User',
+          'allergies': profile?.allergies ?? [],
+          'dietaryPreferences': profile?.dietaryPreferences.join(', ') ?? '',
+          'healthGoals': profile?.healthGoals ?? '',
+          'age': profile?.age ?? 25,
+          'activityLevel': profile?.activityLevel ?? 'moderate',
         },
       );
     }

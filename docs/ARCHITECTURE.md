@@ -3,7 +3,7 @@
 ## 1. High-Level Architecture Overview
 The Food Insight Scanner application is built using a monorepo architecture divided into two primary subsystems:
 - `frontend/` — Cross-platform mobile application written in Flutter (Dart), targeting Android and iOS. It delivers a rich UI with skeuomorphic design elements, offline persistence, and real-time state management.
-- `backend/` — Serverless backend powered by Firebase Cloud Functions (TypeScript). It encapsulates business logic, food analysis pipelines, and integrations with external AI model endpoints.
+- `backend/` — (Deprecated) Originally used Firebase Cloud Functions. Now the application uses direct client-side HTTP calls to the Groq API and Open Food Facts from the Flutter client to bypass the Firebase Blaze pay-as-you-go restriction.
 
 ```mermaid
 graph TD
@@ -14,10 +14,6 @@ graph TD
         LocalDB[("SQLite Local DB")]
     end
 
-    subgraph Backend ["Backend (Firebase Cloud Functions)"]
-        Functions["Firebase Cloud Functions (TypeScript)"]
-        SecretMgr["Firebase Secret Manager (GROQ_API_KEY)"]
-    end
 
     subgraph External ["External Services"]
         FirebaseAuth["Firebase Auth"]
@@ -32,9 +28,7 @@ graph TD
     Services --> FirebaseAuth
     Services --> Firestore
     Services --> OFF
-    Services -->|HTTPS Callables| Functions
-    Functions --> SecretMgr
-    Functions -->|LLM Requests| GroqAPI
+    Services -->|Direct HTTP Call| GroqAPI
 ```
 
 ---
@@ -94,25 +88,14 @@ lib/
 
 ---
 
-## 3. Backend Architecture (Cloud Functions)
-The backend microservices layer is implemented as Firebase Cloud Functions in Node.js / TypeScript (`backend/src/`).
+## 3. Backend Architecture (Client-Side HTTP API)
+The Firebase Cloud Functions backend microservices layer (`backend/src/`) was completely removed to bypass the Firebase Blaze pay-as-you-go restriction. 
 
-### Cloud Functions Directory & Endpoints
-```
-backend/src/
-├── index.ts              # Exports all 7 callable functions
-├── chatWithAI.ts         # AI chat with conversation context, auto meal-logging
-├── analyzeProduct.ts     # Deep ingredient analysis, safety scoring
-├── scanProduct.ts        # Barcode-based product lookup + AI analysis
-├── parseMeal.ts          # Natural language → structured nutrition data
-├── generateDietPlan.ts   # AI-generated personalized meal plans
-├── generateQuickReplies.ts  # Dynamic chat quick-reply suggestions
-└── getAlternatives.ts    # Healthier product alternatives
-```
+Instead of relying on `FirebaseFunctions.instance`, the app now implements direct client-side HTTP integrations.
 
-### Configuration & AI Service Integration
-- **Secret Protection**: API keys are securely retrieved via Firebase `defineSecret('GROQ_API_KEY')` to avoid exposing credentials in source code.
-- **LLM Infrastructure**: Powered by the Groq API utilizing the `llama-3.3-70b-versatile` model for low-latency food analysis and nutritional reasoning.
+### Direct Integrations
+- **Groq API**: Direct client-side HTTP calls in `lib/services/cloud_function_service.dart` using the REST API to access the `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` models.
+- **Open Food Facts**: Direct REST calls for barcode and product search capabilities.
 
 ---
 
@@ -141,11 +124,9 @@ sequenceDiagram
 
     %% Remote Operations & Cloud Functions
     User->>Flutter: Scan Barcode / Send Chat / Log Meal
-    alt Cloud Function Action
-        Flutter->>CloudFn: Call Cloud Function (Auth Bearer Token)
-        CloudFn->>Groq: Request Inference (llama-3.3-70b-versatile + GROQ_API_KEY)
-        Groq-->>CloudFn: AI Response / Analysis Payload
-        CloudFn-->>Flutter: Formatted JSON Response
+    alt External API Calls
+        Flutter->>Groq: Direct HTTP Request (llama-3.3-70b-versatile)
+        Groq-->>Flutter: AI Response / Analysis Payload
     else Direct Database Operations
         Flutter->>Firestore: Sync User Profile & Meal Logs
         Firestore-->>Flutter: Firestore Change Stream

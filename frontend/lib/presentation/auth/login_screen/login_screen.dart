@@ -154,9 +154,9 @@ class _LoginScreenState extends State<LoginScreen>
         Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
       }
     } catch (e) {
-      debugPrint('Guest sign-in failed, proceeding offline: $e');
+      debugPrint('Guest sign-in failed: $e');
       if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
+        _showSnackBar('Guest sign-in failed: $e');
       }
     } finally {
       _setLoading(false);

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 
@@ -19,13 +20,27 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = true;
   User? _currentUser;
+  String _appVersion = '1.0.0';
 
   @override
   void initState() {
     super.initState();
     _currentUser = _authService.currentUser;
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading app version: $e');
+    }
   }
 
   Future<void> _signOut() async {
@@ -236,19 +251,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   setState(() => _notificationsEnabled = value);
                 },
               ),
-              Divider(height: 1, color: isDark ? AppTheme.dividerDark : null),
-              _buildSwitchTile(
-                context,
-                icon: Icons.dark_mode_outlined,
-                title: 'Dark Mode',
-                subtitle: 'Switch to dark theme',
-                value: _darkModeEnabled,
-                onChanged: (value) {
-                  HapticFeedback.lightImpact();
-                  setState(() => _darkModeEnabled = value);
-                  // TODO: Integrate with actual ThemeMode provider
-                },
-              ),
             ])
                 .animate()
                 .fadeIn(duration: 500.ms, delay: 200.ms)
@@ -311,7 +313,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 icon: Icons.info_outline,
                 title: 'App Version',
-                subtitle: '1.0.0',
+                subtitle: _appVersion,
                 onTap: () {},
               ),
             ])

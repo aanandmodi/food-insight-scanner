@@ -153,7 +153,8 @@ flowchart LR
 
 ### Target Tasks & Upcoming Deliverables
 
-- [ ] **Firebase Blaze Plan Upgrade:** Upgrade Firebase billing plan to Blaze (Pay-as-you-go) to enable Cloud Functions deployment and outbound Groq API request routing.
+- [x] **Migrate off Cloud Functions:** Removed Firebase Cloud Functions dependency and migrated to direct HTTP calls to Groq API and Open Food Facts to bypass Firebase Blaze pay-as-you-go restriction.
+- [x] **Fix bugs:** Resolved 17 bugs across the app including offline persistence and routing issues.
 - [ ] **Google Sign-In SHA Fingerprint Verification:** Register debug and release SHA-1/SHA-256 fingerprints in Firebase Console for production Android devices.
 - [ ] **Sub-Screen UI Polish:** Apply the Apple Health glassmorphic design system to remaining sub-screens:
   - Scan History full listing screen

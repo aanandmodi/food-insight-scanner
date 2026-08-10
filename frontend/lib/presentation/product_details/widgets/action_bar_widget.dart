@@ -15,16 +15,6 @@ class ActionBarWidget extends StatelessWidget {
   });
 
   void _addToDietLog(BuildContext context) {
-    // Simulate adding to diet log
-    Fluttertoast.showToast(
-      msg: "Added to Diet Log",
-      toastLength: Toast.LENGTH_SHORT,
-      gravity: ToastGravity.BOTTOM,
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      textColor: Colors.white,
-      fontSize: 16.0,
-    );
-
     if (onAddToDietLog != null) {
       onAddToDietLog!();
     }

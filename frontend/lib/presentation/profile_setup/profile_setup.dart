@@ -562,7 +562,7 @@ class _ProfileSetupState extends State<ProfileSetup>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Food Insight Scanner',
+                  'Food Insight',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                     fontSize: 16.sp,

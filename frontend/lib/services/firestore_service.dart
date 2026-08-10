@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'local_database_service.dart';
 
 /// Service for managing user data in Firestore.
@@ -49,48 +50,52 @@ class FirestoreService {
   // ──────────────────────────── Live Streams ────────────────────────────
 
   /// Live stream of scan history (most recent first).
-  /// Returns an empty stream if Firebase/Auth aren't ready.
-  Stream<List<Map<String, dynamic>>> scanHistoryStream({int limit = 50}) {
-    final db = _firestore;
-    final uid = _userId;
-    if (db == null || uid == null) return const Stream.empty();
-
-    return db
-        .collection('scan_history')
-        .doc(uid)
-        .collection('scans')
-        .orderBy('scannedAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    });
+  /// Responds to auth changes.
+  Stream<List<Map<String, dynamic>>> scanHistoryStream({int limit = 50}) async* {
+    await for (final user in FirebaseAuth.instance.authStateChanges()) {
+      if (user == null || !_isFirebaseReady) {
+        yield [];
+      } else {
+        yield* FirebaseFirestore.instance
+            .collection('scan_history')
+            .doc(user.uid)
+            .collection('scans')
+            .orderBy('scannedAt', descending: true)
+            .limit(limit)
+            .snapshots()
+            .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
+      }
+    }
   }
 
   /// Live stream of shopping list items (most recent first).
-  /// Returns an empty stream if Firebase/Auth aren't ready.
-  Stream<List<Map<String, dynamic>>> shoppingListStream() {
-    final db = _firestore;
-    final uid = _userId;
-    if (db == null || uid == null) return const Stream.empty();
-
-    return db
-        .collection('shopping_list')
-        .doc(uid)
-        .collection('items')
-        .orderBy('addedAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    });
+  /// Responds to auth changes.
+  Stream<List<Map<String, dynamic>>> shoppingListStream() async* {
+    await for (final user in FirebaseAuth.instance.authStateChanges()) {
+      if (user == null || !_isFirebaseReady) {
+        yield [];
+      } else {
+        yield* FirebaseFirestore.instance
+            .collection('shopping_list')
+            .doc(user.uid)
+            .collection('items')
+            .orderBy('addedAt', descending: true)
+            .snapshots()
+            .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
+      }
+    }
   }
 
   // ──────────────────────────── User Profile ────────────────────────────
@@ -108,25 +113,51 @@ class FirestoreService {
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
-      ).timeout(const Duration(seconds: 5));
+      );
     } catch (e) {
       debugPrint('Error saving user profile: $e');
     }
   }
 
-  /// Get user profile from Firestore
+  /// Get user profile from Firestore or fallback to SharedPreferences
   Future<Map<String, dynamic>?> getUserProfile() async {
     final db = _firestore;
     final uid = _userId;
-    if (db == null || uid == null) return null;
-
-    try {
-      final doc = await db.collection('users').doc(uid).get().timeout(const Duration(seconds: 5));
-      return doc.exists ? doc.data() : null;
-    } catch (e) {
-      debugPrint('Error loading user profile: $e');
-      return null;
+    
+    Map<String, dynamic>? profile;
+    
+    if (db != null && uid != null) {
+      try {
+        final doc = await db.collection('users').doc(uid).get().timeout(const Duration(seconds: 5));
+        if (doc.exists) {
+          profile = doc.data();
+        }
+      } catch (e) {
+        debugPrint('Error loading user profile: $e');
+      }
     }
+    
+    if (profile == null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        profile = {
+          'name': prefs.getString('user_name'),
+          'gender': prefs.getString('user_gender'),
+          'age': prefs.getInt('user_age'),
+          'heightCm': prefs.getDouble('user_height'),
+          'weightKg': prefs.getDouble('user_weight'),
+          'healthGoals': prefs.getString('user_health_goal'), // Keep matching what UserProfile expects, usually 'healthGoals' or 'healthGoal' depending on serialization. Let's just pass what might be there.
+          'healthGoal': prefs.getString('user_health_goal'),
+          'allergies': prefs.getStringList('user_allergies') ?? [],
+          'dietaryPreferences': prefs.getStringList('user_dietary_preferences') ?? [],
+          'diseases': prefs.getStringList('user_diseases') ?? [],
+        };
+      } catch (e) {
+        debugPrint('Error loading profile from SharedPreferences: $e');
+      }
+    }
+    
+    return profile;
   }
 
   /// Check if user has completed their profile
@@ -136,7 +167,7 @@ class FirestoreService {
     if (db == null || uid == null) return false;
 
     try {
-      final doc = await db.collection('users').doc(uid).get().timeout(const Duration(seconds: 5));
+      final doc = await db.collection('users').doc(uid).get();
       if (!doc.exists) return false;
       return (doc.data()?['profileCompleted'] as bool?) ?? false;
     } catch (e) {
@@ -152,7 +183,7 @@ class FirestoreService {
     if (db == null || uid == null) return;
 
     try {
-      await db.collection('users').doc(uid).delete().timeout(const Duration(seconds: 5));
+      await db.collection('users').doc(uid).delete();
     } catch (e) {
       debugPrint('Error deleting profile: $e');
     }
@@ -174,7 +205,7 @@ class FirestoreService {
           .add({
         ...productData,
         'scannedAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 5));
+      });
     } catch (e) {
       debugPrint('Error saving scan: $e');
     }
@@ -194,7 +225,7 @@ class FirestoreService {
           .orderBy('scannedAt', descending: true)
           .limit(limit)
           .get()
-          .timeout(const Duration(seconds: 5));
+          ;
 
       return snapshot.docs.map((doc) {
         final data = doc.data();
@@ -220,7 +251,7 @@ class FirestoreService {
           .collection('scans')
           .doc(scanId)
           .delete()
-          .timeout(const Duration(seconds: 5));
+          ;
     } catch (e) {
       debugPrint('Error deleting scan: $e');
     }
@@ -272,7 +303,7 @@ class FirestoreService {
             .add({
           ...firestoreData,
           'createdAt': FieldValue.serverTimestamp(),
-        }).timeout(const Duration(seconds: 5));
+        });
 
         // Update local entry with Firestore ID so we can match later
         await _localDb.markDietEntrySynced(localId, docRef.id);
@@ -306,7 +337,7 @@ class FirestoreService {
               .where('date', isEqualTo: dateString)
               .orderBy('createdAt', descending: true)
               .get()
-              .timeout(const Duration(seconds: 5));
+              ;
 
           firestoreEntries = snapshot.docs.map((doc) {
             final data = doc.data();
@@ -323,7 +354,7 @@ class FirestoreService {
               .collection('entries')
               .where('date', isEqualTo: dateString)
               .get()
-              .timeout(const Duration(seconds: 5));
+              ;
 
           firestoreEntries = snapshot.docs.map((doc) {
             final data = doc.data();
@@ -382,7 +413,7 @@ class FirestoreService {
               .collection('entries')
               .doc(entryId)
               .delete()
-              .timeout(const Duration(seconds: 5));
+              ;
         }
       } catch (e) {
         debugPrint('Error deleting diet entry from Firestore: $e');
@@ -407,7 +438,7 @@ class FirestoreService {
         ...itemData,
         'checked': false,
         'addedAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 5));
+      });
     } catch (e) {
       debugPrint('Error adding shopping item: $e');
     }
@@ -426,7 +457,7 @@ class FirestoreService {
           .collection('items')
           .orderBy('addedAt', descending: true)
           .get()
-          .timeout(const Duration(seconds: 5));
+          ;
 
       return snapshot.docs.map((doc) {
         final data = doc.data();
@@ -452,7 +483,7 @@ class FirestoreService {
           .collection('items')
           .doc(itemId)
           .update({'checked': checked})
-          .timeout(const Duration(seconds: 5));
+          ;
     } catch (e) {
       debugPrint('Error toggling shopping item: $e');
     }
@@ -471,7 +502,7 @@ class FirestoreService {
           .collection('items')
           .doc(itemId)
           .delete()
-          .timeout(const Duration(seconds: 5));
+          ;
     } catch (e) {
       debugPrint('Error deleting shopping item: $e');
     }
@@ -490,13 +521,13 @@ class FirestoreService {
           .collection('items')
           .where('checked', isEqualTo: true)
           .get()
-          .timeout(const Duration(seconds: 5));
+          ;
 
       final batch = db.batch();
       for (var doc in snapshot.docs) {
         batch.delete(doc.reference);
       }
-      await batch.commit().timeout(const Duration(seconds: 5));
+      await batch.commit();
     } catch (e) {
       debugPrint('Error clearing shopping items: $e');
     }
@@ -529,7 +560,7 @@ class FirestoreService {
               .add({
             ...firestoreData,
             'createdAt': FieldValue.serverTimestamp(),
-          }).timeout(const Duration(seconds: 5));
+          });
 
           if (localId != null) {
             await _localDb.markDietEntrySynced(localId, docRef.id);
