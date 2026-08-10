@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Groq from "groq-sdk";
 
@@ -6,13 +7,7 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
-  }
-  return new Groq({ apiKey });
-}
+const groqApiKeySecret = defineSecret("GROQ_API_KEY");
 
 /**
  * generateQuickReplies – Returns context-aware quick-reply suggestions.
@@ -21,7 +16,7 @@ function getGroqClient(): Groq {
  * Output: { replies: string[] }
  */
 export const generateQuickReplies = onCall(
-  { region: "asia-south1", timeoutSeconds: 15 },
+  { region: "asia-south1", timeoutSeconds: 15, secrets: [groqApiKeySecret] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be logged in.");
@@ -33,7 +28,11 @@ export const generateQuickReplies = onCall(
     }
 
     try {
-      const groq = getGroqClient();
+      const apiKey = groqApiKeySecret.value();
+      if (!apiKey) {
+        throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
+      }
+      const groq = new Groq({ apiKey });
 
       const prompt =
         `Based on the user's last message and profile, suggest 4 relevant quick reply options for a nutrition assistant app.\n\n` +
@@ -43,7 +42,7 @@ export const generateQuickReplies = onCall(
         `Return ONLY the suggestions, one per line, without numbering or bullets.`;
 
       const completion = await groq.chat.completions.create({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "llama-3.1-8b-instant",
         messages: [
           {
             role: "system",

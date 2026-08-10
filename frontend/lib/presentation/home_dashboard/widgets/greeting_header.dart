@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../theme/app_design_system.dart';
 
@@ -15,107 +17,121 @@ class GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+    final userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'W';
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+      padding: EdgeInsets.fromLTRB(6.w, 3.h, 6.w, 1.h),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // ── Left: User Avatar (Premium Skeuomorphic Ring) ──
+          GestureDetector(
+            onTap: () {
+              Navigator.pushNamed(context, '/settings');
+            },
+            child: Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    Color(0xFFE2E8F0),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    blurRadius: 4,
+                    offset: const Offset(-2, -2),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white,
+                  width: 2,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(27),
+                child: photoUrl != null
+                    ? Image.network(
+                        photoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildAvatarFallback(userInitial),
+                      )
+                    : _buildAvatarFallback(userInitial),
+              ),
+            ),
+          ).animate().scale(
+                duration: 400.ms,
+                curve: Curves.easeOutBack,
+              ),
+          const SizedBox(width: 14),
+
+          // ── Center: Greeting and Name ──
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _getGreeting(),
-                  style: FoodInsightTypography.caption(
-                    size: 14,
-                    weight: FontWeight.w500,
+                  '${_getGreeting()},',
+                  style: FoodInsightTypography.body(
+                    size: 13,
+                    weight: FontWeight.w600,
                     color: FoodInsightColors.midGray,
                   ),
-                ),
+                ).animate().fadeIn(duration: 300.ms).slideX(begin: -0.1, end: 0),
                 const SizedBox(height: 2),
                 Text(
                   userName.isNotEmpty ? userName : 'Welcome',
                   style: FoodInsightTypography.display(
-                    size: 28,
+                    size: 24,
                     weight: FontWeight.w800,
                     color: FoodInsightColors.deepCharcoal,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.6,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: FoodInsightColors.scannerGreen,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                FoodInsightColors.scannerGreen.withValues(alpha: 0.5),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      currentDate,
-                      style: FoodInsightTypography.caption(
-                        size: 12,
-                        color: FoodInsightColors.midGray,
-                      ),
-                    ),
-                  ],
-                ),
+                )
+                    .animate()
+                    .fadeIn(duration: 400.ms, delay: 100.ms)
+                    .slideX(begin: -0.05, end: 0),
               ],
             ),
           ),
-          // Premium avatar ring
-          _buildAvatarRing(),
+          const SizedBox(width: 12),
+
+          // ── Right: Notification Bell & Date Badge ──
+          _buildNotificationBell(context)
+              .animate()
+              .scale(
+                duration: 400.ms,
+                delay: 200.ms,
+                curve: Curves.easeOutBack,
+              ),
         ],
       ),
     );
   }
 
-  Widget _buildAvatarRing() {
+  Widget _buildAvatarFallback(String initial) {
     return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF5F0E8),
-            Color(0xFFE8E2D8),
-          ],
-        ),
-        border: Border.all(
-          color: FoodInsightColors.scannerGreen.withValues(alpha: 0.4),
-          width: 2.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.15),
-            blurRadius: 12,
-            spreadRadius: 2,
-          ),
-          const BoxShadow(
-            color: Color(0x18000000),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
+      color: FoodInsightColors.scannerGreen.withValues(alpha: 0.1),
       child: Center(
         child: Text(
-          userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+          initial,
           style: FoodInsightTypography.heading(
             size: 20,
             weight: FontWeight.w800,
@@ -126,14 +142,76 @@ class GreetingHeader extends StatelessWidget {
     );
   }
 
+  Widget _buildNotificationBell(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No new alerts. Your nutrition is on track!'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  blurRadius: 4,
+                  offset: const Offset(-2, -2),
+                ),
+              ],
+              border: Border.all(
+                color: FoodInsightColors.lightGray.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.notifications_outlined,
+                color: FoodInsightColors.deepCharcoal,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
+        // Active notification dot (Apple style)
+        Positioned(
+          top: 2,
+          right: 2,
+          child: Container(
+            width: 9,
+            height: 9,
+            decoration: const BoxDecoration(
+              color: FoodInsightColors.healthRed,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
-      return 'Good Morning ☀️';
+      return 'Good morning';
     } else if (hour < 17) {
-      return 'Good Afternoon 🌤️';
+      return 'Good afternoon';
     } else {
-      return 'Good Evening 🌙';
+      return 'Good evening';
     }
   }
 }

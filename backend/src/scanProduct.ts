@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Groq from "groq-sdk";
 
@@ -8,15 +9,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-
-/** Groq client – reads the key from the Cloud Functions environment. */
-function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
-  }
-  return new Groq({ apiKey });
-}
+const groqApiKeySecret = defineSecret("GROQ_API_KEY");
 
 // ──────────────────────── Open Food Facts helpers ────────────────────────
 
@@ -83,7 +76,7 @@ async function fetchFromOpenFoodFacts(barcode: string): Promise<ParsedProduct | 
 
 async function analyzeProduct(groq: Groq, product: ParsedProduct): Promise<string> {
   const completion = await groq.chat.completions.create({
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    model: "llama-3.1-8b-instant",
     messages: [
       {
         role: "system",
@@ -111,7 +104,7 @@ async function analyzeProduct(groq: Groq, product: ParsedProduct): Promise<strin
  * Output: ParsedProduct & { aiAnalysis: string }
  */
 export const scanProduct = onCall(
-  { region: "asia-south1", timeoutSeconds: 30 },
+  { region: "asia-south1", timeoutSeconds: 30, secrets: [groqApiKeySecret] },
   async (request) => {
     // Require authentication
     if (!request.auth) {
@@ -139,7 +132,9 @@ export const scanProduct = onCall(
     // 3. AI analysis
     let aiAnalysis = "";
     try {
-      const groq = getGroqClient();
+      const apiKey = groqApiKeySecret.value();
+      if (!apiKey) throw new Error("GROQ_API_KEY is not set.");
+      const groq = new Groq({ apiKey });
       aiAnalysis = await analyzeProduct(groq, product);
     } catch (e: any) {
       console.warn("AI analysis failed (non-fatal):", e.message);

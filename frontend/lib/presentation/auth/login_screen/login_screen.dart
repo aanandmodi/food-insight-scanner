@@ -1,14 +1,13 @@
-// lib/presentation/auth/login_screen.dart
+// lib/presentation/auth/login_screen/login_screen.dart
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../services/auth_service.dart';
+import '../../../theme/app_design_system.dart';
 import '../../../main.dart' show firebaseInitError;
-import '../../../widgets/prototype_button.dart';
 
 enum _AuthMethod { none, email, google, guest }
 
@@ -20,7 +19,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -31,55 +30,68 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   bool _isRetrying = false;
 
-  late AnimationController _animController;
-  late Animation<double> _fadeAnimation;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeInOut,
-    );
-    _animController.forward();
+    _fadeController.forward();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _slideController.forward();
+    });
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _animController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
-  void _showError(String message) {
+  void _showSnackBar(String message, {bool isError = true}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: FoodInsightTypography.body(
+                  size: 14,
+                  weight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  void _showSuccess(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: isError
+            ? FoodInsightColors.healthRed
+            : FoodInsightColors.scannerGreen,
         behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -92,9 +104,15 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
+  void _navigateAfterAuth() {
+    if (!mounted) return;
+    // Go to authGate which will determine next screen (profile setup or home)
+    Navigator.pushReplacementNamed(context, AppRoutes.authGate);
+  }
+
   Future<void> _handleEmailSignIn() async {
     if (!_formKey.currentState!.validate()) return;
-    HapticFeedback.lightImpact();
+    HapticFeedback.mediumImpact();
 
     _setLoading(true, _AuthMethod.email);
     try {
@@ -102,30 +120,26 @@ class _LoginScreenState extends State<LoginScreen>
         _emailController.text.trim(),
         _passwordController.text,
       );
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.splash);
-      }
+      _navigateAfterAuth();
     } catch (e) {
-      _showError(AuthService.getErrorMessage(e));
+      _showSnackBar(AuthService.getErrorMessage(e));
     } finally {
       _setLoading(false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    HapticFeedback.lightImpact();
+    HapticFeedback.mediumImpact();
     _setLoading(true, _AuthMethod.google);
     try {
       final user = await _authService.signInWithGoogle();
       if (user == null) {
         _setLoading(false);
-        return;
+        return; // User cancelled
       }
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.splash);
-      }
+      _navigateAfterAuth();
     } catch (e) {
-      _showError(AuthService.getErrorMessage(e));
+      _showSnackBar(AuthService.getErrorMessage(e));
     } finally {
       _setLoading(false);
     }
@@ -149,26 +163,23 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _handleContinueOffline() {
-    HapticFeedback.lightImpact();
-    Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
-  }
-
   Future<void> _handleRetryConnection() async {
     if (_isRetrying) return;
     setState(() => _isRetrying = true);
+    HapticFeedback.lightImpact();
     try {
       final success = await _authService.retryInit();
       if (mounted) {
         if (success) {
-          _showSuccess('Connected to Firebase successfully!');
+          _showSnackBar('Connected successfully!', isError: false);
           setState(() {});
         } else {
-          _showError('Still unable to connect. Error: ${firebaseInitError ?? "Unknown"}');
+          _showSnackBar(
+              'Unable to connect. Check your internet and try again.');
         }
       }
     } catch (e) {
-      _showError('Retry failed: $e');
+      _showSnackBar('Connection failed: $e');
     } finally {
       if (mounted) setState(() => _isRetrying = false);
     }
@@ -177,262 +188,276 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showError('Please enter your email first.');
+      _showSnackBar('Please enter your email first.');
       return;
     }
-
     try {
       await _authService.sendPasswordResetEmail(email);
-      _showSuccess('Password reset link sent to $email');
+      _showSnackBar('Password reset link sent to $email', isError: false);
     } catch (e) {
-      _showError(AuthService.getErrorMessage(e));
+      _showSnackBar(AuthService.getErrorMessage(e));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: isDark
-                          ? [
-                              colorScheme.primary.withValues(alpha: 0.08),
-                              theme.scaffoldBackgroundColor,
-                              theme.scaffoldBackgroundColor,
-                            ]
-                          : [
-                              colorScheme.primary.withValues(alpha: 0.08),
-                              theme.scaffoldBackgroundColor,
-                              colorScheme.secondary.withValues(alpha: 0.04),
-                            ],
-                    ),
-                  ),
-                  child: SafeArea(
+      backgroundColor: FoodInsightColors.warmWhite,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: FoodInsightColors.warmBackground,
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 7.w),
                       child: FadeTransition(
-                        opacity: _fadeAnimation,
+                        opacity: CurvedAnimation(
+                          parent: _fadeController,
+                          curve: Curves.easeOut,
+                        ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(height: 4.h),
-                            // Firebase status banner
+                            SizedBox(height: 5.h),
+
+                            // ── Firebase Offline Banner ──
                             if (!_authService.isFirebaseReady)
-                              _buildOfflineBanner(colorScheme, isDark)
-                                  .animate()
-                                  .fadeIn(duration: 400.ms)
-                                  .slideY(begin: -0.1),
-                            // Logo
-                            Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: isDark
-                                    ? AppTheme.glowBoxShadow(
-                                        colorScheme.primary,
-                                        intensity: 0.2,
-                                        blur: 20,
-                                      )
-                                    : null,
-                              ),
-                              child: CustomIconWidget(
-                                iconName: 'qr_code_scanner',
-                                color: colorScheme.primary,
-                                size: SizerUtil.deviceType == DeviceType.tablet
-                                    ? 10.w
-                                    : 16.w,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 600.ms, delay: 100.ms)
-                                .scaleXY(begin: 0.8, end: 1.0, duration: 600.ms),
-                            SizedBox(height: 2.h),
-                            Text(
-                              'Food Insight Scanner',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                shadows: isDark
-                                    ? AppTheme.textGlow(colorScheme.primary, blur: 8)
-                                    : null,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 200.ms),
-                            SizedBox(height: 0.5.h),
-                            Text(
-                              'Welcome back',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 300.ms),
+                              _buildOfflineBanner(),
+
+                            // ── Logo & Brand ──
+                            _buildBrandSection(),
+
                             SizedBox(height: 4.h),
-                            // Form
-                            _buildForm(theme, colorScheme, isDark)
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 400.ms)
-                                .slideY(begin: 0.05, end: 0),
-                            // Forgot password
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: _handleForgotPassword,
-                                child: Text(
-                                  'Forgot Password?',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
+
+                            // ── Email Form ──
+                            SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.08),
+                                end: Offset.zero,
+                              ).animate(CurvedAnimation(
+                                parent: _slideController,
+                                curve: Curves.easeOutCubic,
+                              )),
+                              child: _buildEmailForm(),
                             ),
-                            SizedBox(height: 1.h),
-                            // Sign In button
-                            _buildSignInButton(theme, colorScheme, isDark),
-                            SizedBox(height: 2.5.h),
-                            _buildDivider(theme, colorScheme),
-                            SizedBox(height: 2.5.h),
-                            _buildGoogleSignIn(theme, colorScheme, isDark),
+
+                            SizedBox(height: 3.h),
+
+                            // ── Divider ──
+                            _buildDivider(),
+
+                            SizedBox(height: 3.h),
+
+                            // ── Google Sign In ──
+                            _buildGoogleSignInButton(),
+
                             SizedBox(height: 2.h),
-                            // Guest Mode
-                            _buildGuestButton(theme, colorScheme),
-                            SizedBox(height: 1.h),
-                            _buildOfflineButton(theme, colorScheme),
-                            // Retry Connection
-                            if (!_authService.isFirebaseReady) ...[
-                              SizedBox(height: 1.h),
-                              _buildRetrySection(theme, colorScheme, isDark),
-                            ],
+
+                            // ── Guest / Offline ──
+                            _buildSecondaryActions(),
+
                             const Spacer(),
-                            // Sign Up link
-                            _buildSignUpLink(theme, colorScheme),
+
+                            // ── Sign Up Link ──
+                            _buildSignUpLink(),
+
+                            SizedBox(height: 2.h),
                           ],
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildOfflineBanner(ColorScheme colorScheme, bool isDark) {
+  Widget _buildOfflineBanner() {
     return GestureDetector(
       onTap: _isRetrying ? null : _handleRetryConnection,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(3.w),
+        padding: const EdgeInsets.all(14),
         margin: EdgeInsets.only(bottom: 2.h),
         decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: isDark ? 0.15 : 0.1),
-          borderRadius: BorderRadius.circular(12),
+          color: FoodInsightColors.warningAmberLight,
+          borderRadius: FoodInsightRadius.mdAll,
           border: Border.all(
-            color: Colors.orange.withValues(alpha: 0.3),
+            color: FoodInsightColors.warningAmber.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           children: [
-            Icon(Icons.cloud_off, color: Colors.orange, size: 5.w),
-            SizedBox(width: 2.w),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: FoodInsightColors.warningAmber.withValues(alpha: 0.15),
+                borderRadius: FoodInsightRadius.xsAll,
+              ),
+              child: Icon(
+                Icons.cloud_off_rounded,
+                color: FoodInsightColors.warningAmber,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Offline mode — tap to retry connection',
-                style: TextStyle(
-                  color: isDark ? Colors.orange.shade300 : Colors.orange.shade800,
-                  fontSize: 11.sp,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Offline Mode',
+                    style: FoodInsightTypography.body(
+                      size: 13,
+                      weight: FontWeight.w700,
+                      color: FoodInsightColors.deepCharcoal,
+                    ),
+                  ),
+                  Text(
+                    'Tap to retry connection',
+                    style: FoodInsightTypography.caption(
+                      size: 11,
+                      color: FoodInsightColors.midGray,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (_isRetrying)
               const SizedBox(
-                width: 16,
-                height: 16,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(FoodInsightColors.warningAmber),
                 ),
               )
             else
-              Icon(Icons.refresh, color: Colors.orange, size: 5.w),
+              Icon(
+                Icons.refresh_rounded,
+                color: FoodInsightColors.warningAmber,
+                size: 22,
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildForm(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+  Widget _buildBrandSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Scanner icon with glow
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF34C759), Color(0xFF30D158)],
+            ),
+            borderRadius: FoodInsightRadius.lgAll,
+            boxShadow: [
+              BoxShadow(
+                color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.qr_code_scanner_rounded,
+            color: Colors.white,
+            size: 32,
+          ),
+        ),
+        SizedBox(height: 2.5.h),
+        Text(
+          'Welcome back',
+          style: FoodInsightTypography.display(
+            size: 32,
+            weight: FontWeight.w800,
+            color: FoodInsightColors.deepCharcoal,
+            letterSpacing: -0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Sign in to access your personalized nutrition insights.',
+          style: FoodInsightTypography.body(
+            size: 15,
+            weight: FontWeight.w400,
+            color: FoodInsightColors.midGray,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmailForm() {
     return Form(
       key: _formKey,
       child: Column(
         children: [
-          TextFormField(
+          // Email field
+          _buildTextField(
             controller: _emailController,
-            decoration: InputDecoration(
-              labelText: 'Email',
-              hintText: 'you@example.com',
-              prefixIcon: Padding(
-                padding: EdgeInsets.all(3.w),
-                child: CustomIconWidget(
-                  iconName: 'email',
-                  color: colorScheme.primary,
-                  size: 20,
-                ),
-              ),
-            ),
+            label: 'Email',
+            hint: 'you@example.com',
+            icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email';
               }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value.trim())) {
+                return 'Please enter a valid email';
+              }
               return null;
             },
           ),
-          SizedBox(height: 2.h),
-          TextFormField(
+          SizedBox(height: 1.5.h),
+
+          // Password field
+          _buildTextField(
             controller: _passwordController,
-            decoration: InputDecoration(
-              labelText: 'Password',
-              hintText: 'Enter your password',
-              prefixIcon: Padding(
-                padding: EdgeInsets.all(3.w),
-                child: CustomIconWidget(
-                  iconName: 'lock',
-                  color: colorScheme.primary,
-                  size: 20,
-                ),
-              ),
-              suffixIcon: GestureDetector(
-                onTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                child: Padding(
-                  padding: EdgeInsets.all(3.w),
-                  child: CustomIconWidget(
-                    iconName: _obscurePassword ? 'visibility_off' : 'visibility',
-                    color: colorScheme.onSurfaceVariant,
-                    size: 20,
-                  ),
-                ),
+            label: 'Password',
+            hint: 'Enter your password',
+            icon: Icons.lock_outline_rounded,
+            obscureText: _obscurePassword,
+            suffixIcon: GestureDetector(
+              onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+              child: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: FoodInsightColors.midGray,
+                size: 20,
               ),
             ),
-            obscureText: _obscurePassword,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your password';
@@ -440,108 +465,272 @@ class _LoginScreenState extends State<LoginScreen>
               return null;
             },
           ),
+
+          // Forgot Password
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _handleForgotPassword,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              ),
+              child: Text(
+                'Forgot Password?',
+                style: FoodInsightTypography.caption(
+                  size: 13,
+                  weight: FontWeight.w600,
+                  color: FoodInsightColors.infoBlue,
+                ),
+              ),
+            ),
+          ),
+
+          SizedBox(height: 1.h),
+
+          // Sign In button
+          _buildPrimaryButton(
+            label: 'Sign In',
+            isLoading: _isLoading && _activeMethod == _AuthMethod.email,
+            onPressed: _isLoading ? null : _handleEmailSignIn,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSignInButton(ThemeData theme, ColorScheme colorScheme, bool isDark) {
-    if (_isLoading && _activeMethod == _AuthMethod.email) {
-      return Container(
-        width: double.infinity,
-        height: 6.5.h,
-        decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(999),
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      style: FoodInsightTypography.body(
+        size: 15,
+        weight: FontWeight.w500,
+        color: FoodInsightColors.deepCharcoal,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Icon(icon, color: FoodInsightColors.midGray, size: 20),
         ),
-        child: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+        suffixIcon: suffixIcon != null
+            ? Padding(
+                padding: const EdgeInsets.all(14),
+                child: suffixIcon,
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.white,
+        labelStyle: FoodInsightTypography.caption(
+          size: 14,
+          color: FoodInsightColors.midGray,
+        ),
+        hintStyle: FoodInsightTypography.caption(
+          size: 14,
+          color: FoodInsightColors.lightGray,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: FoodInsightRadius.mdAll,
+          borderSide: BorderSide(
+            color: FoodInsightColors.lightGray.withValues(alpha: 0.5),
           ),
         ),
-      );
-    }
+        enabledBorder: OutlineInputBorder(
+          borderRadius: FoodInsightRadius.mdAll,
+          borderSide: BorderSide(
+            color: FoodInsightColors.lightGray.withValues(alpha: 0.5),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: FoodInsightRadius.mdAll,
+          borderSide: const BorderSide(
+            color: FoodInsightColors.scannerGreen,
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: FoodInsightRadius.mdAll,
+          borderSide: const BorderSide(
+            color: FoodInsightColors.healthRed,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: FoodInsightRadius.mdAll,
+          borderSide: const BorderSide(
+            color: FoodInsightColors.healthRed,
+            width: 1.5,
+          ),
+        ),
+      ),
+      validator: validator,
+    );
+  }
+
+  Widget _buildPrimaryButton({
+    required String label,
+    required bool isLoading,
+    VoidCallback? onPressed,
+  }) {
     return SizedBox(
       width: double.infinity,
-      child: PrototypeButton(
-        label: 'Sign In',
-        onPressed: _isLoading ? null : _handleEmailSignIn,
+      height: 54,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF34C759), Color(0xFF30D158)],
+          ),
+          borderRadius: FoodInsightRadius.mdAll,
+          boxShadow: [
+            BoxShadow(
+              color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
+              blurRadius: 16,
+              spreadRadius: 0,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: FoodInsightRadius.mdAll,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: FoodInsightTypography.body(
+                        size: 16,
+                        weight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildDivider(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: theme.dividerColor)),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: FoodInsightColors.lightGray.withValues(alpha: 0.5),
+          ),
+        ),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4.w),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'or continue with',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            'or',
+            style: FoodInsightTypography.caption(
+              size: 13,
+              weight: FontWeight.w500,
+              color: FoodInsightColors.midGray,
             ),
           ),
         ),
-        Expanded(child: Divider(color: theme.dividerColor)),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: FoodInsightColors.lightGray.withValues(alpha: 0.5),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildGoogleSignIn(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+  Widget _buildGoogleSignInButton() {
+    final isGoogleLoading = _isLoading && _activeMethod == _AuthMethod.google;
+
     return SizedBox(
       width: double.infinity,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            height: 6.5.h,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : theme.dividerColor,
-              ),
+      height: 54,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: FoodInsightRadius.mdAll,
+          border: Border.all(
+            color: FoodInsightColors.lightGray.withValues(alpha: 0.5),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _isLoading ? null : _handleGoogleSignIn,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _isLoading && _activeMethod == _AuthMethod.google
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                isDark ? Colors.white54 : Colors.black54,
-                              ),
-                            ),
-                          )
-                        : CustomIconWidget(
-                            iconName: 'google_logo',
-                            size: 2.5.h,
-                          ),
-                    SizedBox(width: 3.w),
-                    Text(
-                      'Sign in with Google',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: isDark ? Colors.white70 : Colors.black87,
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _isLoading ? null : _handleGoogleSignIn,
+            borderRadius: FoodInsightRadius.mdAll,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isGoogleLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        FoodInsightColors.midGray,
                       ),
                     ),
-                  ],
+                  )
+                else
+                  // Google "G" logo built with text
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'G',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4285F4),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Text(
+                  'Continue with Google',
+                  style: FoodInsightTypography.body(
+                    size: 15,
+                    weight: FontWeight.w600,
+                    color: FoodInsightColors.deepCharcoal,
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -549,66 +738,88 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildGuestButton(ThemeData theme, ColorScheme colorScheme) {
-    return TextButton(
-      onPressed: _isLoading ? null : _handleGuestSignIn,
-      child: _isLoading && _activeMethod == _AuthMethod.guest
-          ? SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-              ),
-            )
-          : Text(
-              'Continue as Guest',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
+  Widget _buildSecondaryActions() {
+    return Column(
+      children: [
+        // Guest mode
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: TextButton(
+            onPressed: _isLoading ? null : _handleGuestSignIn,
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: FoodInsightRadius.mdAll,
               ),
             ),
-    );
-  }
-
-  Widget _buildOfflineButton(ThemeData theme, ColorScheme colorScheme) {
-    return TextButton(
-      onPressed: _isLoading ? null : _handleContinueOffline,
-      child: Text(
-        'Continue Without Account',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-          decoration: TextDecoration.underline,
+            child: _isLoading && _activeMethod == _AuthMethod.guest
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        FoodInsightColors.midGray,
+                      ),
+                    ),
+                  )
+                : Text(
+                    'Continue as Guest',
+                    style: FoodInsightTypography.body(
+                      size: 15,
+                      weight: FontWeight.w600,
+                      color: FoodInsightColors.infoBlue,
+                    ),
+                  ),
+          ),
         ),
-      ),
+
+        // Retry connection (only when offline)
+        if (!_authService.isFirebaseReady) ...[
+          SizedBox(height: 1.h),
+          _buildRetrySection(),
+        ],
+      ],
     );
   }
 
-  Widget _buildRetrySection(ThemeData theme, ColorScheme colorScheme, bool isDark) {
+  Widget _buildRetrySection() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(3.w),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.error.withValues(alpha: isDark ? 0.15 : 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: FoodInsightColors.healthRedLight,
+        borderRadius: FoodInsightRadius.mdAll,
         border: Border.all(
-          color: colorScheme.error.withValues(alpha: 0.3),
+          color: FoodInsightColors.healthRed.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
         children: [
-          Text(
-            'Firebase is not available. Please check your internet connection.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colorScheme.error,
-              fontSize: 11.sp,
-            ),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                color: FoodInsightColors.healthRed,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Some features require an internet connection.',
+                  style: FoodInsightTypography.caption(
+                    size: 12,
+                    weight: FontWeight.w500,
+                    color: FoodInsightColors.healthRed,
+                  ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 1.h),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
+            height: 40,
             child: ElevatedButton.icon(
               onPressed: _isRetrying ? null : _handleRetryConnection,
               icon: _isRetrying
@@ -617,15 +828,26 @@ class _LoginScreenState extends State<LoginScreen>
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Icon(Icons.refresh, size: 18),
-              label: Text(_isRetrying ? 'Connecting...' : 'Retry Connection'),
+                  : const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(
+                _isRetrying ? 'Connecting...' : 'Retry Connection',
+                style: FoodInsightTypography.caption(
+                  size: 13,
+                  weight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.error,
+                backgroundColor: FoodInsightColors.healthRed,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 1.2.h),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: FoodInsightRadius.xsAll,
+                ),
               ),
             ),
           ),
@@ -634,15 +856,19 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildSignUpLink(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildSignUpLink() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 3.h),
+      padding: EdgeInsets.symmetric(vertical: 1.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             "Don't have an account? ",
-            style: theme.textTheme.bodyMedium,
+            style: FoodInsightTypography.body(
+              size: 14,
+              weight: FontWeight.w400,
+              color: FoodInsightColors.midGray,
+            ),
           ),
           GestureDetector(
             onTap: () {
@@ -651,9 +877,10 @@ class _LoginScreenState extends State<LoginScreen>
             },
             child: Text(
               'Sign Up',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
+              style: FoodInsightTypography.body(
+                size: 14,
+                weight: FontWeight.w700,
+                color: FoodInsightColors.scannerGreen,
               ),
             ),
           ),

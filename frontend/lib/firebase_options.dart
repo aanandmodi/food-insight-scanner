@@ -58,5 +58,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '579993459207',
     projectId: 'food-insight-scanner-app',
     storageBucket: 'food-insight-scanner-app.firebasestorage.app',
+    androidClientId: '579993459207-6rcmc0fgucpdc01f3rhvmtlc1oprlou4.apps.googleusercontent.com',
   );
+
 }

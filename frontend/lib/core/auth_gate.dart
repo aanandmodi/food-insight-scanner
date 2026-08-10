@@ -7,6 +7,7 @@ import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/profile_setup/profile_setup.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_design_system.dart';
 
 /// A widget that listens to authentication state changes and shows the
 /// appropriate screen, checking for profile completion as well.
@@ -25,19 +26,50 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
-        // 1. Still loading
+        // 1. Still loading — show a minimal branded loading screen
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            backgroundColor: FoodInsightColors.warmWhite,
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: FoodInsightColors.healthyGradient,
+                      borderRadius: FoodInsightRadius.lgAll,
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        FoodInsightColors.scannerGreen,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
-        // 2. Error state
+        // 2. Error state — show login
         if (snapshot.hasError) {
           return const LoginScreen();
         }
 
-        // 3. Not logged in
+        // 3. Not logged in — show login
         if (!snapshot.hasData) {
           return const LoginScreen();
         }
@@ -52,8 +84,36 @@ class AuthGate extends StatelessWidget {
               ),
           builder: (context, profileSnapshot) {
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+              return Scaffold(
+                backgroundColor: FoodInsightColors.warmWhite,
+                body: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: FoodInsightColors.healthyGradient,
+                          borderRadius: FoodInsightRadius.lgAll,
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading your profile...',
+                        style: FoodInsightTypography.caption(
+                          size: 13,
+                          color: FoodInsightColors.midGray,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               );
             }
 

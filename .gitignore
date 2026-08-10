@@ -6,19 +6,18 @@ assets/env.json
 lib/firebase_options.dart
 **/google-services.json
 **/GoogleService-Info.plist
-firebase.json
 .firebaserc
 
 # ============================================================
 # 🛠️ Flutter / Dart Build Artifacts
 # ============================================================
-.dart_tool/
+**/.dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
-/build/
+**/build/
 .metadata
 pubspec.lock
 
@@ -26,10 +25,11 @@ pubspec.lock
 # 📱 Platform-Specific (generated / not needed in repo)
 # ============================================================
 # Windows
-/windows/
+**/windows/flutter/
+**/windows/runner/
 
 # Web
-/web/
+**/web/
 
 # iOS generated
 **/ios/Flutter/.last_build_id
@@ -37,12 +37,19 @@ pubspec.lock
 **/ios/.symlinks/
 
 # Android build outputs
-/android/app/debug
-/android/app/profile
-/android/app/release
-/android/.gradle/
-/android/local.properties
-/android/key.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/android/.gradle/
+**/android/app/.cxx/
+**/android/local.properties
+**/android/key.properties
+
+# ============================================================
+# 🔧 Backend / Node.js
+# ============================================================
+**/node_modules/
+backend/lib/
 
 # ============================================================
 # 🧹 IDE & Editor Files
@@ -52,6 +59,7 @@ pubspec.lock
 *.iws
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 *~
@@ -80,3 +88,7 @@ devtools_options.yaml
 app.*.symbols
 app.*.map.json
 .gemini/
+analyze_output.txt
+analyze.log
+stitch_nutriscan_ai/
+

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/app_export.dart';
 import '../../../theme/app_design_system.dart';
@@ -24,25 +25,52 @@ class DietLogPreview extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Section Header ──
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Diet Log',
-                  style: FoodInsightTypography.heading(
-                    size: 18,
-                    weight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: FoodInsightColors.purpleAccent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DIET LOG PREVIEW',
+                      style: FoodInsightTypography.smallCaps(
+                        size: 11,
+                        weight: FontWeight.w900,
+                        color: FoodInsightColors.deepCharcoal.withValues(alpha: 0.8),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
                 GestureDetector(
                   onTap: onViewAll,
-                  child: Text(
-                    'View All →',
-                    style: FoodInsightTypography.caption(
-                      size: 13,
-                      weight: FontWeight.w600,
-                      color: FoodInsightColors.infoBlue,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: FoodInsightTypography.body(
+                          size: 13,
+                          weight: FontWeight.w700,
+                          color: FoodInsightColors.infoBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: FoodInsightColors.infoBlue,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -51,47 +79,74 @@ class DietLogPreview extends StatelessWidget {
             recentEntries.isEmpty
                 ? _buildEmptyState()
                 : Column(
-                    children: recentEntries
-                        .take(3)
-                        .map((entry) => _buildLogEntry(entry))
-                        .toList(),
+                    children: List.generate(
+                      recentEntries.length > 3 ? 3 : recentEntries.length,
+                      (index) {
+                        final entry = recentEntries[index];
+                        return _buildLogEntry(context, entry, index);
+                      },
+                    ),
                   ),
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 450.ms, delay: 250.ms).slideY(begin: 0.05, end: 0);
   }
 
-  Widget _buildLogEntry(Map<String, dynamic> entry) {
+  Widget _buildLogEntry(BuildContext context, Map<String, dynamic> entry, int index) {
+    final name = entry['name'] as String? ?? 'Unknown Food';
+    final calories = (entry['calories'] as num?)?.toInt() ?? 0;
+    final timeStr = entry['time'] as String? ?? '';
+    final imageUrl = entry['image'] as String? ?? '';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: FoodInsightColors.cream,
+        color: const Color(0xFFF8FAFC),
         borderRadius: FoodInsightRadius.mdAll,
         border: Border.all(
-          color: FoodInsightColors.embossedShadow.withValues(alpha: 0.3),
+          color: FoodInsightColors.lightGray.withValues(alpha: 0.3),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Food image
+          // Food Image with premium skeuomorphic frame
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               borderRadius: FoodInsightRadius.smAll,
               color: FoodInsightColors.warmWhite,
+              border: Border.all(
+                color: FoodInsightColors.lightGray.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
             child: ClipRRect(
               borderRadius: FoodInsightRadius.smAll,
-              child: CustomImageWidget(
-                imageUrl: entry['image'] as String? ?? '',
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-              ),
+              child: imageUrl.isNotEmpty
+                  ? CustomImageWidget(
+                      imageUrl: imageUrl,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                    )
+                  : Center(
+                      child: Icon(
+                        Icons.restaurant_rounded,
+                        size: 20,
+                        color: FoodInsightColors.midGray.withValues(alpha: 0.4),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
@@ -101,27 +156,27 @@ class DietLogPreview extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry['name'] as String? ?? 'Unknown Food',
+                  name,
                   style: FoodInsightTypography.body(
                     size: 14,
-                    weight: FontWeight.w700,
+                    weight: FontWeight.w800,
                     color: FoodInsightColors.deepCharcoal,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Row(
                   children: [
                     Text(
-                      '${entry['calories'] ?? 0} kcal',
+                      '$calories kcal',
                       style: FoodInsightTypography.caption(
                         size: 11,
-                        weight: FontWeight.w600,
+                        weight: FontWeight.w700,
                         color: FoodInsightColors.infoBlue,
                       ),
                     ),
-                    if ((entry['time'] as String?)?.isNotEmpty == true) ...[
+                    if (timeStr.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       Container(
                         width: 3,
@@ -133,9 +188,10 @@ class DietLogPreview extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        entry['time'] as String? ?? '',
+                        timeStr,
                         style: FoodInsightTypography.caption(
                           size: 11,
+                          weight: FontWeight.w500,
                           color: FoodInsightColors.midGray,
                         ),
                       ),
@@ -145,14 +201,17 @@ class DietLogPreview extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.chevron_right_rounded,
-            color: FoodInsightColors.midGray,
+            color: FoodInsightColors.midGray.withValues(alpha: 0.6),
             size: 20,
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(
+          duration: 300.ms,
+          delay: (index * 60).ms,
+        );
   }
 
   Widget _buildEmptyState() {
@@ -161,22 +220,31 @@ class DietLogPreview extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            Icon(
-              Icons.restaurant_rounded,
-              color: FoodInsightColors.midGray.withValues(alpha: 0.5),
-              size: 32,
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: FoodInsightColors.lightGray.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.restaurant_rounded,
+                color: FoodInsightColors.midGray,
+                size: 26,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             Text(
-              'No entries yet',
+              'No meal logged today',
               style: FoodInsightTypography.body(
-                weight: FontWeight.w600,
+                size: 15,
+                weight: FontWeight.w800,
                 color: FoodInsightColors.midGray,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Start logging your meals to track progress',
+              'Log your meals to check macros and calorie limits',
               style: FoodInsightTypography.caption(
                 size: 12,
                 color: FoodInsightColors.midGray,

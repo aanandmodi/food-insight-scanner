@@ -127,7 +127,7 @@ async function fetchFromOpenFoodFacts(barcode: string): Promise<ParsedProduct | 
 
 async function conductHealthAnalysis(groq: Groq, product: ParsedProduct): Promise<any> {
   const completion = await groq.chat.completions.create({
-    model: "llama3-8b-8192", // Fast JSON capable model, or the one you want
+    model: "llama-3.1-8b-instant", // Fast JSON capable model
     messages: [
       {
         role: "system",

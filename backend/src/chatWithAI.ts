@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Groq from "groq-sdk";
 
@@ -7,14 +8,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-
-function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
-  }
-  return new Groq({ apiKey });
-}
+const groqApiKeySecret = defineSecret("GROQ_API_KEY");
 
 /**
  * chatWithAI – Sends a message to the Groq nutrition assistant and returns
@@ -26,7 +20,7 @@ function getGroqClient(): Groq {
  * Output: { reply: string, mealLogged: boolean, mealData?: object }
  */
 export const chatWithAI = onCall(
-  { region: "asia-south1", timeoutSeconds: 30 },
+  { region: "asia-south1", timeoutSeconds: 30, secrets: [groqApiKeySecret] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be logged in.");
@@ -37,7 +31,11 @@ export const chatWithAI = onCall(
       throw new HttpsError("invalid-argument", "A message is required.");
     }
 
-    const groq = getGroqClient();
+    const apiKey = groqApiKeySecret.value();
+    if (!apiKey) {
+      throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
+    }
+    const groq = new Groq({ apiKey });
 
     // Build system prompt
     let systemPrompt = `You are an energetic, friendly, and expert nutrition assistant for an Indian food insight scanner app. Your role is to provide personalized dietary advice in a warm, humanized, and highly conversational tone.
@@ -90,7 +88,7 @@ Never use markdown blocks for the JSON. Just output the exact text string format
     messages.push({ role: "user", content: message });
 
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "llama-3.3-70b-versatile",
       messages,
       temperature: 0.7,
       max_tokens: 1024,
