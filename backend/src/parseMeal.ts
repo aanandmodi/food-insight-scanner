@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Groq from "groq-sdk";
 
@@ -6,13 +7,7 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
-  }
-  return new Groq({ apiKey });
-}
+const groqApiKeySecret = defineSecret("GROQ_API_KEY");
 
 /**
  * parseMeal – Converts a natural-language meal description into structured
@@ -22,7 +17,7 @@ function getGroqClient(): Groq {
  * Output: { name, calories, protein, sugar, fat, carbs }
  */
 export const parseMeal = onCall(
-  { region: "asia-south1", timeoutSeconds: 20 },
+  { region: "asia-south1", timeoutSeconds: 20, secrets: [groqApiKeySecret] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be logged in.");
@@ -33,10 +28,14 @@ export const parseMeal = onCall(
       throw new HttpsError("invalid-argument", "A meal description is required.");
     }
 
-    const groq = getGroqClient();
+    const apiKey = groqApiKeySecret.value();
+    if (!apiKey) {
+      throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
+    }
+    const groq = new Groq({ apiKey });
 
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "llama-3.1-8b-instant",
       messages: [
         {
           role: "system",

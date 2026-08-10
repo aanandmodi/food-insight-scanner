@@ -1,6 +1,7 @@
   // lib/main.dart
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
@@ -18,10 +19,19 @@ String? firebaseInitError;
 /// Attempt to initialize Firebase. Can be called again from the login screen.
 Future<bool> retryFirebaseInit() async {
   try {
-    // If already initialized, just return true
     if (Firebase.apps.isNotEmpty) {
-      firebaseInitError = null;
-      return true;
+      // Dart thinks Firebase is initialized, but the native side may be dead
+      // after a previous timeout. Probe it to confirm.
+      try {
+        // Probe the native side — this throws if the platform channel is dead
+        FirebaseAuth.instance.currentUser;
+        firebaseInitError = null;
+        return true;
+      } catch (_) {
+        // Native side is dead despite Dart thinking it's initialized.
+        // Fall through to re-initialize below.
+        debugPrint('Firebase native side unresponsive, re-initializing...');
+      }
     }
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

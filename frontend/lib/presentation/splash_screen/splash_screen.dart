@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../core/app_export.dart';
 import '../../theme/app_design_system.dart';
@@ -16,10 +16,10 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  String _loadingText = 'Initializing core modules...';
+  String _loadingText = 'Initializing...';
   bool _hasError = false;
   int _retryCount = 0;
-  static const int _maxAutoRetries = 3;
+  static const int _maxAutoRetries = 2;
 
   // Animation controllers
   late AnimationController _logoController;
@@ -43,7 +43,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _setupAnimations() {
-    // Logo ring scale-in with elastic curve
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -52,7 +51,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
     );
 
-    // Scanning beam sweep
     _beamController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -61,19 +59,16 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _beamController, curve: Curves.easeInOut),
     );
 
-    // Progress ring
     _progressController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
 
-    // Pulse for error/glow states
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
 
-    // Title animations derived from logo controller timing
     _titleSlide = Tween<double>(begin: 20.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _logoController,
@@ -95,17 +90,14 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startAnimationSequence() {
-    // 1. Logo rings scale in immediately
     _logoController.forward();
 
-    // 2. Scanning beam starts after 400ms, loops
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
         _beamController.repeat();
       }
     });
 
-    // 3. Pulse glow starts
     Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) {
         _pulseController.repeat(reverse: true);
@@ -127,13 +119,13 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
-      _updateProgress(0.2, 'Connecting to Firebase...');
+      _updateProgress(0.2, 'Connecting to services...');
 
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       _updateProgress(0.5, 'Loading your profile...');
 
-      final hasProfile = await _checkUserProfile();
+      await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
       _updateProgress(0.8, 'Preparing your experience...');
 
@@ -144,8 +136,8 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
 
-      final currentUser = FirebaseAuth.instance.currentUser;
-      _navigateToNextScreen(hasProfile, currentUser);
+      // Navigate to auth gate — it handles auth state and routing
+      Navigator.pushReplacementNamed(context, AppRoutes.authGate);
     } catch (e) {
       debugPrint('Initialization error: $e');
       if (mounted) {
@@ -171,21 +163,6 @@ class _SplashScreenState extends State<SplashScreen>
       _loadingText = 'Retrying... (attempt $_retryCount)';
     });
     _initializeApp();
-  }
-
-  Future<bool> _checkUserProfile() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool('profile_completed') ?? false;
-    } catch (e) {
-      debugPrint('Profile check failed: $e');
-      return false;
-    }
-  }
-
-  void _navigateToNextScreen(bool hasProfile, User? user) {
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.authGate);
   }
 
   @override
@@ -219,16 +196,12 @@ class _SplashScreenState extends State<SplashScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Spacer(flex: 3),
-                // ── Scanner Logo with layered rings ──
                 _buildScannerLogo(),
                 const SizedBox(height: 32),
-                // ── App Name ──
                 _buildTitle(),
                 const SizedBox(height: 8),
-                // ── Tagline ──
                 _buildTagline(),
                 const Spacer(flex: 2),
-                // ── Loading / Error State ──
                 _buildLoadingState(),
                 const SizedBox(height: 40),
                 const Spacer(),
@@ -309,7 +282,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ],
               ),
             ),
-            // Center lens with gloss highlight
+            // Center lens
             Container(
               width: 100,
               height: 100,
@@ -383,7 +356,7 @@ class _SplashScreenState extends State<SplashScreen>
                 );
               },
             ),
-            // Progress ring around the logo
+            // Progress ring
             AnimatedBuilder(
               animation: _progressController,
               builder: (context, _) {
@@ -495,7 +468,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     return Column(
       children: [
-        // Status text
         AnimatedSwitcher(
           duration: FoodInsightAnimations.fast,
           child: Text(
@@ -509,7 +481,6 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
         const SizedBox(height: 16),
-        // Minimal progress dots
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(3, (index) {

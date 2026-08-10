@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../theme/app_design_system.dart';
-import '../../../widgets/skeuomorphic/skeu_card.dart';
 
 class QuickActionsSection extends StatelessWidget {
   final VoidCallback onScanBarcode;
@@ -20,76 +20,100 @@ class QuickActionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.w),
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              'Quick Actions',
-              style: FoodInsightTypography.heading(
-                size: 18,
-                weight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                child: _SkeuActionTile(
-                  icon: Icons.qr_code_scanner_rounded,
-                  label: 'Scan\nBarcode',
+              Container(
+                width: 4,
+                height: 16,
+                decoration: BoxDecoration(
                   color: FoodInsightColors.scannerGreen,
-                  onTap: onScanBarcode,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SkeuActionTile(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Upload\nImage',
-                  color: FoodInsightColors.infoBlue,
-                  onTap: onUploadImage,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SkeuActionTile(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'AI\nAssistant',
-                  color: FoodInsightColors.purpleAccent,
-                  onTap: onChatWithAI,
+              const SizedBox(width: 8),
+              Text(
+                'QUICK ACTIONS',
+                style: FoodInsightTypography.smallCaps(
+                  size: 11,
+                  weight: FontWeight.w900,
+                  color: FoodInsightColors.deepCharcoal.withValues(alpha: 0.8),
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          // Two side-by-side action items
+          Row(
+            children: [
+              Expanded(
+                child: _PremiumActionCard(
+                  icon: Icons.qr_code_scanner_rounded,
+                  title: 'Scan Barcode',
+                  subtitle: 'Scan food package',
+                  startColor: FoodInsightColors.scannerGreen,
+                  endColor: const Color(0xFF2EBD59),
+                  onTap: onScanBarcode,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _PremiumActionCard(
+                  icon: Icons.edit_calendar_rounded,
+                  title: 'Log Meal',
+                  subtitle: 'Manual meal logging',
+                  startColor: FoodInsightColors.infoBlue,
+                  endColor: const Color(0xFF2993FF),
+                  onTap: onUploadImage,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Full-width interactive AI card with glowing gradients
+          _PremiumActionCard(
+            icon: Icons.auto_awesome_rounded,
+            title: 'AI Smart Chat',
+            subtitle: 'Ask about recipes, safe ingredients, and health advice',
+            startColor: FoodInsightColors.purpleAccent,
+            endColor: const Color(0xFFBD54E0),
+            onTap: onChatWithAI,
+            isWide: true,
+          ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideY(begin: 0.05, end: 0);
   }
 }
 
-/// Individual skeuomorphic action tile with press animation
-class _SkeuActionTile extends StatefulWidget {
+class _PremiumActionCard extends StatefulWidget {
   final IconData icon;
-  final String label;
-  final Color color;
+  final String title;
+  final String subtitle;
+  final Color startColor;
+  final Color endColor;
   final VoidCallback onTap;
+  final bool isWide;
 
-  const _SkeuActionTile({
+  const _PremiumActionCard({
     required this.icon,
-    required this.label,
-    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.startColor,
+    required this.endColor,
     required this.onTap,
+    this.isWide = false,
   });
 
   @override
-  State<_SkeuActionTile> createState() => _SkeuActionTileState();
+  State<_PremiumActionCard> createState() => _PremiumActionCardState();
 }
 
-class _SkeuActionTileState extends State<_SkeuActionTile>
+class _PremiumActionCardState extends State<_PremiumActionCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
@@ -99,10 +123,10 @@ class _SkeuActionTileState extends State<_SkeuActionTile>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
+      duration: const Duration(milliseconds: 120),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.94).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
   }
 
@@ -132,54 +156,131 @@ class _SkeuActionTileState extends State<_SkeuActionTile>
             child: child,
           );
         },
-        child: SkeuCard(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-          borderRadius: 20,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              widget.color.withValues(alpha: 0.05),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon with colored background circle
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.color.withValues(alpha: 0.12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.color.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  widget.icon,
-                  color: widget.color,
-                  size: 22,
-                ),
+        child: Container(
+          padding: EdgeInsets.all(widget.isWide ? 18 : 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 15,
+                spreadRadius: -2,
+                offset: const Offset(0, 6),
               ),
-              const SizedBox(height: 10),
+              BoxShadow(
+                color: widget.startColor.withValues(alpha: 0.02),
+                blurRadius: 25,
+                spreadRadius: 2,
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white,
+              width: 1.5,
+            ),
+          ),
+          child: widget.isWide ? _buildWideLayout() : _buildSquareLayout(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSquareLayout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildIconContainer(),
+        const SizedBox(height: 16),
+        Text(
+          widget.title,
+          style: FoodInsightTypography.heading(
+            size: 15,
+            weight: FontWeight.w800,
+            color: FoodInsightColors.deepCharcoal,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          widget.subtitle,
+          style: FoodInsightTypography.caption(
+            size: 12,
+            weight: FontWeight.w600,
+            color: FoodInsightColors.midGray,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWideLayout() {
+    return Row(
+      children: [
+        _buildIconContainer(),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                widget.label,
-                style: FoodInsightTypography.caption(
-                  size: 11,
-                  weight: FontWeight.w700,
+                widget.title,
+                style: FoodInsightTypography.heading(
+                  size: 15,
+                  weight: FontWeight.w800,
                   color: FoodInsightColors.deepCharcoal,
                 ),
-                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                widget.subtitle,
+                style: FoodInsightTypography.caption(
+                  size: 12,
+                  weight: FontWeight.w600,
+                  color: FoodInsightColors.midGray,
+                ),
                 maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
+        ),
+        Icon(
+          Icons.chevron_right_rounded,
+          size: 20,
+          color: FoodInsightColors.midGray.withValues(alpha: 0.6),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIconContainer() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            widget.startColor,
+            widget.endColor,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: widget.startColor.withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Icon(
+          widget.icon,
+          color: Colors.white,
+          size: 22,
         ),
       ),
     );

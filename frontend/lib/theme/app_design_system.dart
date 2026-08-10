@@ -28,6 +28,19 @@ class FoodInsightColors {
   static const infoBlueLight = Color(0xFFE3F0FF);
   static const purpleAccent = Color(0xFFAF52DE);
 
+  // ── Apple Health Nutrition Colors ─────────────────────────────
+  /// Crimson red for CTA buttons and calorie rings
+  static const ctaRed = Color(0xFFFF2D55);
+
+  /// Indigo blue for carbs tracking
+  static const carbsBlue = Color(0xFF5856D6);
+
+  /// Warm yellow for fat tracking
+  static const fatYellow = Color(0xFFFFCC00);
+
+  /// Orange for warnings / accents
+  static const accentOrange = Color(0xFFFF9500);
+
   // ── Skeuomorphic Material Colors ─────────────────────────────
   static const matteCard = Color(0xFFF2EDE4);
   static const glossCard = Color(0xFFFFFFFF);
@@ -67,6 +80,13 @@ class FoodInsightColors {
     colors: [Color(0xFFFF3B30), Color(0xFFFF453A)],
   );
 
+  /// CTA button gradient — crimson red sweep
+  static const LinearGradient ctaGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFFF2D55), Color(0xFFFF375F)],
+  );
+
   static const LinearGradient scannerOverlayGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -103,6 +123,21 @@ class FoodInsightShadows {
       blurRadius: 0,
       spreadRadius: 0,
       offset: Offset(0, -1),
+    ),
+  ];
+
+  /// Subtle card — lighter shadow for compact cards
+  static const List<BoxShadow> subtleCard = [
+    BoxShadow(
+      color: Color(0x12000000),
+      blurRadius: 12,
+      spreadRadius: -1,
+      offset: Offset(0, 4),
+    ),
+    BoxShadow(
+      color: Color(0x08000000),
+      blurRadius: 3,
+      offset: Offset(0, 1),
     ),
   ];
 
@@ -242,6 +277,21 @@ class FoodInsightTypography {
         color: color,
         letterSpacing: 0.3,
         height: 1.4,
+      );
+
+  /// Small-caps style for section headers like "DAILY INTAKE", "RECENT SCANS"
+  static TextStyle smallCaps({
+    double size = 11,
+    FontWeight weight = FontWeight.w800,
+    Color color = FoodInsightColors.midGray,
+    double letterSpacing = 1.2,
+  }) =>
+      GoogleFonts.nunito(
+        fontSize: size,
+        fontWeight: weight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: 1.3,
       );
 
   static TextStyle monospace({

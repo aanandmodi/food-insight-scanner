@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Groq from "groq-sdk";
 
@@ -6,13 +7,7 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
-  }
-  return new Groq({ apiKey });
-}
+const groqApiKeySecret = defineSecret("GROQ_API_KEY");
 
 /**
  * generateDietPlan – Creates a next-day meal plan based on today's intake
@@ -22,7 +17,7 @@ function getGroqClient(): Groq {
  * Output: { summary, meals: [...], totalCalories, totalProtein }
  */
 export const generateDietPlan = onCall(
-  { region: "asia-south1", timeoutSeconds: 30 },
+  { region: "asia-south1", timeoutSeconds: 30, secrets: [groqApiKeySecret] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be logged in.");
@@ -33,7 +28,11 @@ export const generateDietPlan = onCall(
       throw new HttpsError("invalid-argument", "dailySummary is required.");
     }
 
-    const groq = getGroqClient();
+    const apiKey = groqApiKeySecret.value();
+    if (!apiKey) {
+      throw new HttpsError("failed-precondition", "GROQ_API_KEY is not configured on the server.");
+    }
+    const groq = new Groq({ apiKey });
 
     const prompt = `Create a detailed meal plan for TOMORROW based on my intake today and my goals.
 
@@ -59,7 +58,7 @@ Output strictly a JSON object with this structure:
 }`;
 
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
