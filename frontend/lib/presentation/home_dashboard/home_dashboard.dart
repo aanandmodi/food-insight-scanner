@@ -541,8 +541,7 @@ class _HomeDashboardState extends State<HomeDashboard>
               ),
             ),
           ),
-        ),
-      );
+        );
   }
 
   BottomNavigationBarItem _buildNavItem(
