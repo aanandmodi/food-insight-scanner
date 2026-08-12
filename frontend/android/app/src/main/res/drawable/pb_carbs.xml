@@ -1,15 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@android:id/background" android:drawable="@drawable/progress_bg_inset" />
+    <!-- Colored Semi-Transparent Track with Inner Shadow -->
+    <item>
+        <shape>
+            <corners android:radius="4dp"/>
+            <solid android:color="#335856D6"/> <!-- Light purple track -->
+        </shape>
+    </item>
+    <!-- Inner Groove Shadow -->
+    <item android:bottom="2dp" android:right="2dp">
+        <shape>
+            <corners android:radius="4dp"/>
+            <stroke android:width="1dp" android:color="#20000000"/>
+        </shape>
+    </item>
+    
+    <!-- Progress Bar Fill with Rounded Caps -->
     <item android:id="@android:id/progress">
-        <clip>
+        <scale android:scaleWidth="100%">
             <shape>
-                <corners android:radius="8dp" />
-                <gradient
-                    android:startColor="#5856D6"
-                    android:endColor="#AF52DE"
-                    android:angle="0" />
+                <corners android:radius="4dp" />
+                <solid android:color="#5856D6" /> <!-- Solid color prevents gradient stretching when scaling -->
             </shape>
-        </clip>
+        </scale>
     </item>
 </layer-list>
