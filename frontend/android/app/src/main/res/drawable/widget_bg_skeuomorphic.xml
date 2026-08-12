@@ -1,24 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Deep Soft Shadow Layers -->
-    <item android:top="2dp" android:left="2dp" android:right="2dp" android:bottom="8dp">
-        <shape><corners android:radius="24dp"/><solid android:color="#0A000000"/></shape>
+    <!-- Outer soft shadow (large, diffuse) -->
+    <item android:top="6dp" android:left="4dp" android:right="4dp" android:bottom="0dp">
+        <shape><corners android:radius="28dp"/><solid android:color="#18000000"/></shape>
     </item>
-    <item android:top="4dp" android:left="4dp" android:right="4dp" android:bottom="4dp">
-        <shape><corners android:radius="24dp"/><solid android:color="#0A000000"/></shape>
+    <item android:top="4dp" android:left="3dp" android:right="3dp" android:bottom="2dp">
+        <shape><corners android:radius="28dp"/><solid android:color="#10000000"/></shape>
     </item>
-    <item android:top="8dp" android:left="8dp" android:right="8dp" android:bottom="0dp">
-        <shape><corners android:radius="24dp"/><solid android:color="#0A000000"/></shape>
+    <item android:top="2dp" android:left="2dp" android:right="2dp" android:bottom="4dp">
+        <shape><corners android:radius="28dp"/><solid android:color="#08000000"/></shape>
     </item>
-    
-    <!-- Transparent Liquid Glass Background -->
-    <item android:bottom="12dp" android:left="2dp" android:right="2dp" android:top="2dp">
+
+    <!-- MAIN FROSTED GLASS CARD - highly transparent white -->
+    <item android:bottom="8dp" android:left="1dp" android:right="1dp" android:top="1dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="26dp" />
+            <!-- 25% opaque white = true see-through frosted glass -->
+            <solid android:color="#40FFFFFF" />
+            <!-- Bright white inner border = glass edge highlight -->
+            <stroke android:width="1.5dp" android:color="#80FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Inner top highlight strip (simulates light refraction on glass top edge) -->
+    <item android:bottom="8dp" android:left="8dp" android:right="8dp" android:top="1dp">
         <shape android:shape="rectangle">
             <corners android:radius="24dp" />
-            <!-- 70% transparent white/cream for true floating liquid glass -->
-            <solid android:color="#B3FFFFFF" />
-            <!-- Soft inner highlight -->
-            <stroke android:width="1dp" android:color="#80FFFFFF" />
+            <gradient
+                android:startColor="#30FFFFFF"
+                android:endColor="#00FFFFFF"
+                android:angle="270" />
         </shape>
     </item>
 </layer-list>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glossy raised action button (Log Meal / Scan Food) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Deep shadow under button -->
+    <item android:top="3dp" android:left="2dp" android:right="2dp" android:bottom="0dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <solid android:color="#20000000" />
+        </shape>
+    </item>
+    <item android:top="2dp" android:left="1dp" android:right="1dp" android:bottom="1dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <solid android:color="#10000000" />
+        </shape>
+    </item>
+    
+    <!-- Main button body - translucent glass -->
+    <item android:bottom="3dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <solid android:color="#55FFFFFF" />
+            <stroke android:width="1dp" android:color="#88FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Top highlight gloss strip -->
+    <item android:bottom="3dp" android:left="6dp" android:right="6dp" android:top="0dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="18dp" />
+            <gradient
+                android:startColor="#50FFFFFF"
+                android:endColor="#00FFFFFF"
+                android:angle="270" />
+        </shape>
+    </item>
+</layer-list>
