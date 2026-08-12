@@ -25,7 +25,7 @@ class ActivitySummaryCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: FoodInsightRadius.xlAll,
-            boxShadow: FoodInsightShadows.softCard,
+            boxShadow: FoodInsightShadows.subtleCard,
             border: Border.all(
               color: FoodInsightColors.outlineGray,
               width: 1,
@@ -54,7 +54,7 @@ class ActivitySummaryCard extends StatelessWidget {
                       SizedBox(width: 3.w),
                       Text(
                         'Activity & Steps',
-                        style: FoodInsightTypography.h3(
+                        style: FoodInsightTypography.heading(
                           size: 16,
                           weight: FontWeight.w700,
                         ),
@@ -79,7 +79,7 @@ class ActivitySummaryCard extends StatelessWidget {
                             child: CircularProgressIndicator(
                               value: stepProgress,
                               strokeWidth: 8,
-                              backgroundColor: FoodInsightColors.backgroundGray,
+                              backgroundColor: FoodInsightColors.lightGray,
                               valueColor: const AlwaysStoppedAnimation<Color>(FoodInsightColors.scannerGreen),
                               strokeCap: StrokeCap.round,
                             ),
@@ -159,7 +159,7 @@ class ActivitySummaryCard extends StatelessWidget {
           style: FoodInsightTypography.body(
             size: 14,
             weight: FontWeight.w800,
-            color: FoodInsightColors.textDark,
+            color: FoodInsightColors.deepCharcoal,
           ),
         ),
         Text(
