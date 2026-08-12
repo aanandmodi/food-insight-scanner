@@ -16,7 +16,9 @@ import '../../theme/app_design_system.dart';
 import '../profile/profile_screen.dart';
 import '../barcode_scanner/barcode_scanner.dart';
 import '../ai_chat_assistant/ai_chat_assistant.dart';
-import './widgets/diet_log_preview.dart';
+import 'widgets/diet_log_preview.dart';
+import 'widgets/meal_plan_preview.dart';
+import '../meal_planner/meal_planner_screen.dart';
 import './widgets/greeting_header.dart';
 import './widgets/nutrition_summary_card.dart';
 import './widgets/quick_actions_section.dart';
@@ -247,15 +249,23 @@ class _HomeDashboardState extends State<HomeDashboard>
         gender: profile.gender,
         activityLevel: profile.activityLevel,
         healthGoal: profile.healthGoals,
+        customGoal: profile.customCaloriesGoal,
       );
       _nutritionData['caloriesGoal'] = calGoal;
       _nutritionData['proteinGoal'] = UserUtils.calculateProteinGoal(
         weightKg: profile.weightKg,
         healthGoal: profile.healthGoals,
+        customGoal: profile.customProteinGoal,
       );
       _nutritionData['sugarGoal'] = UserUtils.calculateSugarGoal(calGoal);
-      _nutritionData['carbsGoal'] = UserUtils.calculateCarbsGoal(calGoal);
-      _nutritionData['fatGoal'] = UserUtils.calculateFatGoal(calGoal);
+      _nutritionData['carbsGoal'] = UserUtils.calculateCarbsGoal(
+        calGoal, 
+        customGoal: profile.customCarbsGoal
+      );
+      _nutritionData['fatGoal'] = UserUtils.calculateFatGoal(
+        calGoal,
+        customGoal: profile.customFatGoal
+      );
     }
 
     return Container(
@@ -352,6 +362,27 @@ class _HomeDashboardState extends State<HomeDashboard>
                         .fadeIn(
                             duration: 500.ms,
                             delay: 400.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
+                    SizedBox(height: 2.h),
+                    MealPlanPreviewWidget(
+                      onViewPlan: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MealPlannerScreen(),
+                          ),
+                        );
+                      },
+                    )
+                        .animate()
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 500.ms,
                             curve: Curves.easeOutCubic)
                         .slideY(
                             begin: 0.1,

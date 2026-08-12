@@ -19,6 +19,7 @@ import './widgets/nutrition_bars_widget.dart';
 import './widgets/product_image_widget.dart';
 import './widgets/product_info_widget.dart';
 import './widgets/safety_alerts_widget.dart';
+import './widgets/ai_analysis_widget.dart';
 import '../../theme/app_design_system.dart';
 
 class ProductDetails extends StatefulWidget {
@@ -391,6 +392,14 @@ class _ProductDetailsState extends State<ProductDetails> {
                         )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 400.ms),
+                        SizedBox(height: 3.h),
+                        // AI Analysis & Micro-nutrients
+                        AiAnalysisWidget(
+                          aiAnalysis: productData['aiAnalysis'] as Map<String, dynamic>?,
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 450.ms)
+                            .slideY(begin: 0.03, end: 0),
                         SizedBox(height: 3.h),
                         // AI insights alternatives
                         if (_isLoadingAlternatives)
