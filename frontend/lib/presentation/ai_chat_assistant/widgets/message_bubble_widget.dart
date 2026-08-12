@@ -17,149 +17,115 @@ class MessageBubbleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 0.5.h, horizontal: 4.w),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser) ...[
-            Container(
-              width: 8.w,
-              height: 8.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: FoodInsightColors.healthyGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.25),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                color: Colors.white,
-                size: 4.w,
-              ),
+    if (isUser) {
+      return Container(
+        margin: EdgeInsets.only(top: 1.h, bottom: 1.h, left: 15.w, right: 4.w),
+        alignment: Alignment.centerRight,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+          decoration: BoxDecoration(
+            color: FoodInsightColors.scannerGreen,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(5.w),
+              topRight: Radius.circular(5.w),
+              bottomLeft: Radius.circular(5.w),
+              bottomRight: Radius.circular(1.w),
             ),
-            SizedBox(width: 2.w),
-          ],
-          Flexible(
+            boxShadow: [
+              BoxShadow(
+                color: FoodInsightColors.scannerGreen.withValues(alpha: 0.25),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            message,
+            style: FoodInsightTypography.body(
+              size: 15,
+              color: Colors.white,
+              weight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // AI Message Bubble
+    return Container(
+      margin: EdgeInsets.only(top: 1.h, bottom: 1.h, left: 4.w, right: 10.w),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8.w,
+            height: 8.w,
+            margin: EdgeInsets.only(top: 0.5.h, right: 3.w),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: FoodInsightColors.healthyGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: FoodInsightColors.scannerGreen.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              color: Colors.white,
+              size: 4.5.w,
+            ),
+          ),
+          Expanded(
             child: Container(
-              constraints: BoxConstraints(maxWidth: 75.w),
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
               decoration: BoxDecoration(
-                color: isUser
-                    ? FoodInsightColors.scannerGreen
-                    : Colors.white,
+                color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(4.w),
-                  topRight: Radius.circular(4.w),
-                  bottomLeft:
-                      isUser ? Radius.circular(4.w) : Radius.circular(1.w),
-                  bottomRight:
-                      isUser ? Radius.circular(1.w) : Radius.circular(4.w),
+                  topLeft: Radius.circular(1.w),
+                  topRight: Radius.circular(5.w),
+                  bottomLeft: Radius.circular(5.w),
+                  bottomRight: Radius.circular(5.w),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isUser
-                        ? FoodInsightColors.scannerGreen.withValues(alpha: 0.25)
-                        : Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(
+                  color: FoodInsightColors.outlineGray.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+                boxShadow: FoodInsightShadows.subtleCard,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  MarkdownBody(
-                    data: message,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: FoodInsightTypography.body(
-                        size: 14.5,
-                        color: isUser
-                            ? Colors.white
-                            : FoodInsightColors.deepCharcoal,
-                      ),
-                      strong: FoodInsightTypography.body(
-                        size: 14.5,
-                        weight: FontWeight.w800,
-                        color: isUser
-                            ? Colors.white
-                            : FoodInsightColors.deepCharcoal,
-                      ),
-                      listBullet: FoodInsightTypography.body(
-                        size: 14.5,
-                        color: isUser
-                            ? Colors.white
-                            : FoodInsightColors.deepCharcoal,
-                      ),
-                      tableHead: FoodInsightTypography.body(
-                        size: 13,
-                        weight: FontWeight.w700,
-                        color: isUser
-                            ? Colors.white
-                            : FoodInsightColors.deepCharcoal,
-                      ),
-                      tableBody: FoodInsightTypography.body(
-                        size: 13,
-                        color: isUser
-                            ? Colors.white
-                            : FoodInsightColors.deepCharcoal,
-                      ),
-                    ),
+              child: MarkdownBody(
+                data: message,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: FoodInsightTypography.body(
+                    size: 15,
+                    color: FoodInsightColors.deepCharcoal,
                   ),
-                  SizedBox(height: 0.5.h),
-                  Text(
-                    _formatTime(timestamp),
-                    style: FoodInsightTypography.caption(
-                      size: 10,
-                      color: isUser
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : FoodInsightColors.midGray,
-                    ),
+                  strong: FoodInsightTypography.body(
+                    size: 15,
+                    weight: FontWeight.w800,
+                    color: FoodInsightColors.deepCharcoal,
                   ),
-                ],
+                  listBullet: FoodInsightTypography.body(
+                    size: 15,
+                    color: FoodInsightColors.scannerGreen,
+                    weight: FontWeight.w800,
+                  ),
+                  h1: FoodInsightTypography.heading(size: 20),
+                  h2: FoodInsightTypography.heading(size: 18),
+                  h3: FoodInsightTypography.heading(size: 16),
+                  blockquote: FoodInsightTypography.body(
+                    size: 14,
+                    color: FoodInsightColors.midGray,
+                  ),
+                ),
               ),
             ),
           ),
-          if (isUser) ...[
-            SizedBox(width: 2.w),
-            Container(
-              width: 8.w,
-              height: 8.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: FoodInsightColors.scannerGreenLight,
-              ),
-              child: Icon(
-                Icons.person_rounded,
-                color: FoodInsightColors.scannerGreen,
-                size: 4.5.w,
-              ),
-            ),
-          ],
         ],
       ),
     );
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    }
   }
 }

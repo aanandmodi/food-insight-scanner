@@ -527,31 +527,10 @@ class _HomeDashboardState extends State<HomeDashboard>
       IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
     return BottomNavigationBarItem(
-      icon: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedScale(
-            scale: isSelected ? 1.15 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            child: Icon(icon, size: 22),
-          ),
-          if (isSelected)
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                color: FoodInsightColors.scannerGreen,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.5),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-            ),
-        ],
+      icon: AnimatedScale(
+        scale: isSelected ? 1.15 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Icon(icon, size: 24),
       ),
       label: label,
     );
