@@ -412,20 +412,28 @@ class _HomeDashboardState extends State<HomeDashboard>
       child: Scaffold(
         backgroundColor: FoodInsightColors.warmWhite,
         extendBody: true,
-        body: IndexedStack(
-          index: _currentIndex,
+        body: Stack(
           children: [
-            _buildHomeContent(),
-            const BarcodeScanner(),
-            AiChatAssistant(initialImage: _selectedImage),
-            const ProfileScreen(),
+            IndexedStack(
+              index: _currentIndex,
+              children: [
+                _buildHomeContent(),
+                const BarcodeScanner(),
+                AiChatAssistant(initialImage: _selectedImage),
+                const ProfileScreen(),
+              ],
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBottomNav(),
+            ),
           ],
         ),
         // ──────────── Skeuomorphic FAB ────────────
         floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        // ──────────── Frosted Glass Bottom Nav ────────────
-        bottomNavigationBar: _buildBottomNav(),
       ),
     );
   }
@@ -473,49 +481,58 @@ class _HomeDashboardState extends State<HomeDashboard>
   }
 
   Widget _buildBottomNav() {
-    return Container(
-      margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
-      child: ClipRRect(
-        borderRadius: FoodInsightRadius.xxlAll,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.55),
-              borderRadius: FoodInsightRadius.xxlAll,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 24,
-                  spreadRadius: -4,
-                  offset: const Offset(0, 8),
+    return SafeArea(
+      child: Container(
+        margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
+        child: ClipRRect(
+          borderRadius: FoodInsightRadius.xxlAll,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.55),
+                borderRadius: FoodInsightRadius.xxlAll,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 24,
+                    spreadRadius: -4,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: MediaQuery.removePadding(
+                context: context,
+                removeBottom: true,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 1.h),
+                  child: BottomNavigationBar(
+                    currentIndex: _currentIndex,
+                    onTap: _onBottomNavTap,
+                    type: BottomNavigationBarType.fixed,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    selectedItemColor: FoodInsightColors.scannerGreen,
+                    unselectedItemColor: FoodInsightColors.midGray,
+                    selectedLabelStyle: FoodInsightTypography.caption(
+                      size: 10,
+                      weight: FontWeight.w700,
+                      color: FoodInsightColors.scannerGreen,
+                    ),
+                    unselectedLabelStyle: FoodInsightTypography.caption(
+                      size: 10,
+                      weight: FontWeight.w500,
+                      color: FoodInsightColors.midGray,
+                    ),
+                    items: [
+                      _buildNavItem(Icons.home_rounded, 'Home', 0),
+                      _buildNavItem(Icons.qr_code_scanner_rounded, 'Scan', 1),
+                      _buildNavItem(Icons.auto_awesome_rounded, 'AI Chat', 2),
+                      _buildNavItem(Icons.person_rounded, 'Profile', 3),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: _onBottomNavTap,
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              selectedItemColor: FoodInsightColors.scannerGreen,
-              unselectedItemColor: FoodInsightColors.midGray,
-              selectedLabelStyle: FoodInsightTypography.caption(
-                size: 10,
-                weight: FontWeight.w700,
-                color: FoodInsightColors.scannerGreen,
               ),
-              unselectedLabelStyle: FoodInsightTypography.caption(
-                size: 10,
-                weight: FontWeight.w500,
-                color: FoodInsightColors.midGray,
-              ),
-              items: [
-                _buildNavItem(Icons.home_rounded, 'Home', 0),
-                _buildNavItem(Icons.qr_code_scanner_rounded, 'Scan', 1),
-                _buildNavItem(Icons.auto_awesome_rounded, 'AI Chat', 2),
-                _buildNavItem(Icons.person_rounded, 'Profile', 3),
-              ],
             ),
           ),
         ),

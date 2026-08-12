@@ -303,27 +303,36 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               decoration: const BoxDecoration(
                 gradient: FoodInsightColors.warmBackground,
               ),
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: EdgeInsets.symmetric(vertical: 2.h),
-                itemCount: _messages.length + (_showTypingIndicator ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _messages.length) {
-                    return _showTypingIndicator ? const TypingIndicatorWidget() : const SizedBox.shrink();
-                  }
-                  final message = _messages[index];
-                  return MessageBubbleWidget(
-                    message: message["message"] as String,
-                    isUser: message["isUser"] as bool,
-                    timestamp: message["timestamp"] as DateTime,
-                  );
-                },
+              child: Stack(
+                children: [
+                  ListView.builder(
+                    controller: _scrollController,
+                    padding: EdgeInsets.only(top: 2.h, bottom: 8.h),
+                    itemCount: _messages.length + (_showTypingIndicator ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length) {
+                        return _showTypingIndicator ? const TypingIndicatorWidget() : const SizedBox.shrink();
+                      }
+                      final message = _messages[index];
+                      return MessageBubbleWidget(
+                        message: message["message"] as String,
+                        isUser: message["isUser"] as bool,
+                        timestamp: message["timestamp"] as DateTime,
+                      );
+                    },
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: QuickReplyWidget(
+                      suggestions: _quickReplies,
+                      onSuggestionTap: _handleQuickReply,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          QuickReplyWidget(
-            suggestions: _quickReplies,
-            onSuggestionTap: _handleQuickReply,
           ),
           ChatInputWidget(
             textController: _messageController,
