@@ -24,6 +24,7 @@ import './widgets/greeting_header.dart';
 import './widgets/nutrition_summary_card.dart';
 import './widgets/quick_actions_section.dart';
 import './widgets/recent_scans_section.dart';
+import './widgets/activity_summary_card.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
@@ -333,6 +334,18 @@ class _HomeDashboardState extends State<HomeDashboard>
                         .fadeIn(
                             duration: 500.ms,
                             delay: 100.ms,
+                            curve: Curves.easeOutCubic)
+                        .slideY(
+                            begin: 0.1,
+                            end: 0,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic),
+                    SizedBox(height: 1.5.h),
+                    const ActivitySummaryCard()
+                        .animate()
+                        .fadeIn(
+                            duration: 500.ms,
+                            delay: 150.ms,
                             curve: Curves.easeOutCubic)
                         .slideY(
                             begin: 0.1,

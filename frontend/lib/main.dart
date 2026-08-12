@@ -13,6 +13,7 @@ import 'widgets/custom_error_widget.dart';
 
 import 'package:provider/provider.dart';
 import 'data/providers/user_profile_provider.dart';
+import 'data/providers/activity_provider.dart';
 
 String? firebaseInitError;
 
@@ -94,6 +95,7 @@ Future<void> main() async {
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => UserProfileProvider()),
+          ChangeNotifierProvider(create: (_) => ActivityProvider()),
         ],
         child: const MyApp(),
       ),
