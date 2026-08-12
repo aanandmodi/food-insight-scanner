@@ -6,7 +6,7 @@
             android:innerRadiusRatio="3"
             android:thicknessRatio="12"
             android:useLevel="false">
-            <solid android:color="#FDE8EE" />
+            <solid android:color="#20FA3964" />
         </shape>
     </item>
     <item android:id="@android:id/progress">
