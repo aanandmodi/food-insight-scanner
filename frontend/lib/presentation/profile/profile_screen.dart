@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../models/user_profile.dart';
 import '../../theme/app_design_system.dart';
+import '../../services/local_database_service.dart';
+import '../../services/cloud_function_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -245,6 +247,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       SizedBox(height: 3.h),
 
+                      // AI Recalibration Section
+                      if (profile != null)
+                        _buildAiRecalibrationCard(context, profile)
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 150.ms)
+                            .slideY(begin: 0.05, end: 0),
+
+                      SizedBox(height: 3.h),
+
                       // Detailed Info
                       ...[
                         _buildInfoSection(context, 'Date of Birth',
@@ -390,6 +401,209 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiRecalibrationCard(BuildContext context, UserProfile profile) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [FoodInsightColors.scannerGreen, const Color(0xFF1B5E20)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: FoodInsightRadius.mdAll,
+        boxShadow: FoodInsightShadows.subtleCard,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
+              SizedBox(width: 2.w),
+              Text(
+                'AI Macro Recalibration',
+                style: FoodInsightTypography.heading(
+                  size: 18,
+                  weight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 1.h),
+          Text(
+            'Let Gemini analyze your last 3 days of eating habits to optimize your daily goals dynamically.',
+            style: FoodInsightTypography.body(
+              size: 13,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+          SizedBox(height: 2.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _handleAiRecalibration(context, profile),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: FoodInsightColors.scannerGreen,
+                elevation: 0,
+                padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: FoodInsightRadius.mdAll,
+                ),
+              ),
+              child: Text(
+                'Recalibrate Now',
+                style: FoodInsightTypography.body(
+                  size: 14,
+                  weight: FontWeight.w700,
+                  color: FoodInsightColors.scannerGreen,
+                ),
+              ),
+            ),
+          ),
+          if (profile.lastAiRecalibration != null)
+            Padding(
+              padding: EdgeInsets.only(top: 1.h),
+              child: Text(
+                'Last recalibrated: ${_formatDate(profile.lastAiRecalibration)}',
+                style: FoodInsightTypography.caption(
+                  size: 11,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleAiRecalibration(BuildContext context, UserProfile profile) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(6.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: FoodInsightRadius.mdAll,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+              SizedBox(height: 2.h),
+              Text('Analyzing your habits...', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.deepCharcoal)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Fetch last 3 days of logs
+      List<Map<String, dynamic>> recentLogs = [];
+      final db = LocalDatabaseService();
+      final now = DateTime.now();
+      for (int i = 0; i < 3; i++) {
+        final date = now.subtract(Duration(days: i));
+        final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        final dayLogs = await db.getDietLogByDate(dateString);
+        recentLogs.addAll(dayLogs);
+      }
+
+      final newMacros = await CloudFunctionService().recalibrateMacrosWithAI(
+        userProfile: profile.toMap(),
+        recentDietLogs: recentLogs,
+      );
+
+      Navigator.pop(context); // Close loading
+
+      if (newMacros.containsKey('error')) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AI Analysis failed: ${newMacros['error']}')));
+        return;
+      }
+
+      // Show Result Dialog
+      _showRecalibrationResult(context, profile, newMacros);
+
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  void _showRecalibrationResult(BuildContext context, UserProfile profile, Map<String, dynamic> newMacros) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.lgAll),
+        title: Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded, color: FoodInsightColors.scannerGreen),
+            SizedBox(width: 2.w),
+            Text('AI Recommendations', style: FoodInsightTypography.heading(size: 18, color: FoodInsightColors.deepCharcoal)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(newMacros['explanation'] ?? 'Here are your optimized goals.', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray)),
+            SizedBox(height: 2.h),
+            _buildMacroRow('Calories', '${newMacros['calories']} kcal'),
+            _buildMacroRow('Protein', '${newMacros['protein']} g'),
+            _buildMacroRow('Carbs', '${newMacros['carbs']} g'),
+            _buildMacroRow('Fat', '${newMacros['fat']} g'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: FoodInsightColors.midGray)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Update profile
+              final updatedProfile = profile.copyWith(
+                customCaloriesGoal: (newMacros['calories'] as num?)?.toDouble(),
+                customProteinGoal: (newMacros['protein'] as num?)?.toDouble(),
+                customCarbsGoal: (newMacros['carbs'] as num?)?.toDouble(),
+                customFatGoal: (newMacros['fat'] as num?)?.toDouble(),
+                lastAiRecalibration: DateTime.now(),
+              );
+              await context.read<UserProfileProvider>().saveProfile(updatedProfile);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Macros updated successfully!')));
+              _loadProfile();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FoodInsightColors.scannerGreen,
+              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
+            ),
+            child: Text('Apply Goals', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 0.5.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: FoodInsightTypography.body(size: 15, weight: FontWeight.w600, color: FoodInsightColors.deepCharcoal)),
+          Text(value, style: FoodInsightTypography.body(size: 15, weight: FontWeight.w800, color: FoodInsightColors.scannerGreen)),
         ],
       ),
     );

@@ -79,7 +79,12 @@ class UserUtils {
     required String gender,
     String activityLevel = 'moderate',
     String? healthGoal,
+    double? customGoal,
   }) {
+    if (customGoal != null && customGoal > 0) {
+      return customGoal.round();
+    }
+
     // Fallback when body metrics are missing
     if (weightKg == null || heightCm == null || weightKg <= 0 || heightCm <= 0) {
       return _fallbackCalorieGoal(healthGoal);
@@ -128,7 +133,12 @@ class UserUtils {
   static int calculateProteinGoal({
     double? weightKg,
     String? healthGoal,
+    double? customGoal,
   }) {
+    if (customGoal != null && customGoal > 0) {
+      return customGoal.round();
+    }
+
     if (weightKg == null || weightKg <= 0) {
       return _fallbackProteinGoal(healthGoal);
     }
@@ -160,7 +170,8 @@ class UserUtils {
   ///
   /// WHO recommends max 10% of total calories from free sugars.
   /// Sugar has ~4 calories per gram, so: sugarGoal = (calorieGoal × 0.10) / 4
-  static int calculateSugarGoal(int calorieGoal) {
+  static int calculateSugarGoal(int calorieGoal, {double? customGoal}) {
+    if (customGoal != null && customGoal > 0) return customGoal.round();
     return ((calorieGoal * 0.10) / 4).round().clamp(20, 100);
   }
 
@@ -168,7 +179,8 @@ class UserUtils {
 
   /// Calculate daily carbs goal in grams.
   /// Recommended ~50% of total calories from carbohydrates (4 kcal/g).
-  static int calculateCarbsGoal(int calorieGoal) {
+  static int calculateCarbsGoal(int calorieGoal, {double? customGoal}) {
+    if (customGoal != null && customGoal > 0) return customGoal.round();
     return ((calorieGoal * 0.50) / 4).round().clamp(100, 600);
   }
 
@@ -176,7 +188,8 @@ class UserUtils {
 
   /// Calculate daily fat goal in grams.
   /// Recommended ~25% of total calories from healthy fats (9 kcal/g).
-  static int calculateFatGoal(int calorieGoal) {
+  static int calculateFatGoal(int calorieGoal, {double? customGoal}) {
+    if (customGoal != null && customGoal > 0) return customGoal.round();
     return ((calorieGoal * 0.25) / 9).round().clamp(30, 200);
   }
 }

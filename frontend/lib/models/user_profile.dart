@@ -15,6 +15,13 @@ class UserProfile {
   final int age;
   final String activityLevel;
   final bool profileCompleted;
+  
+  // Dynamic AI Macro Adjustments
+  final double? customCaloriesGoal;
+  final double? customProteinGoal;
+  final double? customCarbsGoal;
+  final double? customFatGoal;
+  final DateTime? lastAiRecalibration;
 
   UserProfile({
     this.uid,
@@ -31,6 +38,11 @@ class UserProfile {
     required this.age,
     required this.activityLevel,
     this.profileCompleted = false,
+    this.customCaloriesGoal,
+    this.customProteinGoal,
+    this.customCarbsGoal,
+    this.customFatGoal,
+    this.lastAiRecalibration,
   });
 
   /// Factory constructor from a Firestore-style map
@@ -40,6 +52,11 @@ class UserProfile {
       if (map['dateOfBirth'] is String) {
         dob = DateTime.tryParse(map['dateOfBirth']);
       }
+    }
+
+    DateTime? lastRecal;
+    if (map['lastAiRecalibration'] != null) {
+      lastRecal = DateTime.tryParse(map['lastAiRecalibration'].toString());
     }
 
     return UserProfile(
@@ -57,6 +74,11 @@ class UserProfile {
       age: (map['age'] as int?) ?? _calculateAge(dob),
       activityLevel: (map['activityLevel'] as String?) ?? 'moderate',
       profileCompleted: (map['profileCompleted'] as bool?) ?? false,
+      customCaloriesGoal: (map['customCaloriesGoal'] as num?)?.toDouble(),
+      customProteinGoal: (map['customProteinGoal'] as num?)?.toDouble(),
+      customCarbsGoal: (map['customCarbsGoal'] as num?)?.toDouble(),
+      customFatGoal: (map['customFatGoal'] as num?)?.toDouble(),
+      lastAiRecalibration: lastRecal,
     );
   }
 
@@ -77,6 +99,11 @@ class UserProfile {
       'age': age,
       'activityLevel': activityLevel,
       'profileCompleted': profileCompleted,
+      if (customCaloriesGoal != null) 'customCaloriesGoal': customCaloriesGoal,
+      if (customProteinGoal != null) 'customProteinGoal': customProteinGoal,
+      if (customCarbsGoal != null) 'customCarbsGoal': customCarbsGoal,
+      if (customFatGoal != null) 'customFatGoal': customFatGoal,
+      if (lastAiRecalibration != null) 'lastAiRecalibration': lastAiRecalibration?.toIso8601String(),
     };
   }
 
@@ -96,6 +123,11 @@ class UserProfile {
     int? age,
     String? activityLevel,
     bool? profileCompleted,
+    double? customCaloriesGoal,
+    double? customProteinGoal,
+    double? customCarbsGoal,
+    double? customFatGoal,
+    DateTime? lastAiRecalibration,
   }) {
     return UserProfile(
       uid: uid ?? this.uid,
@@ -112,6 +144,11 @@ class UserProfile {
       age: age ?? this.age,
       activityLevel: activityLevel ?? this.activityLevel,
       profileCompleted: profileCompleted ?? this.profileCompleted,
+      customCaloriesGoal: customCaloriesGoal ?? this.customCaloriesGoal,
+      customProteinGoal: customProteinGoal ?? this.customProteinGoal,
+      customCarbsGoal: customCarbsGoal ?? this.customCarbsGoal,
+      customFatGoal: customFatGoal ?? this.customFatGoal,
+      lastAiRecalibration: lastAiRecalibration ?? this.lastAiRecalibration,
     );
   }
 

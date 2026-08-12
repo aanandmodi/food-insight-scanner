@@ -157,12 +157,12 @@ class CloudFunctionService {
           if (asJson)
             {
               "role": "system",
-              "content": "You are an expert nutritionist. Provide a strict health analysis of the scanned product and format your response ONLY as valid JSON.\n{\n  \"summary\": \"2-3 sentences concise health analysis mentioning positives and negatives\",\n  \"isHealthy\": boolean,\n  \"warnings\": [\"Array of short warnings if any\"]\n}",
+              "content": "You are an expert nutritionist. Provide a strict health analysis of the scanned product and format your response ONLY as valid JSON.\n{\n  \"summary\": \"2-3 sentences concise health analysis mentioning positives and negatives\",\n  \"isHealthy\": boolean,\n  \"warnings\": [\"Array of short warnings if any\"],\n  \"microNutrients\": {\n    \"sodium\": \"High/Medium/Low/None\",\n    \"fiber\": \"High/Medium/Low/None\",\n    \"vitamins\": \"Brief assessment (e.g., Good source of Vitamin C)\",\n    \"minerals\": \"Brief assessment\"\n  }\n}",
             }
           else
             {
               "role": "system",
-              "content": "You are an expert nutritionist. Provide a concise health analysis of the scanned product in 2-3 sentences. Mention positives and negatives.",
+              "content": "You are an expert nutritionist. Provide a concise health analysis of the scanned product in 2-3 sentences. Mention positives and negatives. Also, briefly comment on its micro-nutrients like sodium, fiber, vitamins, and minerals.",
             },
           {
             "role": "user",
@@ -323,6 +323,56 @@ Output strictly a JSON object with this structure:
       return jsonDecode(cleaned);
     } catch (e) {
       debugPrint('generateDietPlan error: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  // ────────────────────────── Recalibrate Macros ──────────────────────────
+  Future<Map<String, dynamic>> recalibrateMacrosWithAI({
+    required Map<String, dynamic> userProfile,
+    required List<Map<String, dynamic>> recentDietLogs,
+  }) async {
+    try {
+      final prompt = '''You are an expert sports nutritionist. Analyze the user's recent dietary habits and suggest custom daily macro goals to help them achieve their health goals.
+
+User Profile:
+${jsonEncode(userProfile)}
+
+Recent Diet Logs (last 3-7 days):
+${jsonEncode(recentDietLogs)}
+
+Calculate and return ONLY a strict JSON object with new recommended macro goals (in grams) and a brief motivational explanation.
+Format:
+{
+  "calories": 2000,
+  "protein": 150,
+  "carbs": 200,
+  "fat": 65,
+  "explanation": "Brief explanation of why you adjusted these macros based on their recent logs."
+}''';
+
+      final response = await _callGroq(
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            "role": "system",
+            "content": "You are a nutritionist. Output strictly valid JSON. No markdown.",
+          },
+          {
+            "role": "user",
+            "content": prompt,
+          }
+        ],
+        temperature: 0.3,
+        maxTokens: 500,
+        responseFormat: {"type": "json_object"},
+      );
+
+      final raw = response['choices']?[0]?['message']?['content'] ?? "{}";
+      final parsed = jsonDecode(raw);
+      return parsed;
+    } catch (e) {
+      debugPrint('recalibrateMacrosWithAI error: $e');
       return {'error': e.toString()};
     }
   }
