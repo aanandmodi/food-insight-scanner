@@ -54,13 +54,21 @@ class ProductService {
     }
   }
 
-  /// Gets the scan history — tries Firestore first, falls back to local SQLite.
+  /// Gets the scan history — reads from local SQLite database first.
   Future<List<Map<String, dynamic>>> getScanHistory() async {
-    // Try Firestore first for logged-in users
+    try {
+      final localHistory = await _localDb.getScanHistory();
+      if (localHistory.isNotEmpty) {
+        return localHistory;
+      }
+    } catch (e) {
+      debugPrint('Error loading local scan history: $e');
+    }
+
     try {
       final firestoreHistory = await FirestoreService()
           .getScanHistory()
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 2));
       if (firestoreHistory.isNotEmpty) {
         return firestoreHistory;
       }
@@ -68,13 +76,7 @@ class ProductService {
       debugPrint('Firestore scan history unavailable: $e');
     }
 
-    // Fall back to local SQLite storage
-    try {
-      return await _localDb.getScanHistory();
-    } catch (e) {
-      debugPrint('Error loading local scan history: $e');
-      return [];
-    }
+    return [];
   }
 
   /// Clears local-only scan history (used on sign-out).

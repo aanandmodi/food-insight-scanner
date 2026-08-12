@@ -3,15 +3,16 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../services/cloud_function_service.dart';
-import '../../models/user_profile.dart'; // Import the UserProfile model
+import '../../services/local_database_service.dart';
+import '../../models/user_profile.dart';
 import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
+import '../../theme/app_design_system.dart';
 import './widgets/chat_header_widget.dart';
 import './widgets/chat_input_widget.dart';
 import './widgets/message_bubble_widget.dart';
 import './widgets/quick_reply_widget.dart';
 import './widgets/typing_indicator_widget.dart';
-
 
 import 'package:image_picker/image_picker.dart';
 
@@ -33,15 +34,44 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
   final List<Map<String, dynamic>> _messages = [];
   bool _initializedGreeting = false;
-  
-  // REMOVED: The hardcoded user profile is no longer needed.
-  // We will use `widget.userProfile` instead.
 
   List<String> _quickReplies = [];
+  String _mealLogContext = '';
 
   @override
   void initState() {
     super.initState();
+    _loadTodaysMealLogs();
+  }
+
+  /// Load today's meal logs to provide context to the AI
+  Future<void> _loadTodaysMealLogs() async {
+    try {
+      final now = DateTime.now();
+      final dateString =
+          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      final entries = await LocalDatabaseService().getDietLogByDate(dateString);
+
+      if (entries.isNotEmpty) {
+        final buffer = StringBuffer();
+        buffer.writeln("Today's meal log:");
+        int totalCals = 0;
+        double totalProtein = 0;
+        for (var entry in entries) {
+          final name = entry['name'] ?? 'Unknown meal';
+          final cals = (entry['calories'] as num?)?.toInt() ?? 0;
+          final protein = (entry['protein'] as num?)?.toDouble() ?? 0;
+          final time = entry['time'] ?? '';
+          buffer.writeln("- $name: $cals kcal, ${protein.toStringAsFixed(1)}g protein${time.isNotEmpty ? ' (at $time)' : ''}");
+          totalCals += cals;
+          totalProtein += protein;
+        }
+        buffer.writeln("Total so far: $totalCals kcal, ${totalProtein.toStringAsFixed(1)}g protein");
+        _mealLogContext = buffer.toString();
+      }
+    } catch (e) {
+      debugPrint('Error loading meal logs for chat context: $e');
+    }
   }
 
   Future<void> _initializeChat(UserProfile? profile) async {
@@ -50,8 +80,6 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       _showTypingIndicator = true;
     });
 
-    // No client-side API key initialization needed — AI calls go through
-    // Cloud Functions which hold the key server-side.
     setState(() {
       _messages.add({
         "id": 1,
@@ -134,6 +162,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
         message: message,
         conversationHistory: conversationHistory,
         userProfile: profile?.toMap() ?? {},
+        mealLogContext: _mealLogContext,
       );
 
       final displayMessage = result['reply'] as String? ?? 'Sorry, I could not generate a response.';
@@ -149,16 +178,19 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
           });
         });
 
-        // Show a subtle toast if a meal was auto-logged server-side
         if (mealLogged) {
           final mealName = (result['mealData'] as Map?)?['name'] ?? 'Meal';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ "$mealName" logged to your diet!'),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          // Refresh meal log context after logging
+          await _loadTodaysMealLogs();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ "$mealName" logged to your diet!'),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       }
     } catch (e) {
@@ -215,7 +247,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: FoodInsightColors.warmWhite,
       body: Column(
         children: [
           ChatHeaderWidget(
@@ -227,53 +259,49 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               padding: EdgeInsets.all(3.w),
               margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                color: FoodInsightColors.healthRedLight,
+                borderRadius: FoodInsightRadius.smAll,
+                border: Border.all(
+                  color: FoodInsightColors.healthRed.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 5.w),
+                  Icon(Icons.error_outline, color: FoodInsightColors.healthRed, size: 5.w),
                   SizedBox(width: 2.w),
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: TextStyle(color: Colors.red.shade800, fontSize: 12.sp),
+                      style: FoodInsightTypography.caption(
+                        size: 12,
+                        color: FoodInsightColors.healthRed,
+                      ),
                     ),
                   ),
                   if (_errorMessage!.contains('internet') || _errorMessage!.contains('communicating'))
                     TextButton.icon(
                       onPressed: () {
                         setState(() => _errorMessage = null);
-                        if (_messages.length <= 1) {
-                            _initializeChat(profile);
-                        } else {
-                            // Retry the last message by sending it again
-                            // Could implement a resend feature, but basic init works too
-                            _initializeChat(profile);
-                        }
+                        _initializeChat(profile);
                       },
-                      icon: const Icon(Icons.refresh, color: Colors.red, size: 16),
-                      label: const Text('Retry', style: TextStyle(color: Colors.red)),
+                      icon: Icon(Icons.refresh, color: FoodInsightColors.healthRed, size: 16),
+                      label: Text('Retry', style: FoodInsightTypography.caption(
+                        size: 12,
+                        weight: FontWeight.w700,
+                        color: FoodInsightColors.healthRed,
+                      )),
                     ),
                   IconButton(
                     onPressed: () => setState(() => _errorMessage = null),
-                    icon: Icon(Icons.close, color: Colors.red, size: 4.w),
+                    icon: Icon(Icons.close, color: FoodInsightColors.healthRed, size: 4.w),
                   ),
                 ],
               ),
             ),
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Theme.of(context).scaffoldBackgroundColor,
-                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-                  ],
-                ),
+              decoration: const BoxDecoration(
+                gradient: FoodInsightColors.warmBackground,
               ),
               child: ListView.builder(
                 controller: _scrollController,

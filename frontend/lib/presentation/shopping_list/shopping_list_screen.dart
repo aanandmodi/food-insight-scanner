@@ -1,12 +1,13 @@
 // lib/presentation/shopping_list/shopping_list_screen.dart
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/firestore_service.dart';
+import '../../services/local_database_service.dart';
+import '../../theme/app_design_system.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -16,12 +17,40 @@ class ShoppingListScreen extends StatefulWidget {
 }
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final LocalDatabaseService _localDb = LocalDatabaseService();
+  List<Map<String, dynamic>> _items = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    setState(() => _isLoading = true);
+    try {
+      final items = await _localDb.getShoppingList();
+      if (mounted) {
+        setState(() {
+          _items = items;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading shopping list: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _toggleItem(String id, bool checked) async {
     HapticFeedback.lightImpact();
     try {
-      await _firestoreService.toggleShoppingItem(id, checked);
+      await _localDb.toggleShoppingItem(id, checked);
+      try {
+        await FirestoreService().toggleShoppingItem(id, checked);
+      } catch (_) {}
+      await _loadItems();
     } catch (e) {
       debugPrint('Error toggling item: $e');
     }
@@ -29,10 +58,17 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   Future<void> _deleteItem(String id) async {
     try {
-      await _firestoreService.deleteShoppingItem(id);
+      await _localDb.deleteShoppingItem(id);
+      try {
+        await FirestoreService().deleteShoppingItem(id);
+      } catch (_) {}
+      await _loadItems();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item removed')),
+          SnackBar(
+            content: Text('Item removed'),
+            backgroundColor: FoodInsightColors.scannerGreen,
+          ),
         );
       }
     } catch (e) {
@@ -44,22 +80,24 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     final checkedCount = items.where((i) => i['checked'] == true).length;
     if (checkedCount == 0) return;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.cardDark : null,
-        title: const Text('Clear Checked Items'),
-        content: Text('Remove $checkedCount checked item(s)?'),
+        backgroundColor: Colors.white,
+        title: Text('Clear Checked Items', style: FoodInsightTypography.heading(size: 20, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal)),
+        content: Text('Remove $checkedCount checked item(s)?', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: FoodInsightColors.midGray)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FoodInsightColors.scannerGreen,
+              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
+            ),
+            child: Text('Clear', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
           ),
         ],
       ),
@@ -67,283 +105,302 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
     if (confirmed == true) {
       try {
-        await _firestoreService.clearCheckedShoppingItems();
+        await _localDb.clearCheckedShoppingItems();
+        try {
+          await FirestoreService().clearCheckedShoppingItems();
+        } catch (_) {}
+        await _loadItems();
       } catch (e) {
-        debugPrint('Error clearing items: $e');
+        debugPrint('Error clearing checked items: $e');
       }
     }
-  }
-
-  Future<void> _addCustomItem() async {
-    final nameController = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.cardDark : null,
-        title: const Text('Add Item'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            hintText: 'e.g. Organic Almonds',
-          ),
-          textCapitalization: TextCapitalization.sentences,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () =>
-                Navigator.pop(context, nameController.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && result.isNotEmpty) {
-      try {
-        await _firestoreService.addShoppingItem({
-          'name': result,
-          'brand': '',
-          'category': 'Custom',
-        });
-      } catch (e) {
-        debugPrint('Error adding item: $e');
-      }
-    }
-    nameController.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final pendingItems = _items.where((i) => i['checked'] != true).toList();
+    final checkedItems = _items.where((i) => i['checked'] == true).toList();
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _firestoreService.shoppingListStream(),
-      builder: (context, snapshot) {
-        final items = snapshot.data ?? [];
-        final uncheckedItems =
-            items.where((i) => i['checked'] != true).toList();
-        final checkedItems = items.where((i) => i['checked'] == true).toList();
-
-        return Scaffold(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          appBar: AppBar(
-            title: Text(
-              'Shopping List',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            actions: [
-              if (checkedItems.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.cleaning_services_outlined),
-                  tooltip: 'Clear checked',
-                  onPressed: () => _clearChecked(items),
-                ),
-            ],
+    return Scaffold(
+      backgroundColor: FoodInsightColors.warmWhite,
+      appBar: AppBar(
+        title: Text(
+          'Shopping List',
+          style: FoodInsightTypography.heading(
+            size: 20,
+            weight: FontWeight.w900,
+            color: FoodInsightColors.deepCharcoal,
           ),
-          body: (snapshot.connectionState == ConnectionState.waiting)
-              ? Center(
-                  child: CircularProgressIndicator(color: colorScheme.primary),
-                )
-              : items.isEmpty
-                  ? _buildEmptyState(context)
-                  : RefreshIndicator(
-                      onRefresh: () async => setState(() {}),
-                      color: colorScheme.primary,
-                      child: ListView(
-                        padding: EdgeInsets.all(4.w),
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: [
-                          if (uncheckedItems.isNotEmpty) ...[
-                            Text(
-                              'To Buy (${uncheckedItems.length})',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
-                              ),
-                            ).animate().fadeIn(duration: 400.ms),
-                            SizedBox(height: 1.h),
-                            ...uncheckedItems.asMap().entries.map((e) =>
-                                _buildItemTile(context, e.value)
-                                    .animate()
-                                    .fadeIn(
-                                        duration: 400.ms,
-                                        delay: Duration(
-                                            milliseconds:
-                                                (e.key * 50).clamp(0, 300)))
-                                    .slideY(begin: 0.03, end: 0)),
-                          ],
-                          if (checkedItems.isNotEmpty) ...[
-                            SizedBox(height: 2.h),
-                            Text(
-                              'Completed (${checkedItems.length})',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ).animate().fadeIn(duration: 400.ms),
-                            SizedBox(height: 1.h),
-                            ...checkedItems
-                                .map((item) => _buildItemTile(context, item)),
-                          ],
-                          SizedBox(height: 10.h),
+        ),
+        centerTitle: true,
+        backgroundColor: FoodInsightColors.warmWhite,
+        elevation: 0,
+        iconTheme: IconThemeData(color: FoodInsightColors.deepCharcoal),
+        actions: [
+          if (checkedItems.isNotEmpty)
+            IconButton(
+              icon: Icon(Icons.delete_sweep_rounded, color: FoodInsightColors.scannerGreen),
+              onPressed: () => _clearChecked(_items),
+              tooltip: 'Clear checked items',
+            ),
+        ],
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: FoodInsightColors.warmBackground,
+        ),
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+              )
+            : _items.isEmpty
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _loadItems,
+                    color: FoodInsightColors.scannerGreen,
+                    backgroundColor: Colors.white,
+                    child: ListView(
+                      padding: EdgeInsets.all(5.w),
+                      children: [
+                        if (pendingItems.isNotEmpty) ...[
+                          Text(
+                            'To Buy (${pendingItems.length})',
+                            style: FoodInsightTypography.heading(
+                              size: 16,
+                              weight: FontWeight.w800,
+                              color: FoodInsightColors.deepCharcoal,
+                            ),
+                          ).animate().fadeIn(),
+                          SizedBox(height: 1.5.h),
+                          ...pendingItems.map((item) => _buildListItem(item)),
                         ],
-                      ),
-                    ),
-          floatingActionButton: GlowButton(
-            glowColor: colorScheme.primary,
-            glowIntensity: isDark ? 0.25 : 0.1,
-            onTap: _addCustomItem,
-            child: Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
-              decoration: BoxDecoration(
-                color: colorScheme.primary,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add, color: colorScheme.onPrimary),
-                  SizedBox(width: 2.w),
-                  Text(
-                    'Add Item',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
+                        if (checkedItems.isNotEmpty) ...[
+                          if (pendingItems.isNotEmpty) SizedBox(height: 3.h),
+                          Text(
+                            'Checked (${checkedItems.length})',
+                            style: FoodInsightTypography.heading(
+                              size: 16,
+                              weight: FontWeight.w800,
+                              color: FoodInsightColors.midGray,
+                            ),
+                          ).animate().fadeIn(),
+                          SizedBox(height: 1.5.h),
+                          ...checkedItems.map((item) => _buildListItem(item)),
+                        ],
+                        SizedBox(height: 10.h),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.shopping_cart_outlined,
-            size: 15.w,
-            color: colorScheme.onSurfaceVariant,
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            'Your shopping list is empty',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+          Container(
+            padding: EdgeInsets.all(5.w),
+            decoration: BoxDecoration(
+              color: FoodInsightColors.scannerGreenLight,
+              shape: BoxShape.circle,
             ),
-          ),
+            child: Icon(
+              Icons.shopping_basket_rounded,
+              size: 15.w,
+              color: FoodInsightColors.scannerGreen,
+            ),
+          ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack),
+          SizedBox(height: 3.h),
+          Text(
+            'Your list is empty',
+            style: FoodInsightTypography.heading(
+              size: 20,
+              weight: FontWeight.w800,
+              color: FoodInsightColors.deepCharcoal,
+            ),
+          ).animate().fadeIn(delay: 400.ms),
           SizedBox(height: 1.h),
           Text(
-            'Add items from product scans or manually',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            'Save healthy products from\nthe scanner to buy them later.',
+            textAlign: TextAlign.center,
+            style: FoodInsightTypography.body(
+              size: 15,
+              color: FoodInsightColors.midGray,
             ),
-          ),
+          ).animate().fadeIn(delay: 500.ms),
+          SizedBox(height: 4.h),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
+            label: Text('Scan a Product', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FoodInsightColors.scannerGreen,
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
+            ),
+          ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
         ],
       ),
     );
   }
 
-  Widget _buildItemTile(BuildContext context, Map<String, dynamic> item) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final isChecked = item['checked'] == true;
-    final id = item['id'] as String;
+  Widget _buildListItem(Map<String, dynamic> item) {
+    final bool checked = item['checked'] == true;
+    final String id = item['id'];
+    final String name = item['name'] ?? 'Unknown Product';
+    final String brand = item['brand'] ?? 'Unknown Brand';
+    final String score = item['score'] ?? '0';
 
     return Dismissible(
       key: Key(id),
       direction: DismissDirection.endToStart,
       background: Container(
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.only(right: 4.w),
+        margin: EdgeInsets.only(bottom: 1.5.h),
+        padding: EdgeInsets.symmetric(horizontal: 5.w),
         decoration: BoxDecoration(
-          color: colorScheme.error,
-          borderRadius: BorderRadius.circular(12),
+          color: FoodInsightColors.healthRed,
+          borderRadius: FoodInsightRadius.mdAll,
         ),
-        child: const Icon(Icons.delete, color: Colors.white),
+        alignment: Alignment.centerRight,
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
-      onDismissed: (_) => _deleteItem(id),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 1.h),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              decoration: isDark
-                  ? AppTheme.glassmorphicDecoration(borderRadius: 12)
-                  : BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-              child: CheckboxListTile(
-                value: isChecked,
-                onChanged: (value) => _toggleItem(id, value ?? false),
-                title: Text(
-                  item['name'] ?? 'Unknown Item',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    decoration:
-                        isChecked ? TextDecoration.lineThrough : null,
-                    color: isChecked
-                        ? colorScheme.onSurfaceVariant
-                        : colorScheme.onSurface,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: (item['brand'] != null &&
-                        item['brand'].toString().isNotEmpty)
-                    ? Text(
-                        item['brand'],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          decoration:
-                              isChecked ? TextDecoration.lineThrough : null,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      )
-                    : null,
-                controlAffinity: ListTileControlAffinity.leading,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                activeColor: colorScheme.primary,
-              ),
+      onDismissed: (direction) => _deleteItem(id),
+      child: GestureDetector(
+        onTap: () => _toggleItem(id, !checked),
+        child: Container(
+          margin: EdgeInsets.only(bottom: 1.5.h),
+          padding: EdgeInsets.all(3.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: FoodInsightRadius.mdAll,
+            boxShadow: FoodInsightShadows.subtleCard,
+            border: Border.all(
+              color: checked ? FoodInsightColors.scannerGreenLight : Colors.transparent,
+              width: 1,
             ),
+          ),
+          child: Row(
+            children: [
+              // Checkbox
+              Container(
+                width: 6.w,
+                height: 6.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: checked ? FoodInsightColors.scannerGreen : Colors.transparent,
+                  border: Border.all(
+                    color: checked ? FoodInsightColors.scannerGreen : FoodInsightColors.outlineGray,
+                    width: 2,
+                  ),
+                ),
+                child: checked
+                    ? Icon(Icons.check, size: 4.w, color: Colors.white)
+                    : null,
+              ),
+              SizedBox(width: 3.w),
+              
+              // Thumbnail
+              if (item['imageUrl'] != null && item['imageUrl'].toString().isNotEmpty)
+                ClipRRect(
+                  borderRadius: FoodInsightRadius.smAll,
+                  child: Image.network(
+                    item['imageUrl'],
+                    width: 12.w,
+                    height: 12.w,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
+                  ),
+                )
+              else
+                _buildPlaceholderIcon(),
+              
+              SizedBox(width: 3.w),
+              
+              // Product details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: FoodInsightTypography.body(
+                        size: 15,
+                        weight: FontWeight.w700,
+                        color: checked ? FoodInsightColors.midGray : FoodInsightColors.deepCharcoal,
+                      ).copyWith(
+                        decoration: checked ? TextDecoration.lineThrough : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 0.2.h),
+                    Text(
+                      brand,
+                      style: FoodInsightTypography.caption(
+                        size: 12,
+                        color: FoodInsightColors.midGray,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Nutri-Score
+              if (score != '0') ...[
+                SizedBox(width: 2.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+                  decoration: BoxDecoration(
+                    color: _getScoreColor(score).withValues(alpha: 0.1),
+                    borderRadius: FoodInsightRadius.smAll,
+                  ),
+                  child: Text(
+                    score.toUpperCase(),
+                    style: FoodInsightTypography.caption(
+                      size: 14,
+                      weight: FontWeight.w800,
+                      color: _getScoreColor(score),
+                    ),
+                  ),
+                ),
+              ]
+            ],
           ),
         ),
       ),
+    ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05, end: 0);
+  }
+
+  Widget _buildPlaceholderIcon() {
+    return Container(
+      width: 12.w,
+      height: 12.w,
+      decoration: BoxDecoration(
+        color: FoodInsightColors.warmWhite,
+        borderRadius: FoodInsightRadius.smAll,
+      ),
+      child: Icon(Icons.fastfood_rounded, color: FoodInsightColors.midGray, size: 6.w),
     );
+  }
+
+  Color _getScoreColor(String score) {
+    switch (score.toLowerCase()) {
+      case 'a':
+        return FoodInsightColors.healthGreen;
+      case 'b':
+        return FoodInsightColors.healthLightGreen;
+      case 'c':
+        return FoodInsightColors.healthYellow;
+      case 'd':
+        return FoodInsightColors.healthOrange;
+      case 'e':
+        return FoodInsightColors.healthRed;
+      default:
+        return FoodInsightColors.midGray;
+    }
   }
 }

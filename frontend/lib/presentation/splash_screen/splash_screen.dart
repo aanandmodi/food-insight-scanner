@@ -1,14 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../../core/app_export.dart';
 import '../../theme/app_design_system.dart';
 import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
-import '../../services/firestore_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,7 +20,6 @@ class _SplashScreenState extends State<SplashScreen>
   String _loadingText = 'Initializing...';
   bool _hasError = false;
   int _retryCount = 0;
-  static const int _maxAutoRetries = 2;
 
   // Animation controllers
   late AnimationController _logoController;
@@ -120,48 +117,37 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeApp() async {
     try {
-      _updateProgress(0.2, 'Connecting to services...');
-      await Firebase.initializeApp();
-      
-      _updateProgress(0.5, 'Checking authentication...');
-      final currentUser = FirebaseAuth.instance.currentUser;
-      
-      _updateProgress(0.8, 'Loading your profile...');
-      bool profileComplete = false;
-      if (currentUser != null) {
-        profileComplete = await FirestoreService().isProfileCompleted();
-        if (mounted) {
-          final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-          await profileProvider.fetchProfile();
-        }
+      _updateProgress(0.2, 'Loading local database...');
+      try {
+        await Firebase.initializeApp().timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('Firebase init optional skip: $e');
+      }
+
+      _updateProgress(0.6, 'Loading user profile...');
+      bool profileComplete = true;
+      if (mounted) {
+        final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+        await profileProvider.fetchProfile();
+        profileComplete = profileProvider.profile?.profileCompleted ?? true;
       }
       
       _updateProgress(1.0, 'Ready!');
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
       
       if (!mounted) return;
+      final navigator = Navigator.of(context);
 
-      if (currentUser == null) {
-        Navigator.pushReplacementNamed(context, AppRoutes.login);
-      } else if (!profileComplete) {
-        Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
+      if (!profileComplete) {
+        navigator.pushReplacementNamed(AppRoutes.profileSetup);
       } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
+        navigator.pushReplacementNamed(AppRoutes.homeDashboard);
       }
     } catch (e) {
       debugPrint('Initialization error: $e');
       if (mounted) {
-        setState(() {
-          _hasError = true;
-          _loadingText = 'Initialization failed';
-        });
-        if (_retryCount < _maxAutoRetries) {
-          Future.delayed(const Duration(seconds: 3), () {
-            if (mounted) {
-              _retryInitialization();
-            }
-          });
-        }
+        final navigator = Navigator.of(context);
+        navigator.pushReplacementNamed(AppRoutes.homeDashboard);
       }
     }
   }

@@ -1,13 +1,11 @@
 // lib/presentation/auth/login_screen/login_screen.dart
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_design_system.dart';
-import '../../../main.dart' show firebaseInitError;
 
 enum _AuthMethod { none, email, google, guest }
 
@@ -149,15 +147,11 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.lightImpact();
     _setLoading(true, _AuthMethod.guest);
     try {
-      await _authService.signInAnonymously();
       if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
+        Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
       }
     } catch (e) {
-      debugPrint('Guest sign-in failed: $e');
-      if (mounted) {
-        _showSnackBar('Guest sign-in failed: $e');
-      }
+      debugPrint('Guest local sign-in failed: $e');
     } finally {
       _setLoading(false);
     }
@@ -312,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen>
                 color: FoodInsightColors.warningAmber.withValues(alpha: 0.15),
                 borderRadius: FoodInsightRadius.xsAll,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.cloud_off_rounded,
                 color: FoodInsightColors.warningAmber,
                 size: 18,
@@ -352,7 +346,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               )
             else
-              Icon(
+              const Icon(
                 Icons.refresh_rounded,
                 color: FoodInsightColors.warningAmber,
                 size: 22,
@@ -798,7 +792,7 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.info_outline_rounded,
                 color: FoodInsightColors.healthRed,
                 size: 18,

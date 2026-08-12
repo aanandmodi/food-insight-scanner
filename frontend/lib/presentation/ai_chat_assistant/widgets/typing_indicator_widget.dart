@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
+import '../../../theme/app_design_system.dart';
 
 class TypingIndicatorWidget extends StatefulWidget {
   const TypingIndicatorWidget({super.key});
@@ -47,17 +47,16 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
             height: 8.w,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.secondary,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: FoodInsightColors.healthyGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: FoodInsightColors.scannerGreen.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                ),
+              ],
             ),
-            child: CustomIconWidget(
-              iconName: 'smart_toy',
+            child: Icon(
+              Icons.auto_awesome_rounded,
               color: Colors.white,
               size: 4.w,
             ),
@@ -66,8 +65,7 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface
-                  .withValues(alpha: 0.9),
+              color: Colors.white,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4.w),
                 topRight: Radius.circular(4.w),
@@ -76,16 +74,11 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline
-                    .withValues(alpha: 0.2),
-                width: 1,
-              ),
             ),
             child: AnimatedBuilder(
               animation: _animation,
@@ -118,11 +111,8 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget>
       height: 2.w,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color:
-            Theme.of(context).colorScheme.primary.withValues(alpha: opacity),
+        color: FoodInsightColors.scannerGreen.withValues(alpha: opacity),
       ),
     );
   }
 }
-
-

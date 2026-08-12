@@ -1,8 +1,11 @@
+// lib/presentation/product_details/widgets/action_bar_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../theme/app_design_system.dart';
 
 class ActionBarWidget extends StatelessWidget {
   final Map<String, dynamic> productData;
@@ -21,12 +24,11 @@ class ActionBarWidget extends StatelessWidget {
   }
 
   void _shareProduct(BuildContext context) {
-    // Simulate sharing functionality
     Fluttertoast.showToast(
       msg: "Product shared successfully",
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
-      backgroundColor: Theme.of(context).colorScheme.secondary,
+      backgroundColor: FoodInsightColors.scannerGreen,
       textColor: Colors.white,
       fontSize: 16.0,
     );
@@ -38,19 +40,18 @@ class ActionBarWidget extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+        color: Colors.white,
         border: Border(
           top: BorderSide(
-            color:
-                Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+            color: FoodInsightColors.outlineGray,
             width: 1,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -10),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -64,25 +65,13 @@ class ActionBarWidget extends StatelessWidget {
               child: Container(
                 padding: EdgeInsets.all(3.w),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
+                  color: FoodInsightColors.warmWhite,
+                  borderRadius: FoodInsightRadius.smAll,
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outline
-                        .withValues(alpha: 0.3),
+                    color: FoodInsightColors.outlineGray,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: CustomIconWidget(
-                  iconName: 'share',
-                  size: 24,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                child: Icon(Icons.share_rounded, color: FoodInsightColors.deepCharcoal),
               ),
             ),
             SizedBox(width: 4.w),
@@ -91,42 +80,26 @@ class ActionBarWidget extends StatelessWidget {
               child: GestureDetector(
                 onTap: () => _addToDietLog(context),
                 child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 4.w),
+                  padding: EdgeInsets.symmetric(vertical: 3.5.w),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Theme.of(context).colorScheme.primary,
-                        AppTheme.primaryVariantLight,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(999),
+                    gradient: FoodInsightColors.healthyGradient,
+                    borderRadius: FoodInsightRadius.mdAll,
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary
-                            .withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
+                        color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const CustomIconWidget(
-                        iconName: 'add_circle',
-                        size: 24,
-                        color: Colors.white,
-                      ),
+                      Icon(Icons.add_rounded, color: Colors.white),
                       SizedBox(width: 2.w),
                       Text(
                         'Add to Diet Log',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: FoodInsightTypography.heading(size: 15, weight: FontWeight.w800, color: Colors.white),
                       ),
                     ],
                   ),
@@ -139,4 +112,3 @@ class ActionBarWidget extends StatelessWidget {
     );
   }
 }
-

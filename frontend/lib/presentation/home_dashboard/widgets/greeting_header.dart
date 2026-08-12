@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../theme/app_design_system.dart';
@@ -17,8 +16,6 @@ class GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final photoUrl = user?.photoURL;
     final userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'W';
 
     return Container(
@@ -63,14 +60,7 @@ class GreetingHeader extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(27),
-                child: photoUrl != null
-                    ? Image.network(
-                        photoUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildAvatarFallback(userInitial),
-                      )
-                    : _buildAvatarFallback(userInitial),
+                child: _buildAvatarFallback(userInitial),
               ),
             ),
           ).animate().scale(

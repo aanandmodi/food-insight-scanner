@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'local_database_service.dart';
 import '../core/config/env.dart';
 
 class CloudFunctionService {
@@ -22,11 +24,14 @@ class CloudFunctionService {
     double? topP,
     Map<String, dynamic>? responseFormat,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final apiKey = prefs.getString('groq_api_key') ?? Env.groqApiKey;
+
     final response = await http.post(
       Uri.parse(_groqApiUrl),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${Env.groqApiKey}',
+        'Authorization': 'Bearer $apiKey',
       },
       body: jsonEncode({
         'model': model,
@@ -251,15 +256,37 @@ class CloudFunctionService {
     Map<String, dynamic>? userProfile,
   }) async {
     try {
+      // Build rich profile context for diet plan
+      String profileContext = '';
+      if (userProfile != null) {
+        final dietPrefs = userProfile['dietaryPreferences'];
+        final allergies = userProfile['allergies'];
+        final diseases = userProfile['diseases'];
+        final healthGoal = userProfile['healthGoals'] ?? 'general wellness';
+        final activityLevel = userProfile['activityLevel'] ?? 'moderate';
+        final name = userProfile['name'] ?? 'User';
+
+        profileContext = '''
+User: $name
+Health Goal: $healthGoal
+Activity Level: $activityLevel
+${dietPrefs is List && dietPrefs.isNotEmpty ? 'Dietary Preferences: ${dietPrefs.join(", ")}\nIMPORTANT: Strictly follow these dietary preferences. If the user is Vegetarian, do NOT suggest non-veg meals.' : ''}
+${allergies is List && allergies.isNotEmpty ? 'Allergies: ${allergies.join(", ")}\nIMPORTANT: NEVER suggest foods containing these allergens.' : ''}
+${diseases is List && diseases.isNotEmpty ? 'Medical Conditions: ${diseases.join(", ")}\nIMPORTANT: Ensure meal suggestions are safe for these conditions.' : ''}
+''';
+      }
+
       final prompt = '''Create a detailed meal plan for TOMORROW based on my intake today and my goals.
 
 Today's Intake Summary:
 - Calories: ${dailySummary['calories'] ?? 0}
 - Protein: ${dailySummary['protein'] ?? 0}g
 - Sugar: ${dailySummary['sugar'] ?? 0}g
+- Fat: ${dailySummary['fat'] ?? 0}g
+- Carbs: ${dailySummary['carbs'] ?? 0}g
 
 My Profile:
-${userProfile != null ? jsonEncode(userProfile) : "None"}
+$profileContext
 
 Output strictly a JSON object with this structure:
 {
@@ -392,6 +419,7 @@ Example format:
     required String message,
     String? conversationHistory,
     Map<String, dynamic>? userProfile,
+    String? mealLogContext,
   }) async {
     try {
       String systemPrompt = '''You are an energetic, friendly, and expert nutrition assistant for an Indian food insight scanner app. Your role is to provide personalized dietary advice in a warm, humanized, and highly conversational tone.
@@ -417,11 +445,26 @@ Never use markdown blocks for the JSON. Just output the exact text string format
           systemPrompt += "- IMPORTANT: Always warn about these allergens.\n";
         }
         if (userProfile['dietaryPreferences'] != null) {
-          systemPrompt += "- Dietary Preference: ${userProfile['dietaryPreferences']}\n";
+          final prefs = userProfile['dietaryPreferences'];
+          final prefsStr = prefs is List ? prefs.join(", ") : prefs.toString();
+          systemPrompt += "- Dietary Preferences: $prefsStr\n";
+          systemPrompt += "- IMPORTANT: Strictly respect these dietary preferences in all suggestions.\n";
         }
         if (userProfile['healthGoals'] != null) {
           systemPrompt += "- Health Goals: ${userProfile['healthGoals']}\n";
         }
+        if (userProfile['diseases'] != null && (userProfile['diseases'] as List).isNotEmpty) {
+          systemPrompt += "- Medical Conditions: ${(userProfile['diseases'] as List).join(", ")}\n";
+        }
+        if (userProfile['activityLevel'] != null) {
+          systemPrompt += "- Activity Level: ${userProfile['activityLevel']}\n";
+        }
+      }
+
+      // Inject today's meal log context so AI knows what user ate
+      if (mealLogContext != null && mealLogContext.isNotEmpty) {
+        systemPrompt += "\n--- Today's Meal Log ---\n$mealLogContext\n";
+        systemPrompt += "Use this information to give personalized advice about their remaining nutrition goals for the day.\n";
       }
 
       final groqMessages = <Map<String, dynamic>>[
@@ -479,10 +522,14 @@ Never use markdown blocks for the JSON. Just output the exact text string format
             'createdAt': FieldValue.serverTimestamp(),
           };
 
-          final uid = FirebaseAuth.instance.currentUser?.uid;
-          if (uid != null) {
-            await FirebaseFirestore.instance.collection("diet_log").doc(uid).collection("entries").add(entry);
-          }
+          await LocalDatabaseService().insertDietEntry(entry);
+
+          try {
+            final uid = FirebaseAuth.instance.currentUser?.uid;
+            if (uid != null) {
+              await FirebaseFirestore.instance.collection("diet_log").doc(uid).collection("entries").add(entry);
+            }
+          } catch (_) {}
 
           mealLogged = true;
           // Don't send FieldValue to client
@@ -512,7 +559,7 @@ Never use markdown blocks for the JSON. Just output the exact text string format
     try {
       final prompt = 'Based on the user\'s last message and profile, suggest 4 relevant quick reply options for a nutrition assistant app.\n\n'
           'User\'s last message: "$lastMessage"\n'
-          '${userProfile != null ? "User Profile: " + jsonEncode(userProfile) : ""}\n\n'
+          '${userProfile != null ? "User Profile: ${jsonEncode(userProfile)}" : ""}\n\n'
           'Generate 4 short, actionable quick-reply suggestions.\n'
           'Return ONLY the suggestions, one per line, without numbering or bullets.';
 

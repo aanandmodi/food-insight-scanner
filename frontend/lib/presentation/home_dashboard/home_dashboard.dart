@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 
 
 import '../../services/product_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/local_database_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
@@ -69,14 +69,14 @@ class _HomeDashboardState extends State<HomeDashboard>
     try {
       final scanHistory = await ProductService().getScanHistory();
 
-      // Load Diet Log for today from Firestore
+      // Load Diet Log for today from Local SQLite Database
       final dateString =
           "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
       List<Map<String, dynamic>> entries = [];
       try {
-        entries = await FirestoreService().getDietLog(dateString);
+        entries = await LocalDatabaseService().getDietLogByDate(dateString);
       } catch (e) {
-        debugPrint('Error pulling home diet log from Firestore: $e');
+        debugPrint('Error pulling home diet log from local db: $e');
       }
 
       // Calculate totals from today's diet log
@@ -92,10 +92,34 @@ class _HomeDashboardState extends State<HomeDashboard>
       if (!mounted) return;
       final profile = context.read<UserProfileProvider>().profile;
 
+      // Calculate dynamic targets based on user profile setup
+      final calGoal = UserUtils.calculateTDEE(
+        weightKg: profile?.weightKg ?? 70.0,
+        heightCm: profile?.heightCm ?? 170.0,
+        age: profile?.age ?? 25,
+        gender: profile?.gender ?? 'Male',
+        activityLevel: profile?.activityLevel ?? 'moderate',
+        healthGoal: profile?.healthGoals ?? '',
+      );
+
+      final proteinGoal = UserUtils.calculateProteinGoal(
+        weightKg: profile?.weightKg ?? 70.0,
+        healthGoal: profile?.healthGoals ?? '',
+      );
+
+      final sugarGoal = UserUtils.calculateSugarGoal(calGoal);
+      final carbsGoal = UserUtils.calculateCarbsGoal(calGoal);
+      final fatGoal = UserUtils.calculateFatGoal(calGoal);
+
       setState(() {
         _nutritionData['calories'] = totalCals;
+        _nutritionData['caloriesGoal'] = calGoal;
         _nutritionData['protein'] = totalProtein.round();
+        _nutritionData['proteinGoal'] = proteinGoal;
         _nutritionData['sugar'] = totalSugar.round();
+        _nutritionData['sugarGoal'] = sugarGoal;
+        _nutritionData['carbsGoal'] = carbsGoal;
+        _nutritionData['fatGoal'] = fatGoal;
 
         _dietLogEntries.clear();
         _dietLogEntries.addAll(entries);
@@ -216,19 +240,22 @@ class _HomeDashboardState extends State<HomeDashboard>
     final profile = context.watch<UserProfileProvider>().profile;
     // Calculate dynamic goals in build so they reflect the latest profile
     if (profile != null) {
-      _nutritionData['caloriesGoal'] = UserUtils.calculateTDEE(
+      final calGoal = UserUtils.calculateTDEE(
         weightKg: profile.weightKg,
         heightCm: profile.heightCm,
         age: profile.age,
         gender: profile.gender,
+        activityLevel: profile.activityLevel,
         healthGoal: profile.healthGoals,
       );
+      _nutritionData['caloriesGoal'] = calGoal;
       _nutritionData['proteinGoal'] = UserUtils.calculateProteinGoal(
         weightKg: profile.weightKg,
         healthGoal: profile.healthGoals,
       );
-      _nutritionData['sugarGoal'] =
-          UserUtils.calculateSugarGoal(_nutritionData['caloriesGoal']);
+      _nutritionData['sugarGoal'] = UserUtils.calculateSugarGoal(calGoal);
+      _nutritionData['carbsGoal'] = UserUtils.calculateCarbsGoal(calGoal);
+      _nutritionData['fatGoal'] = UserUtils.calculateFatGoal(calGoal);
     }
 
     return Container(
@@ -352,23 +379,54 @@ class _HomeDashboardState extends State<HomeDashboard>
       ),
     );
 
-    return Scaffold(
-      backgroundColor: FoodInsightColors.warmWhite,
-      extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeContent(),
-          const BarcodeScanner(),
-          AiChatAssistant(initialImage: _selectedImage),
-          const ProfileScreen(),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+        } else {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Exit App?'),
+              content: const Text('Are you sure you want to exit?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Exit'),
+                ),
+              ],
+            ),
+          ).then((exit) {
+            if (exit == true) {
+              SystemNavigator.pop();
+            }
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: FoodInsightColors.warmWhite,
+        extendBody: true,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildHomeContent(),
+            const BarcodeScanner(),
+            AiChatAssistant(initialImage: _selectedImage),
+            const ProfileScreen(),
+          ],
+        ),
+        // ──────────── Skeuomorphic FAB ────────────
+        floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        // ──────────── Frosted Glass Bottom Nav ────────────
+        bottomNavigationBar: _buildBottomNav(),
       ),
-      // ──────────── Skeuomorphic FAB ────────────
-      floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      // ──────────── Frosted Glass Bottom Nav ────────────
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -420,16 +478,19 @@ class _HomeDashboardState extends State<HomeDashboard>
       child: ClipRRect(
         borderRadius: FoodInsightRadius.xxlAll,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.82),
+              color: Colors.white.withValues(alpha: 0.55),
               borderRadius: FoodInsightRadius.xxlAll,
-              border: Border.all(
-                color: FoodInsightColors.embossedShadow.withValues(alpha: 0.3),
-                width: 1,
-              ),
-              boxShadow: FoodInsightShadows.floating,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 24,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: BottomNavigationBar(
               currentIndex: _currentIndex,
