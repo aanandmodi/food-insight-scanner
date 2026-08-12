@@ -334,11 +334,14 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               ),
             ),
           ),
-          ChatInputWidget(
-            textController: _messageController,
-            onSendMessage: _sendMessage,
-            onVoiceMessage: (text) => _sendMessage("🎤 (Voice) $text"),
-            isLoading: _isLoading,
+          Padding(
+            padding: EdgeInsets.only(bottom: 10.h),
+            child: ChatInputWidget(
+              textController: _messageController,
+              onSendMessage: _sendMessage,
+              onVoiceMessage: (text) => _sendMessage("🎤 (Voice) $text"),
+              isLoading: _isLoading,
+            ),
           ),
         ],
       ),
