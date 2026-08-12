@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sizer/sizer.dart';
 import 'package:provider/provider.dart';
+import 'package:home_widget/home_widget.dart';
 
 
 import '../../services/product_service.dart';
@@ -85,10 +86,14 @@ class _HomeDashboardState extends State<HomeDashboard>
       int totalCals = 0;
       double totalProtein = 0;
       double totalSugar = 0;
+      double totalCarbs = 0;
+      double totalFat = 0;
       for (var entry in entries) {
         totalCals += (entry['calories'] as num?)?.toInt() ?? 0;
         totalProtein += (entry['protein'] as num?)?.toDouble() ?? 0;
         totalSugar += (entry['sugar'] as num?)?.toDouble() ?? 0;
+        totalCarbs += (entry['carbs'] as num?)?.toDouble() ?? 0;
+        totalFat += (entry['fat'] as num?)?.toDouble() ?? 0;
       }
 
       if (!mounted) return;
@@ -120,11 +125,16 @@ class _HomeDashboardState extends State<HomeDashboard>
         _nutritionData['proteinGoal'] = proteinGoal;
         _nutritionData['sugar'] = totalSugar.round();
         _nutritionData['sugarGoal'] = sugarGoal;
+        _nutritionData['carbs'] = totalCarbs.round();
+        _nutritionData['fat'] = totalFat.round();
         _nutritionData['carbsGoal'] = carbsGoal;
         _nutritionData['fatGoal'] = fatGoal;
 
         _dietLogEntries.clear();
         _dietLogEntries.addAll(entries);
+        
+        // Sync Data to Android Widget
+        _syncWidgetData(totalCals, calGoal, totalProtein.round(), proteinGoal, carbsGoal, fatGoal);
 
         // Transform scan history into recent scans format
         _recentScans = scanHistory.take(10).map((scan) {
@@ -141,6 +151,22 @@ class _HomeDashboardState extends State<HomeDashboard>
       });
     } catch (e) {
       debugPrint('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _syncWidgetData(int calConsumed, int calGoal, int proteinConsumed, int proteinGoal, int carbsGoal, int fatGoal) async {
+    try {
+      await HomeWidget.saveWidgetData<int>('calories_consumed', calConsumed);
+      await HomeWidget.saveWidgetData<int>('calories_goal', calGoal);
+      await HomeWidget.saveWidgetData<int>('carbs_consumed', _nutritionData['carbs'] ?? 0); // using actual if available, else 0
+      await HomeWidget.saveWidgetData<int>('carbs_goal', carbsGoal);
+      await HomeWidget.saveWidgetData<int>('protein_consumed', proteinConsumed);
+      await HomeWidget.saveWidgetData<int>('protein_goal', proteinGoal);
+      await HomeWidget.saveWidgetData<int>('fat_consumed', _nutritionData['fat'] ?? 0);
+      await HomeWidget.saveWidgetData<int>('fat_goal', fatGoal);
+      await HomeWidget.updateWidget(name: 'MacroWidgetProvider');
+    } catch (e) {
+      debugPrint('Failed to sync widget data: $e');
     }
   }
 
