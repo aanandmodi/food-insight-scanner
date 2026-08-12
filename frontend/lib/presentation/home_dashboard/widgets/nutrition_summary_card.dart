@@ -20,7 +20,6 @@ class NutritionSummaryCard extends StatelessWidget {
     final caloriesGoal =
         (nutritionData['caloriesGoal'] as num?)?.toInt() ?? 2000;
     final sugar = (nutritionData['sugar'] as num?)?.toInt() ?? 0;
-    final sugarGoal = (nutritionData['sugarGoal'] as num?)?.toInt() ?? 50;
     final protein = (nutritionData['protein'] as num?)?.toInt() ?? 0;
     final proteinGoal =
         (nutritionData['proteinGoal'] as num?)?.toInt() ?? 150;
@@ -29,21 +28,19 @@ class NutritionSummaryCard extends StatelessWidget {
         caloriesGoal > 0 ? (calories / caloriesGoal).clamp(0.0, 1.0) : 0.0;
     final proteinPct =
         proteinGoal > 0 ? (protein / proteinGoal).clamp(0.0, 1.0) : 0.0;
-    final sugarPct =
-        sugarGoal > 0 ? (sugar / sugarGoal).clamp(0.0, 1.0) : 0.0;
 
-    // Derive carbs & fat from remaining calories (simple estimation)
-    final proteinCals = protein * 4;
-    final sugarCals = sugar * 4;
-    final fatCals = math.max(0, calories - proteinCals - sugarCals);
-    final fat = (fatCals / 9).round();
-    final fatGoal = 65; // reasonable daily fat goal
+    // Derive carbs & fat from logged intake or remaining calories
+    final fat = (nutritionData['fat'] as num?)?.round() ??
+        (math.max(0, calories - (protein * 4) - (sugar * 4)) / 9).round();
+    final fatGoal = (nutritionData['fatGoal'] as num?)?.toInt() ?? 65;
     final fatPct = fatGoal > 0 ? (fat / fatGoal).clamp(0.0, 1.0) : 0.0;
 
-    final carbsFromSugar = sugar; // sugar is our carbs proxy
-    final carbsGoal = sugarGoal > 0 ? (caloriesGoal * 0.5 / 4).round() : 250;
+    final carbs = (nutritionData['carbs'] as num?)?.round() ?? sugar;
+    final carbsGoal = (nutritionData['carbsGoal'] as num?)?.toInt() ??
+        (caloriesGoal > 0 ? (caloriesGoal * 0.5 / 4).round() : 250);
     final carbsPct =
-        carbsGoal > 0 ? (carbsFromSugar / carbsGoal).clamp(0.0, 1.0) : 0.0;
+        carbsGoal > 0 ? (carbs / carbsGoal).clamp(0.0, 1.0) : 0.0;
+
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -120,7 +117,7 @@ class NutritionSummaryCard extends StatelessWidget {
                     children: [
                       _MacroProgressRow(
                         label: 'Carbs',
-                        current: carbsFromSugar,
+                        current: carbs,
                         goal: carbsGoal,
                         progress: carbsPct,
                         color: FoodInsightColors.carbsBlue,

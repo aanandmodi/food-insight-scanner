@@ -1,4 +1,5 @@
-import 'dart:ui';
+// lib/presentation/product_details/product_details.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +9,7 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import 'package:provider/provider.dart';
 import '../../services/firestore_service.dart';
+import '../../services/local_database_service.dart';
 import '../../services/cloud_function_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 import './widgets/action_bar_widget.dart';
@@ -17,6 +19,7 @@ import './widgets/nutrition_bars_widget.dart';
 import './widgets/product_image_widget.dart';
 import './widgets/product_info_widget.dart';
 import './widgets/safety_alerts_widget.dart';
+import '../../theme/app_design_system.dart';
 
 class ProductDetails extends StatefulWidget {
   const ProductDetails({super.key});
@@ -47,13 +50,12 @@ class _ProductDetailsState extends State<ProductDetails> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Load product data from route arguments
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic>) {
       setState(() {
         productData = args;
       });
-      _loadAlternatives(); // Trigger AI fetch
+      _loadAlternatives(); 
     }
   }
 
@@ -118,9 +120,9 @@ class _ProductDetailsState extends State<ProductDetails> {
   }
 
   void _onScroll() {
-    if (_scrollController.offset > 100 && !_isScrolled) {
+    if (_scrollController.offset > 50 && !_isScrolled) {
       setState(() => _isScrolled = true);
-    } else if (_scrollController.offset <= 100 && _isScrolled) {
+    } else if (_scrollController.offset <= 50 && _isScrolled) {
       setState(() => _isScrolled = false);
     }
   }
@@ -149,36 +151,39 @@ class _ProductDetailsState extends State<ProductDetails> {
         'time': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       };
 
-      final savedToCloud = await FirestoreService().saveDietEntry(entryData);
+      await LocalDatabaseService().insertDietEntry(entryData);
+
+      try {
+        await FirestoreService().saveDietEntry(entryData);
+      } catch (e) {
+        debugPrint('Firestore save option skipped: $e');
+      }
 
       if (mounted) {
-        final theme = Theme.of(context);
-        final message = savedToCloud
-            ? '${productData['name']} added to diet log!'
-            : '${productData['name']} saved locally to diet log!';
-        final icon = savedToCloud ? Icons.cloud_done : Icons.save;
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(icon, color: Colors.white),
+                const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
                 SizedBox(width: 2.w),
-                Expanded(child: Text(message)),
+                Expanded(child: Text('${productData['name']} logged to your diet!', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white))),
               ],
             ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: theme.colorScheme.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: FoodInsightColors.scannerGreen,
+            shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
           ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      debugPrint('Error saving diet entry: $e');
-       if (mounted) {
+      debugPrint('Error adding diet entry: $e');
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add to diet log. Please try again.')),
+          SnackBar(
+            content: Text('Failed to add to diet log. Please try again.', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            backgroundColor: FoodInsightColors.healthRed,
+          ),
         );
       }
     }
@@ -205,15 +210,11 @@ class _ProductDetailsState extends State<ProductDetails> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
     if (productData.isEmpty) {
       return Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: FoodInsightColors.warmWhite,
         body: Center(
-          child: CircularProgressIndicator(color: colorScheme.primary),
+          child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
         ),
       );
     }
@@ -230,166 +231,108 @@ class _ProductDetailsState extends State<ProductDetails> {
     final String? nutriscore = productData['nutriscore'] as String?;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: FoodInsightColors.warmWhite,
       body: Stack(
         children: [
-          // Background gradient
+          // Background
           Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? [
-                        colorScheme.primary.withValues(alpha: 0.08),
-                        theme.scaffoldBackgroundColor,
-                        theme.scaffoldBackgroundColor,
-                      ]
-                    : [
-                        colorScheme.primary.withValues(alpha: 0.05),
-                        theme.scaffoldBackgroundColor,
-                      ],
-              ),
+            decoration: const BoxDecoration(
+              gradient: FoodInsightColors.warmBackground,
             ),
           ),
           // Main content
           Column(
             children: [
-              // Custom glass app bar
-              ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: _isScrolled ? 15 : 0,
-                    sigmaY: _isScrolled ? 15 : 0,
-                  ),
-                  child: Container(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + 2.h,
-                      left: 4.w,
-                      right: 4.w,
-                      bottom: 2.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _isScrolled
-                          ? (isDark
-                              ? AppTheme.glassDarkBg
-                              : colorScheme.surface.withValues(alpha: 0.95))
-                          : Colors.transparent,
-                      border: _isScrolled
-                          ? Border(
-                              bottom: BorderSide(
-                                color: isDark
-                                    ? AppTheme.glassDarkBorder
-                                    : Colors.black.withValues(alpha: 0.05),
-                              ),
-                            )
-                          : null,
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(2.w),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : colorScheme.surface.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.15)
-                                    : colorScheme.outline.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: CustomIconWidget(
-                              iconName: 'arrow_back',
-                              size: 24,
-                              color: colorScheme.onSurface,
-                            ),
+              // Custom solid app bar
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 2.h,
+                  left: 4.w,
+                  right: 4.w,
+                  bottom: 2.h,
+                ),
+                decoration: BoxDecoration(
+                  color: _isScrolled ? Colors.white : Colors.transparent,
+                  boxShadow: _isScrolled ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))] : null,
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(2.w),
+                        decoration: BoxDecoration(
+                          color: FoodInsightColors.warmWhite,
+                          borderRadius: FoodInsightRadius.smAll,
+                          border: Border.all(
+                            color: FoodInsightColors.outlineGray,
                           ),
                         ),
-                        SizedBox(width: 4.w),
-                        Expanded(
-                          child: AnimatedOpacity(
-                            opacity: _isScrolled ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Text(
-                              productName,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        // Nutri-Score badge
-                        if (nutriscore != null)
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 3.w, vertical: 0.5.h),
-                            margin: EdgeInsets.only(right: 2.w),
-                            decoration: BoxDecoration(
-                              color: _nutriscoreColor(nutriscore),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: isDark
-                                  ? [
-                                      BoxShadow(
-                                        color: _nutriscoreColor(nutriscore)
-                                            .withValues(alpha: 0.4),
-                                        blurRadius: 8,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Text(
-                              nutriscore.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            _navigateToAIChat();
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(2.w),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : colorScheme.surface.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.15)
-                                    : colorScheme.outline.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: CustomIconWidget(
-                              iconName: 'restaurant',
-                              size: 24,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      ],
+                        child: Icon(Icons.arrow_back_rounded, color: FoodInsightColors.deepCharcoal),
+                      ),
                     ),
-                  ),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      child: AnimatedOpacity(
+                        opacity: _isScrolled ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Text(
+                          productName,
+                          style: FoodInsightTypography.heading(size: 18, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    // Nutri-Score badge
+                    if (nutriscore != null)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 3.w, vertical: 0.5.h),
+                        margin: EdgeInsets.only(right: 2.w),
+                        decoration: BoxDecoration(
+                          color: _nutriscoreColor(nutriscore).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          nutriscore.toUpperCase(),
+                          style: TextStyle(
+                            color: _nutriscoreColor(nutriscore),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _navigateToAIChat();
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(2.w),
+                        decoration: BoxDecoration(
+                          color: FoodInsightColors.warmWhite,
+                          borderRadius: FoodInsightRadius.smAll,
+                          border: Border.all(
+                            color: FoodInsightColors.outlineGray,
+                          ),
+                        ),
+                        child: Icon(Icons.restaurant_rounded, color: FoodInsightColors.scannerGreen),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               // Scrollable content with staggered animations
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _onRefresh,
-                  color: colorScheme.primary,
+                  color: FoodInsightColors.scannerGreen,
+                  backgroundColor: Colors.white,
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -398,7 +341,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: 2.h),
-                        // Product image with parallax feel
+                        // Product image
                         Hero(
                           tag: 'scan_${productData['id'] ?? productData['barcode'] ?? ''}',
                           child: ProductImageWidget(
@@ -455,7 +398,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                             padding: EdgeInsets.symmetric(vertical: 2.h),
                             child: Center(
                               child: CircularProgressIndicator(
-                                color: colorScheme.primary,
+                                color: FoodInsightColors.scannerGreen,
                               ),
                             ),
                           )
@@ -491,17 +434,17 @@ class _ProductDetailsState extends State<ProductDetails> {
   Color _nutriscoreColor(String grade) {
     switch (grade.toLowerCase()) {
       case 'a':
-        return const Color(0xFF1B8B2D);
+        return FoodInsightColors.healthGreen;
       case 'b':
-        return const Color(0xFF7AC143);
+        return FoodInsightColors.healthLightGreen;
       case 'c':
-        return const Color(0xFFF5C623);
+        return FoodInsightColors.healthYellow;
       case 'd':
-        return const Color(0xFFE8A317);
+        return FoodInsightColors.healthOrange;
       case 'e':
-        return const Color(0xFFE63E11);
+        return FoodInsightColors.healthRed;
       default:
-        return Colors.grey;
+        return FoodInsightColors.midGray;
     }
   }
 }

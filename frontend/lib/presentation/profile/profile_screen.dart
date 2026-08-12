@@ -1,16 +1,13 @@
 // lib/presentation/profile/profile_screen.dart
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../../core/app_export.dart';
 import '../../core/utils/user_utils.dart';
 import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../models/user_profile.dart';
+import '../../theme/app_design_system.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,42 +59,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return bmi.toStringAsFixed(1);
   }
 
-  /// Link anonymous (guest) account with Google credentials
-  Future<void> _linkAnonymousAccountWithGoogle() async {
-    try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
-
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await FirebaseAuth.instance.currentUser?.linkWithCredential(credential);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Account linked! Your data is now saved permanently.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      setState(() {}); // Refresh to hide the banner
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to link account: $e')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    
     final provider = context.watch<UserProfileProvider>();
     final profile = provider.profile;
     final isLoading = provider.isLoading;
@@ -107,201 +70,238 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bmi = _calculateBMI(profile);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: FoodInsightColors.warmWhite,
       appBar: AppBar(
         title: Text(
           'Food Insight',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.3,
+          style: FoodInsightTypography.heading(
+            size: 20,
+            weight: FontWeight.w900,
+            color: FoodInsightColors.deepCharcoal,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: FoodInsightColors.warmWhite,
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.edit, color: colorScheme.primary),
+            icon: Icon(Icons.edit_rounded, color: FoodInsightColors.scannerGreen),
             onPressed: () {
               Navigator.pushNamed(context, '/profile-setup')
                   .then((_) => _loadProfile());
             },
           ),
           IconButton(
-            icon: Icon(Icons.settings, color: colorScheme.onSurfaceVariant),
+            icon: Icon(Icons.settings_rounded, color: FoodInsightColors.midGray),
             onPressed: () => Navigator.pushNamed(context, '/settings'),
           ),
         ],
       ),
       body: isLoading
           ? Center(
-              child: CircularProgressIndicator(color: colorScheme.primary),
+              child: CircularProgressIndicator(
+                color: FoodInsightColors.scannerGreen,
+              ),
             )
           : RefreshIndicator(
               onRefresh: _loadProfile,
-              color: colorScheme.primary,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(5.w),
-                child: Column(
-                  children: [
-                    // Anonymous account linking banner
-                    if (FirebaseAuth.instance.currentUser?.isAnonymous == true)
-                      Card(
-                        color: isDark
-                            ? Colors.orange.withValues(alpha: 0.15)
-                            : Colors.orange.shade50,
-                        child: ListTile(
-                          leading: const Icon(Icons.warning_amber_rounded,
-                              color: Colors.orange),
-                          title: const Text('Guest Account'),
-                          subtitle: const Text(
-                              'Link with Google to save your data permanently'),
-                          trailing: TextButton(
-                            onPressed: _linkAnonymousAccountWithGoogle,
-                            child: const Text('Link Now'),
+              color: FoodInsightColors.scannerGreen,
+              backgroundColor: Colors.white,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: FoodInsightColors.warmBackground,
+                ),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.all(5.w),
+                  child: Column(
+                    children: [
+                      // Local user banner
+                      if (profile?.uid == 'local_user')
+                        Container(
+                          padding: EdgeInsets.all(4.w),
+                          decoration: BoxDecoration(
+                            color: FoodInsightColors.scannerGreenLight,
+                            borderRadius: FoodInsightRadius.mdAll,
                           ),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 400.ms)
-                          .slideY(begin: -0.05, end: 0),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.account_circle_rounded,
+                                color: FoodInsightColors.scannerGreen,
+                                size: 24,
+                              ),
+                              SizedBox(width: 3.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Local Profile Active',
+                                      style: FoodInsightTypography.body(
+                                        size: 14,
+                                        weight: FontWeight.w700,
+                                        color: FoodInsightColors.scannerGreenDark,
+                                      ),
+                                    ),
+                                    Text(
+                                      'All data is saved locally on your device.',
+                                      style: FoodInsightTypography.caption(
+                                        size: 12,
+                                        color: FoodInsightColors.scannerGreenDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .slideY(begin: -0.05, end: 0),
 
-                    // Avatar & Name
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: isDark
-                                  ? AppTheme.glowBoxShadow(
-                                      colorScheme.primary,
-                                      intensity: 0.2,
-                                      blur: 20,
-                                    )
-                                  : null,
-                            ),
-                            child: CircleAvatar(
-                              radius: 12.w,
-                              backgroundColor: isDark
-                                  ? colorScheme.primary.withValues(alpha: 0.15)
-                                  : colorScheme.primaryContainer,
-                              child: Text(
-                                displayName.isNotEmpty
-                                    ? displayName[0].toUpperCase()
-                                    : 'U',
-                                style: TextStyle(
-                                  fontSize: 22.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.primary,
+                      SizedBox(height: 2.h),
+
+                      // Avatar & Name
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.2),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: CircleAvatar(
+                                radius: 12.w,
+                                backgroundColor: FoodInsightColors.scannerGreenLight,
+                                child: Text(
+                                  displayName.isNotEmpty
+                                      ? displayName[0].toUpperCase()
+                                      : 'U',
+                                  style: FoodInsightTypography.display(
+                                    size: 28,
+                                    weight: FontWeight.w800,
+                                    color: FoodInsightColors.scannerGreen,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(height: 1.5.h),
-                          Text(
-                            displayName,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              shadows: isDark
-                                  ? AppTheme.textGlow(colorScheme.primary, blur: 6)
-                                  : null,
+                            SizedBox(height: 1.5.h),
+                            Text(
+                              displayName,
+                              style: FoodInsightTypography.heading(
+                                size: 24,
+                                weight: FontWeight.w800,
+                                color: FoodInsightColors.deepCharcoal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 0.5.h),
-                          Text(
-                            profile?.email ?? '',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                            SizedBox(height: 0.5.h),
+                            Text(
+                              profile?.email ?? '',
+                              style: FoodInsightTypography.caption(
+                                size: 13,
+                                color: FoodInsightColors.midGray,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(duration: 500.ms)
-                        .scaleXY(begin: 0.95, end: 1.0, duration: 500.ms),
-                    SizedBox(height: 3.h),
-
-                    // Quick Stats Row
-                    if (profile != null)
-                      Row(
-                        children: [
-                          if (age != null)
-                            Expanded(
-                              child: _buildStatChip(context, 'Age', '$age yrs'),
-                            ),
-                          if (profile.gender.isNotEmpty)
-                            Expanded(
-                              child: _buildStatChip(
-                                  context, 'Gender', profile.gender),
-                            ),
-                          if (bmi != null)
-                            Expanded(
-                              child: _buildStatChip(context, 'BMI', bmi),
-                            ),
-                        ],
+                          ],
+                        ),
                       )
                           .animate()
-                          .fadeIn(duration: 500.ms, delay: 100.ms)
-                          .slideY(begin: 0.05, end: 0),
+                          .fadeIn(duration: 500.ms)
+                          .scaleXY(begin: 0.95, end: 1.0, duration: 500.ms),
+                      SizedBox(height: 3.h),
 
-                    SizedBox(height: 3.h),
-
-                    // Detailed Info
-                    ...[
-                      _buildInfoSection(context, 'Date of Birth',
-                          _formatDate(profile?.dateOfBirth), Icons.cake),
-                      _buildInfoSection(
-                          context,
-                          'Height',
-                          profile?.heightCm != null
-                              ? '${profile!.heightCm!.toStringAsFixed(0)} cm'
-                              : 'Not set',
-                          Icons.height),
-                      _buildInfoSection(
-                          context,
-                          'Weight',
-                          profile?.weightKg != null
-                              ? '${profile!.weightKg!.toStringAsFixed(1)} kg'
-                              : 'Not set',
-                          Icons.monitor_weight_outlined),
-                      _buildInfoSection(context, 'Health Goal',
-                          profile?.healthGoals ?? 'Not set', Icons.flag),
-                      _buildInfoSection(
-                          context,
-                          'Medical Conditions',
-                          profile?.diseases.join(', ') ??
-                              'None',
-                          Icons.medical_services_outlined),
-                      _buildInfoSection(
-                          context,
-                          'Allergies',
-                          profile?.allergies.join(', ') ??
-                              'None',
-                          Icons.warning_amber),
-                      _buildInfoSection(
-                          context,
-                          'Dietary Preferences',
-                          profile?.dietaryPreferences.isNotEmpty == true
-                              ? profile!.dietaryPreferences.join(', ')
-                              : 'None',
-                          Icons.restaurant),
-                    ]
-                        .asMap()
-                        .entries
-                        .map((e) => e.value
+                      // Quick Stats Row
+                      if (profile != null)
+                        Row(
+                          children: [
+                            if (age != null)
+                              Expanded(
+                                child: _buildStatChip(context, 'Age', '$age yrs'),
+                              ),
+                            if (profile.gender.isNotEmpty)
+                              Expanded(
+                                child: _buildStatChip(
+                                    context, 'Gender', profile.gender),
+                              ),
+                            if (bmi != null)
+                              Expanded(
+                                child: _buildStatChip(context, 'BMI', bmi),
+                              ),
+                          ],
+                        )
                             .animate()
-                            .fadeIn(
-                                duration: 400.ms,
-                                delay: Duration(milliseconds: 200 + e.key * 60))
-                            .slideY(begin: 0.03, end: 0)),
+                            .fadeIn(duration: 500.ms, delay: 100.ms)
+                            .slideY(begin: 0.05, end: 0),
 
-                    SizedBox(height: 4.h),
-                  ],
+                      SizedBox(height: 3.h),
+
+                      // Detailed Info
+                      ...[
+                        _buildInfoSection(context, 'Date of Birth',
+                            _formatDate(profile?.dateOfBirth), Icons.cake_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Height',
+                            profile?.heightCm != null
+                                ? '${profile!.heightCm!.toStringAsFixed(0)} cm'
+                                : 'Not set',
+                            Icons.height_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Weight',
+                            profile?.weightKg != null
+                                ? '${profile!.weightKg!.toStringAsFixed(1)} kg'
+                                : 'Not set',
+                            Icons.monitor_weight_rounded),
+                        _buildInfoSection(context, 'Health Goal',
+                            profile?.healthGoals ?? 'Not set', Icons.flag_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Activity Level',
+                            profile?.activityLevel ?? 'Not set',
+                            Icons.directions_run_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Medical Conditions',
+                            profile?.diseases.join(', ') ??
+                                'None',
+                            Icons.medical_services_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Allergies',
+                            profile?.allergies.join(', ') ??
+                                'None',
+                            Icons.warning_amber_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Dietary Preferences',
+                            profile?.dietaryPreferences.isNotEmpty == true
+                                ? profile!.dietaryPreferences.join(', ')
+                                : 'None',
+                            Icons.restaurant_rounded),
+                      ]
+                          .asMap()
+                          .entries
+                          .map((e) => e.value
+                              .animate()
+                              .fadeIn(
+                                  duration: 400.ms,
+                                  delay: Duration(milliseconds: 200 + e.key * 60))
+                              .slideY(begin: 0.03, end: 0)),
+
+                      SizedBox(height: 10.h),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -309,109 +309,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatChip(BuildContext context, String label, String value) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 1.w),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 1.5.h, horizontal: 2.w),
-            decoration: isDark
-                ? AppTheme.glassmorphicDecoration(borderRadius: 12)
-                : BoxDecoration(
-                    color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-            child: Column(
-              children: [
-                Text(
-                  value,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                    shadows: isDark
-                        ? AppTheme.textGlow(colorScheme.primary, blur: 4)
-                        : null,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 0.3.h),
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+      padding: EdgeInsets.symmetric(vertical: 1.5.h, horizontal: 2.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: FoodInsightRadius.mdAll,
+        boxShadow: FoodInsightShadows.subtleCard,
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: FoodInsightTypography.heading(
+              size: 16,
+              weight: FontWeight.w800,
+              color: FoodInsightColors.scannerGreen,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
+          SizedBox(height: 0.3.h),
+          Text(
+            label,
+            style: FoodInsightTypography.caption(
+              size: 11,
+              color: FoodInsightColors.midGray,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildInfoSection(
       BuildContext context, String title, String value, IconData icon) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
     return Container(
       margin: EdgeInsets.only(bottom: 1.5.h),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            padding: EdgeInsets.all(4.w),
-            decoration: isDark
-                ? AppTheme.glassmorphicDecoration(borderRadius: 12)
-                : BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-            child: Row(
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: FoodInsightRadius.mdAll,
+        boxShadow: FoodInsightShadows.subtleCard,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: FoodInsightColors.scannerGreenLight,
+              borderRadius: FoodInsightRadius.smAll,
+            ),
+            child: Icon(icon, color: FoodInsightColors.scannerGreen, size: 20),
+          ),
+          SizedBox(width: 3.w),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: colorScheme.secondary, size: 22),
-                SizedBox(width: 3.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      SizedBox(height: 0.3.h),
-                      Text(
-                        value.isEmpty ? 'Not set' : value,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 3,
-                      ),
-                    ],
+                Text(
+                  title,
+                  style: FoodInsightTypography.caption(
+                    size: 12,
+                    weight: FontWeight.w600,
+                    color: FoodInsightColors.midGray,
                   ),
+                ),
+                SizedBox(height: 0.3.h),
+                Text(
+                  value.isEmpty ? 'Not set' : value,
+                  style: FoodInsightTypography.body(
+                    size: 15,
+                    weight: FontWeight.w600,
+                    color: FoodInsightColors.deepCharcoal,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

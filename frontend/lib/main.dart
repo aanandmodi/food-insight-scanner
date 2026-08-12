@@ -132,7 +132,7 @@ class MyApp extends StatelessWidget {
         title: 'Food Insight',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
+        themeMode: ThemeMode.light,
         // Using a builder to set the text scale factor to 1.0, which prevents
         // the app's font size from changing with the system's font size settings.
         builder: (context, child) {

@@ -163,4 +163,21 @@ class UserUtils {
   static int calculateSugarGoal(int calorieGoal) {
     return ((calorieGoal * 0.10) / 4).round().clamp(20, 100);
   }
+
+  // ──────────────────────────── Carbs ────────────────────────────
+
+  /// Calculate daily carbs goal in grams.
+  /// Recommended ~50% of total calories from carbohydrates (4 kcal/g).
+  static int calculateCarbsGoal(int calorieGoal) {
+    return ((calorieGoal * 0.50) / 4).round().clamp(100, 600);
+  }
+
+  // ──────────────────────────── Fat ────────────────────────────
+
+  /// Calculate daily fat goal in grams.
+  /// Recommended ~25% of total calories from healthy fats (9 kcal/g).
+  static int calculateFatGoal(int calorieGoal) {
+    return ((calorieGoal * 0.25) / 9).round().clamp(30, 200);
+  }
 }
+

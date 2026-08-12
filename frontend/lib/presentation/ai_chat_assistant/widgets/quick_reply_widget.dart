@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../theme/app_design_system.dart';
+
 class QuickReplyWidget extends StatelessWidget {
   final List<String> suggestions;
   final Function(String) onSuggestionTap;
@@ -16,7 +18,7 @@ class QuickReplyWidget extends StatelessWidget {
     return suggestions.isNotEmpty
         ? Container(
             height: 5.6.h,
-            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 0.5.h),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: suggestions.length,
@@ -28,28 +30,17 @@ class QuickReplyWidget extends StatelessWidget {
                     padding:
                         EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline
-                            .withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: FoodInsightShadows.subtleCard,
                     ),
                     child: Center(
                       child: Text(
                         suggestions[index],
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
+                        style: FoodInsightTypography.caption(
+                          size: 12,
+                          weight: FontWeight.w700,
+                          color: FoodInsightColors.scannerGreen,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -63,4 +54,3 @@ class QuickReplyWidget extends StatelessWidget {
         : const SizedBox.shrink();
   }
 }
-

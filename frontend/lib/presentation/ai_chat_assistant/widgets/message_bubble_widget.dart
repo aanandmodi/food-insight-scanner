@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:sizer/sizer.dart';
-import '../../../core/app_export.dart';
+import '../../../theme/app_design_system.dart';
 
 class MessageBubbleWidget extends StatelessWidget {
   final String message;
@@ -30,17 +30,16 @@ class MessageBubbleWidget extends StatelessWidget {
               height: 8.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.secondary,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: FoodInsightColors.healthyGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                  ),
+                ],
               ),
-              child: CustomIconWidget(
-                iconName: 'smart_toy',
+              child: Icon(
+                Icons.auto_awesome_rounded,
                 color: Colors.white,
                 size: 4.w,
               ),
@@ -50,12 +49,11 @@ class MessageBubbleWidget extends StatelessWidget {
           Flexible(
             child: Container(
               constraints: BoxConstraints(maxWidth: 75.w),
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
               decoration: BoxDecoration(
                 color: isUser
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surface
-                        .withValues(alpha: 0.9),
+                    ? FoodInsightColors.scannerGreen
+                    : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(4.w),
                   topRight: Radius.circular(4.w),
@@ -66,18 +64,13 @@ class MessageBubbleWidget extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: isUser
+                        ? FoodInsightColors.scannerGreen.withValues(alpha: 0.25)
+                        : Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
-                border: !isUser
-                    ? Border.all(
-                        color: Theme.of(context).colorScheme.outline
-                            .withValues(alpha: 0.2),
-                        width: 1,
-                      )
-                    : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,24 +78,49 @@ class MessageBubbleWidget extends StatelessWidget {
                   MarkdownBody(
                     data: message,
                     selectable: true,
-                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                      p: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    styleSheet: MarkdownStyleSheet(
+                      p: FoodInsightTypography.body(
+                        size: 14.5,
                         color: isUser
                             ? Colors.white
-                            : Theme.of(context).colorScheme.onSurface,
-                        height: 1.4,
+                            : FoodInsightColors.deepCharcoal,
                       ),
-                      strong: const TextStyle(fontWeight: FontWeight.w900),
+                      strong: FoodInsightTypography.body(
+                        size: 14.5,
+                        weight: FontWeight.w800,
+                        color: isUser
+                            ? Colors.white
+                            : FoodInsightColors.deepCharcoal,
+                      ),
+                      listBullet: FoodInsightTypography.body(
+                        size: 14.5,
+                        color: isUser
+                            ? Colors.white
+                            : FoodInsightColors.deepCharcoal,
+                      ),
+                      tableHead: FoodInsightTypography.body(
+                        size: 13,
+                        weight: FontWeight.w700,
+                        color: isUser
+                            ? Colors.white
+                            : FoodInsightColors.deepCharcoal,
+                      ),
+                      tableBody: FoodInsightTypography.body(
+                        size: 13,
+                        color: isUser
+                            ? Colors.white
+                            : FoodInsightColors.deepCharcoal,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 1.h),
+                  SizedBox(height: 0.5.h),
                   Text(
                     _formatTime(timestamp),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    style: FoodInsightTypography.caption(
+                      size: 10,
                       color: isUser
                           ? Colors.white.withValues(alpha: 0.7)
-                          : Theme.of(context).colorScheme.onSurface
-                              .withValues(alpha: 0.6),
+                          : FoodInsightColors.midGray,
                     ),
                   ),
                 ],
@@ -116,12 +134,12 @@ class MessageBubbleWidget extends StatelessWidget {
               height: 8.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.secondary,
+                color: FoodInsightColors.scannerGreenLight,
               ),
-              child: CustomIconWidget(
-                iconName: 'person',
-                color: Colors.white,
-                size: 4.w,
+              child: Icon(
+                Icons.person_rounded,
+                color: FoodInsightColors.scannerGreen,
+                size: 4.5.w,
               ),
             ),
           ],
@@ -145,4 +163,3 @@ class MessageBubbleWidget extends StatelessWidget {
     }
   }
 }
-

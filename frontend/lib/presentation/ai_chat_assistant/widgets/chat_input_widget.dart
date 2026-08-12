@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
+import '../../../theme/app_design_system.dart';
 
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController textController;
@@ -50,9 +50,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   }
 
   void _handleVoiceTap() {
-    // Voice recording has been removed to eliminate the `record` package
-    // dependency and its RECORD_AUDIO permission requirement.
-    // Show a snackbar informing the user.
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Voice input is coming soon!'),
@@ -67,12 +64,12 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.2.h),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+        color: FoodInsightColors.warmWhite,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 40,
-            offset: const Offset(0, -10),
+            color: FoodInsightColors.embossedShadow.withValues(alpha: 0.1),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -82,13 +79,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.transparent,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline
-                        .withValues(alpha: 0.3),
-                    width: 1,
-                  ),
+                  boxShadow: FoodInsightShadows.subtleCard,
                 ),
                 child: Row(
                   children: [
@@ -100,30 +93,32 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                         textCapitalization: TextCapitalization.sentences,
                         decoration: InputDecoration(
                           hintText: 'Ask about nutrition, ingredients...',
-                          hintStyle: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                          hintStyle: FoodInsightTypography.body(
+                            size: 14,
+                            color: FoodInsightColors.midGray,
                           ),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
                             horizontal: 4.w,
-                            vertical: 2.h,
+                            vertical: 1.5.h,
                           ),
                         ),
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: FoodInsightTypography.body(
+                          size: 14,
+                          color: FoodInsightColors.deepCharcoal,
+                        ),
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                     if (!_hasText)
                       GestureDetector(
                         onTap: _handleVoiceTap,
-                        child: Container(
-                          padding: EdgeInsets.all(2.w),
-                          child: CustomIconWidget(
-                            iconName: 'mic',
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 5.w,
+                        child: Padding(
+                          padding: EdgeInsets.only(right: 3.w),
+                          child: Icon(
+                            Icons.mic_rounded,
+                            color: FoodInsightColors.scannerGreen,
+                            size: 5.5.w,
                           ),
                         ),
                       ),
@@ -138,30 +133,38 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 width: 12.w,
                 height: 12.w,
                 decoration: BoxDecoration(
-                  gradient:
-                      _hasText && !widget.isLoading ? AppTheme.primaryGradient : null,
+                  gradient: _hasText && !widget.isLoading
+                      ? FoodInsightColors.healthyGradient
+                      : null,
                   color: _hasText && !widget.isLoading
                       ? null
-                      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                      : FoodInsightColors.lightGray,
                   shape: BoxShape.circle,
+                  boxShadow: _hasText && !widget.isLoading
+                      ? [
+                          BoxShadow(
+                            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
                 ),
                 child: widget.isLoading
-                    ? SizedBox(
-                        width: 4.w,
-                        height: 4.w,
+                    ? Padding(
+                        padding: EdgeInsets.all(3.w),
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Theme.of(context).colorScheme.surface,
+                            FoodInsightColors.scannerGreen,
                           ),
                         ),
                       )
-                    : CustomIconWidget(
-                        iconName: 'send',
+                    : Icon(
+                        Icons.send_rounded,
                         color: _hasText
-                            ? Theme.of(context).colorScheme.surface
-                            : Theme.of(context).colorScheme.onSurface
-                                .withValues(alpha: 0.5),
+                            ? Colors.white
+                            : FoodInsightColors.midGray,
                         size: 5.w,
                       ),
               ),

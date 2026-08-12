@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
+import '../../../theme/app_design_system.dart';
 
 class ChatHeaderWidget extends StatelessWidget {
   final VoidCallback onBackPressed;
@@ -14,13 +14,13 @@ class ChatHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: FoodInsightColors.warmWhite,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
+            color: FoodInsightColors.embossedShadow.withValues(alpha: 0.15),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -32,10 +32,15 @@ class ChatHeaderWidget extends StatelessWidget {
               onTap: onBackPressed,
               child: Container(
                 padding: EdgeInsets.all(2.w),
-                child: CustomIconWidget(
-                  iconName: 'arrow_back',
-                  color: Theme.of(context).colorScheme.onSurface,
-                  size: 6.w,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: FoodInsightRadius.smAll,
+                  boxShadow: FoodInsightShadows.subtleCard,
+                ),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: FoodInsightColors.deepCharcoal,
+                  size: 5.w,
                 ),
               ),
             ),
@@ -45,19 +50,19 @@ class ChatHeaderWidget extends StatelessWidget {
               height: 11.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.secondary,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: FoodInsightColors.healthyGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ],
               ),
-              child: CustomIconWidget(
-                iconName: 'vital_signs',
+              child: Icon(
+                Icons.auto_awesome_rounded,
                 color: Colors.white,
-                size: 6.w,
+                size: 5.5.w,
               ),
             ),
             SizedBox(width: 3.w),
@@ -67,31 +72,38 @@ class ChatHeaderWidget extends StatelessWidget {
                 children: [
                   Text(
                     'Food Insight AI',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
+                    style: FoodInsightTypography.heading(
+                      size: 17,
+                      weight: FontWeight.w800,
+                      color: FoodInsightColors.deepCharcoal,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 0.5.h),
+                  SizedBox(height: 0.3.h),
                   Row(
                     children: [
                       Container(
                         width: 2.w,
                         height: 2.w,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
+                        decoration: BoxDecoration(
+                          color: FoodInsightColors.scannerGreen,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: FoodInsightColors.scannerGreen.withValues(alpha: 0.5),
+                              blurRadius: 4,
+                            ),
+                          ],
                         ),
                       ),
                       SizedBox(width: 1.w),
                       Text(
                         'Online',
-                        style:
-                            Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface
-                              .withValues(alpha: 0.7),
+                        style: FoodInsightTypography.caption(
+                          size: 11,
+                          weight: FontWeight.w600,
+                          color: FoodInsightColors.scannerGreen,
                         ),
                       ),
                     ],
@@ -105,9 +117,9 @@ class ChatHeaderWidget extends StatelessWidget {
               },
               child: Container(
                 padding: EdgeInsets.all(2.w),
-                child: CustomIconWidget(
-                  iconName: 'more_vert',
-                  color: Theme.of(context).colorScheme.onSurface,
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  color: FoodInsightColors.midGray,
                   size: 5.w,
                 ),
               ),

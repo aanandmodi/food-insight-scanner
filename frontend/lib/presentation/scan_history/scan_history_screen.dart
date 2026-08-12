@@ -1,4 +1,5 @@
-import 'dart:ui';
+// lib/presentation/scan_history/scan_history_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +7,7 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/product_service.dart';
 import '../../services/firestore_service.dart';
+import '../../theme/app_design_system.dart';
 
 class ScanHistoryScreen extends StatefulWidget {
   const ScanHistoryScreen({super.key});
@@ -22,7 +24,6 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     final scanId = scan['id'] as String?;
     final barcode = (scan['barcode'] as String?) ?? '';
 
-    // Prefer cloud delete if we have a Firestore doc id.
     if (scanId != null && scanId.isNotEmpty) {
       try {
         await _firestore.deleteScan(scanId);
@@ -30,260 +31,286 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         debugPrint('Error deleting scan from Firestore: $e');
       }
     } else if (barcode.isNotEmpty) {
-      // Offline/guest mode: delete from local SQLite so it doesn't reappear.
       await _productService.deleteLocalScan(barcode);
     }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scan removed from history')),
+        SnackBar(
+          content: Text('Scan removed from history'),
+          backgroundColor: FoodInsightColors.scannerGreen,
+        ),
       );
+      // Trigger a rebuild to reflect local deletions if using future builder
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: FoodInsightColors.warmWhite,
       appBar: AppBar(
         title: Text(
           'Scan History',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+          style: FoodInsightTypography.heading(
+            size: 20,
+            weight: FontWeight.w900,
+            color: FoodInsightColors.deepCharcoal,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: FoodInsightColors.warmWhite,
         elevation: 0,
+        iconTheme: IconThemeData(color: FoodInsightColors.deepCharcoal),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _firestore.scanHistoryStream(limit: 50),
-        builder: (context, snapshot) {
-          // If Firebase isn't ready (guest/offline), the stream is empty.
-          // Fall back to local SQLite history (still dynamic via refresh).
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(color: colorScheme.primary),
-            );
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: FoodInsightColors.warmBackground,
+        ),
+        child: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: _firestore.scanHistoryStream(limit: 50),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+              );
+            }
 
-          if (snapshot.hasData && (snapshot.data?.isNotEmpty ?? false)) {
-            final scans = snapshot.data!;
-            return ListView.separated(
-              padding: EdgeInsets.all(4.w),
-              itemCount: scans.length,
-              separatorBuilder: (context, index) => SizedBox(height: 2.h),
-              itemBuilder: (context, index) {
-                final scan = scans[index];
-                return _buildHistoryItem(context, scan)
-                    .animate()
-                    .fadeIn(
-                      duration: 400.ms,
-                      delay: Duration(milliseconds: (index * 50).clamp(0, 300)),
-                    )
-                    .slideY(begin: 0.03, end: 0);
+            if (snapshot.hasData && (snapshot.data?.isNotEmpty ?? false)) {
+              final scans = snapshot.data!;
+              return _buildList(scans);
+            }
+
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: _productService.getScanHistory(),
+              builder: (context, localSnapshot) {
+                if (localSnapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+                  );
+                }
+
+                if (localSnapshot.hasData && (localSnapshot.data?.isNotEmpty ?? false)) {
+                  return _buildList(localSnapshot.data!);
+                }
+
+                return _buildEmptyState();
               },
             );
-          }
-
-          return FutureBuilder<List<Map<String, dynamic>>>(
-            future: _productService.getScanHistory(),
-            builder: (context, localSnapshot) {
-              if (localSnapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(color: colorScheme.primary),
-                );
-              }
-
-              final localScans = localSnapshot.data ?? [];
-              if (localScans.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.history,
-                        size: 15.w,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        'No scans yet',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      SizedBox(height: 1.h),
-                      Text(
-                        'Scan a product barcode to see it here',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () async => setState(() {}),
-                color: colorScheme.primary,
-                child: ListView.separated(
-                  padding: EdgeInsets.all(4.w),
-                  itemCount: localScans.length,
-                  separatorBuilder: (context, index) => SizedBox(height: 2.h),
-                  itemBuilder: (context, index) {
-                    final scan = localScans[index];
-                    return _buildHistoryItem(context, scan)
-                        .animate()
-                        .fadeIn(
-                          duration: 400.ms,
-                          delay: Duration(
-                              milliseconds: (index * 50).clamp(0, 300)),
-                        )
-                        .slideY(begin: 0.03, end: 0);
-                  },
-                ),
-              );
-            },
-          );
-        },
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildHistoryItem(
-      BuildContext context, Map<String, dynamic> scan) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+  Widget _buildList(List<Map<String, dynamic>> scans) {
+    return ListView.separated(
+      padding: EdgeInsets.all(5.w),
+      itemCount: scans.length,
+      separatorBuilder: (context, index) => SizedBox(height: 1.5.h),
+      itemBuilder: (context, index) {
+        final scan = scans[index];
+        return _buildHistoryItem(context, scan)
+            .animate()
+            .fadeIn(
+              duration: 400.ms,
+              delay: Duration(milliseconds: (index * 50).clamp(0, 300)),
+            )
+            .slideY(begin: 0.03, end: 0);
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(5.w),
+            decoration: BoxDecoration(
+              color: FoodInsightColors.scannerGreenLight,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.history_rounded,
+              size: 15.w,
+              color: FoodInsightColors.scannerGreen,
+            ),
+          ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack),
+          SizedBox(height: 3.h),
+          Text(
+            'No scans yet',
+            style: FoodInsightTypography.heading(
+              size: 20,
+              weight: FontWeight.w800,
+              color: FoodInsightColors.deepCharcoal,
+            ),
+          ).animate().fadeIn(delay: 400.ms),
+          SizedBox(height: 1.h),
+          Text(
+            'Your recent product scans\nwill appear here.',
+            textAlign: TextAlign.center,
+            style: FoodInsightTypography.body(
+              size: 15,
+              color: FoodInsightColors.midGray,
+            ),
+          ).animate().fadeIn(delay: 500.ms),
+          SizedBox(height: 4.h),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
+            label: Text('Scan a Product', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FoodInsightColors.scannerGreen,
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
+            ),
+          ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(BuildContext context, Map<String, dynamic> scan) {
+    final name = scan['name'] ?? 'Unknown Product';
+    final brand = scan['brand'] ?? 'Unknown Brand';
+    final barcode = scan['barcode'] ?? '';
+    final score = scan['score'] ?? '0';
+    final imageUrl = scan['imageUrl'];
 
     return Dismissible(
-      key: Key(scan['id']?.toString() ??
-          scan['barcode']?.toString() ??
-          UniqueKey().toString()),
+      key: Key(scan['id']?.toString() ?? barcode),
       direction: DismissDirection.endToStart,
       background: Container(
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.only(right: 4.w),
+        padding: EdgeInsets.symmetric(horizontal: 5.w),
         decoration: BoxDecoration(
-          color: colorScheme.error,
-          borderRadius: BorderRadius.circular(16),
+          color: FoodInsightColors.healthRed,
+          borderRadius: FoodInsightRadius.mdAll,
         ),
-        child: const Icon(Icons.delete, color: Colors.white),
+        alignment: Alignment.centerRight,
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
-      onDismissed: (_) => _deleteScan(scan),
+      onDismissed: (direction) => _deleteScan(scan),
       child: GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();
-          Navigator.pushNamed(
-            context,
-            '/product-details',
-            arguments: scan,
-          );
+          if (barcode.isNotEmpty) {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.productDetails,
+              arguments: barcode,
+            );
+          }
         },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(
-              decoration: isDark
-                  ? AppTheme.glassmorphicDecoration(borderRadius: 16)
-                  : BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+        child: Container(
+          padding: EdgeInsets.all(3.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: FoodInsightRadius.mdAll,
+            boxShadow: FoodInsightShadows.subtleCard,
+          ),
+          child: Row(
+            children: [
+              // Thumbnail
+              if (imageUrl != null && imageUrl.toString().isNotEmpty)
+                ClipRRect(
+                  borderRadius: FoodInsightRadius.smAll,
+                  child: Image.network(
+                    imageUrl,
+                    width: 14.w,
+                    height: 14.w,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
+                  ),
+                )
+              else
+                _buildPlaceholderIcon(),
+              
+              SizedBox(width: 3.w),
+              
+              // Product details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: FoodInsightTypography.body(
+                        size: 15,
+                        weight: FontWeight.w700,
+                        color: FoodInsightColors.deepCharcoal,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-              padding: EdgeInsets.all(3.w),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: scan['image'] != null &&
-                            scan['image'].toString().isNotEmpty
-                        ? Image.network(
-                            scan['image'],
-                            width: 15.w,
-                            height: 15.w,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 15.w,
-                              height: 15.w,
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.grey[200],
-                              child: const Icon(Icons.image_not_supported,
-                                  size: 20),
-                            ),
-                          )
-                        : Container(
-                            width: 15.w,
-                            height: 15.w,
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.05)
-                                : Colors.grey[200],
-                            child: const Icon(Icons.fastfood, size: 20),
-                          ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          scan['name'] ?? 'Unknown Product',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 0.5.h),
-                        Text(
-                          scan['brand'] ?? '',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        SizedBox(height: 0.5.h),
-                        Text(
-                          _formatDate(scan['scannedAt']),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                    SizedBox(height: 0.2.h),
+                    Text(
+                      brand,
+                      style: FoodInsightTypography.caption(
+                        size: 12,
+                        color: FoodInsightColors.midGray,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: colorScheme.primary,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              
+              // Nutri-Score
+              if (score != '0') ...[
+                SizedBox(width: 2.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 2.5.w, vertical: 0.8.h),
+                  decoration: BoxDecoration(
+                    color: _getScoreColor(score).withValues(alpha: 0.1),
+                    borderRadius: FoodInsightRadius.smAll,
+                  ),
+                  child: Text(
+                    score.toUpperCase(),
+                    style: FoodInsightTypography.caption(
+                      size: 15,
+                      weight: FontWeight.w800,
+                      color: _getScoreColor(score),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
 
-  String _formatDate(String? isoString) {
-    if (isoString == null) return '';
-    try {
-      final date = DateTime.parse(isoString);
-      return "${date.day}/${date.month}/${date.year}";
-    } catch (e) {
-      return '';
+  Widget _buildPlaceholderIcon() {
+    return Container(
+      width: 14.w,
+      height: 14.w,
+      decoration: BoxDecoration(
+        color: FoodInsightColors.warmWhite,
+        borderRadius: FoodInsightRadius.smAll,
+      ),
+      child: Icon(Icons.fastfood_rounded, color: FoodInsightColors.midGray, size: 7.w),
+    );
+  }
+
+  Color _getScoreColor(String score) {
+    switch (score.toLowerCase()) {
+      case 'a':
+        return FoodInsightColors.healthGreen;
+      case 'b':
+        return FoodInsightColors.healthLightGreen;
+      case 'c':
+        return FoodInsightColors.healthYellow;
+      case 'd':
+        return FoodInsightColors.healthOrange;
+      case 'e':
+        return FoodInsightColors.healthRed;
+      default:
+        return FoodInsightColors.midGray;
     }
   }
 }

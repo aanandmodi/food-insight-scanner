@@ -28,6 +28,15 @@ class FoodInsightColors {
   static const infoBlueLight = Color(0xFFE3F0FF);
   static const purpleAccent = Color(0xFFAF52DE);
 
+  // ── Outline & Border ────────────────────────────────────────
+  static const outlineGray = Color(0xFFE5E5EA);
+
+  // ── Nutriscore Colors ────────────────────────────────────────
+  static const healthGreen = Color(0xFF1B8B2D);
+  static const healthLightGreen = Color(0xFF7AC143);
+  static const healthYellow = Color(0xFFF5C623);
+  static const healthOrange = Color(0xFFE8A317);
+
   // ── Apple Health Nutrition Colors ─────────────────────────────
   /// Crimson red for CTA buttons and calorie rings
   static const ctaRed = Color(0xFFFF2D55);

@@ -36,31 +36,51 @@ class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const AuthGate(),
     authGate: (context) => const AuthGate(),
-    login: (context) => const LoginScreen(),
-    signup: (context) => const SignupScreen(),
-    profileSetup: (context) => const ProfileSetup(),
     splash: (context) => const SplashScreen(),
     homeDashboard: (context) => const HomeDashboard(),
-    barcodeScanner: (context) => const BarcodeScanner(),
-    productDetails: (context) => const ProductDetails(),
-    scanHistory: (context) => const ScanHistoryScreen(),
-    dietLog: (context) => const DietLogScreen(),
-    profile: (context) => const ProfileScreen(),
-    settings: (context) => const SettingsScreen(),
-    shoppingList: (context) => const ShoppingListScreen(),
   };
 
-  /// Cinematic page transitions for all routes
+  /// Cinematic page transitions for all navigated routes
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    Widget? page;
     switch (settings.name) {
+      case login:
+        page = const LoginScreen();
+        break;
+      case signup:
+        page = const SignupScreen();
+        break;
+      case profileSetup:
+        page = const ProfileSetup();
+        break;
+      case barcodeScanner:
+        page = const BarcodeScanner();
+        break;
       case aiChatAssistant:
-        return _buildCinematicRoute(
-          settings: settings,
-          child: const AiChatAssistant(),
-        );
+        page = const AiChatAssistant();
+        break;
+      case productDetails:
+        page = const ProductDetails();
+        break;
+      case scanHistory:
+        page = const ScanHistoryScreen();
+        break;
+      case dietLog:
+        page = const DietLogScreen();
+        break;
+      case profile:
+        page = const ProfileScreen();
+        break;
+      case AppRoutes.settings:
+        page = const SettingsScreen();
+        break;
+      case shoppingList:
+        page = const ShoppingListScreen();
+        break;
       default:
         return null;
     }
+    return _buildCinematicRoute(settings: settings, child: page);
   }
 
   /// Creates a smooth fade + slide cinematic page transition
@@ -71,8 +91,8 @@ class AppRoutes {
     return PageRouteBuilder(
       settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => child,
-      transitionDuration: const Duration(milliseconds: 400),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: const Duration(milliseconds: 350),
+      reverseTransitionDuration: const Duration(milliseconds: 280),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(
           parent: animation,

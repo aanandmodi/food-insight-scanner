@@ -25,8 +25,9 @@ class LocalDatabaseService {
 
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
 
     debugPrint('LocalDatabaseService initialised at $path');
@@ -74,8 +75,36 @@ class LocalDatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE shopping_list (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        local_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        brand TEXT,
+        category TEXT,
+        checked INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
     await db.execute('CREATE INDEX idx_diet_log_date ON diet_log(date)');
     await db.execute('CREATE INDEX idx_scan_history_barcode ON scan_history(barcode)');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS shopping_list (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          local_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          brand TEXT,
+          category TEXT,
+          checked INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
   Database get _database {
@@ -165,6 +194,59 @@ class LocalDatabaseService {
       'date': row['date'],
       'source': row['sync_status'],
     };
+  }
+
+  // ──────────────────────────── Shopping List ────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getShoppingList() async {
+    final rows = await _database.query(
+      'shopping_list',
+      orderBy: 'created_at DESC',
+    );
+    return rows.map((r) => {
+      'id': r['local_id'],
+      'name': r['name'],
+      'brand': r['brand'] ?? '',
+      'category': r['category'] ?? 'General',
+      'checked': r['checked'] == 1,
+      'createdAt': r['created_at'],
+    }).toList();
+  }
+
+  Future<void> addShoppingItem(Map<String, dynamic> item) async {
+    final localId = 'shop_${DateTime.now().millisecondsSinceEpoch}';
+    await _database.insert('shopping_list', {
+      'local_id': localId,
+      'name': item['name'] ?? 'Item',
+      'brand': item['brand'] ?? '',
+      'category': item['category'] ?? 'General',
+      'checked': (item['checked'] == true) ? 1 : 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> toggleShoppingItem(String localId, bool checked) async {
+    await _database.update(
+      'shopping_list',
+      {'checked': checked ? 1 : 0},
+      where: 'local_id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  Future<void> deleteShoppingItem(String localId) async {
+    await _database.delete(
+      'shopping_list',
+      where: 'local_id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  Future<void> clearCheckedShoppingItems() async {
+    await _database.delete(
+      'shopping_list',
+      where: 'checked = 1',
+    );
   }
 
   // ──────────────────────────── Scan History ────────────────────────────

@@ -6,9 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import '../../models/user_profile.dart';
+import '../../data/providers/user_profile_provider.dart';
 import '../../core/app_export.dart';
 import '../../services/firestore_service.dart';
+import '../../theme/app_design_system.dart';
 import './widgets/allergy_selection_widget.dart';
 import './widgets/dietary_preferences_widget.dart';
 import './widgets/health_goal_dropdown_widget.dart';
@@ -45,6 +48,7 @@ class _ProfileSetupState extends State<ProfileSetup>
   List<String> _selectedAllergies = [];
   String? _selectedHealthGoal;
   List<String> _selectedDietaryPreferences = [];
+  String _selectedActivityLevel = 'moderate';
 
   // UI state
   int _currentStep = 1;
@@ -62,6 +66,7 @@ class _ProfileSetupState extends State<ProfileSetup>
   ];
 
   final List<String> _genderOptions = ['Male', 'Female', 'Non-Binary', 'Prefer not to say'];
+  final List<String> _activityLevelOptions = ['sedentary', 'light', 'moderate', 'active', 'very active'];
 
   final List<String> _diseaseOptions = [
     'Diabetes (Type 1)',
@@ -155,6 +160,7 @@ class _ProfileSetupState extends State<ProfileSetup>
           _selectedHealthGoal = cloudProfile['healthGoal'];
           _selectedDietaryPreferences =
               List<String>.from(cloudProfile['dietaryPreferences'] ?? []);
+          _selectedActivityLevel = cloudProfile['activityLevel'] ?? 'moderate';
         });
       } else {
         // Load from local SharedPreferences
@@ -179,6 +185,7 @@ class _ProfileSetupState extends State<ProfileSetup>
           _selectedHealthGoal = prefs.getString('user_health_goal');
           _selectedDietaryPreferences =
               prefs.getStringList('user_dietary_preferences') ?? [];
+          _selectedActivityLevel = prefs.getString('user_activity_level') ?? 'moderate';
         });
       }
     } catch (e) {
@@ -194,53 +201,38 @@ class _ProfileSetupState extends State<ProfileSetup>
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      // ── 1. Always save to Local Cache and Provider first ──
+      final userProfile = UserProfile(
+        uid: 'local_user',
+        name: _userName,
+        gender: _selectedGender,
+        dateOfBirth: _dateOfBirth,
+        heightCm: _heightCm,
+        weightKg: _weightKg,
+        diseases: _selectedDiseases,
+        allergies: _selectedAllergies,
+        dietaryPreferences: _selectedDietaryPreferences,
+        healthGoals: _selectedHealthGoal ?? 'Healthy Lifestyle',
+        age: _calculatedAge ?? 25,
+        activityLevel: _selectedActivityLevel,
+        profileCompleted: true,
+      );
 
-      // ── 1. Always save to Local Cache first (this never fails) ──
-      await prefs.setString('user_name', _userName);
-      await prefs.setString('user_gender', _selectedGender);
-      if (_dateOfBirth != null) {
-        await prefs.setString('user_dob', _dateOfBirth!.toIso8601String());
+      if (mounted) {
+        await Provider.of<UserProfileProvider>(context, listen: false).saveProfile(userProfile);
       }
-      if (_heightCm != null) {
-        await prefs.setDouble('user_height', _heightCm!);
-      }
-      if (_weightKg != null) {
-        await prefs.setDouble('user_weight', _weightKg!);
-      }
-      await prefs.setStringList('user_diseases', _selectedDiseases);
-      await prefs.setStringList('user_allergies', _selectedAllergies);
-      if (_selectedHealthGoal != null) {
-        await prefs.setString('user_health_goal', _selectedHealthGoal!);
-      }
-      await prefs.setStringList(
-          'user_dietary_preferences', _selectedDietaryPreferences);
-      await prefs.setBool('profile_completed', true);
 
       // ── 2. Try to save to Firestore (best-effort, non-blocking) ──
       try {
-        final profileData = {
-          'name': _userName,
-          'gender': _selectedGender,
-          'dateOfBirth': _dateOfBirth?.toIso8601String(),
-          'heightCm': _heightCm,
-          'weightKg': _weightKg,
-          'diseases': _selectedDiseases,
-          'allergies': _selectedAllergies,
-          'healthGoal': _selectedHealthGoal ?? '',
-          'dietaryPreferences': _selectedDietaryPreferences,
-          'profileCompleted': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
+        final profileData = userProfile.toMap();
         await FirestoreService().saveUserProfile(profileData).timeout(
-          const Duration(seconds: 5),
+          const Duration(seconds: 2),
           onTimeout: () {
             debugPrint('Firestore save timed out — profile saved locally.');
           },
         );
       } catch (e) {
         debugPrint('Firestore save failed (profile is saved locally): $e');
-        // Don't rethrow — local save succeeded, we can sync later
       }
 
       // ── 3. Navigate to home ──
@@ -248,7 +240,7 @@ class _ProfileSetupState extends State<ProfileSetup>
         HapticFeedback.lightImpact();
         _showSuccessAnimation();
 
-        await Future.delayed(const Duration(milliseconds: 2000));
+        await Future.delayed(const Duration(milliseconds: 1500));
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/home-dashboard');
         }
@@ -468,19 +460,10 @@ class _ProfileSetupState extends State<ProfileSetup>
         }
       },
       child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: FoodInsightColors.warmWhite,
         body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                Theme.of(context).colorScheme.secondary
-                    .withValues(alpha: 0.05),
-                Theme.of(context).scaffoldBackgroundColor,
-              ],
-            ),
+          decoration: const BoxDecoration(
+            gradient: FoodInsightColors.warmBackground,
           ),
           child: SafeArea(
             child: FadeTransition(
@@ -541,18 +524,14 @@ class _ProfileSetupState extends State<ProfileSetup>
             child: Container(
               padding: EdgeInsets.all(2.w),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface
-                    .withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline
-                      .withValues(alpha: 0.3),
-                ),
+                color: Colors.white,
+                borderRadius: FoodInsightRadius.smAll,
+                boxShadow: FoodInsightShadows.subtleCard,
               ),
-              child: CustomIconWidget(
-                iconName: 'arrow_back',
-                color: Theme.of(context).colorScheme.onSurface,
-                size: 24,
+              child: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: FoodInsightColors.deepCharcoal,
+                size: 5.w,
               ),
             ),
           ),
@@ -563,17 +542,18 @@ class _ProfileSetupState extends State<ProfileSetup>
               children: [
                 Text(
                   'Food Insight',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16.sp,
-                    letterSpacing: -0.3,
+                  style: FoodInsightTypography.heading(
+                    size: 18,
+                    weight: FontWeight.w900,
+                    color: FoodInsightColors.deepCharcoal,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   'Profile setup · Step $_currentStep of $_totalSteps',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  style: FoodInsightTypography.caption(
+                    size: 13,
+                    color: FoodInsightColors.midGray,
                   ),
                 ),
               ],
@@ -859,6 +839,48 @@ class _ProfileSetupState extends State<ProfileSetup>
                 });
               },
             ),
+            SizedBox(height: 3.h),
+            // Activity Level
+            Text('Activity Level',
+                style: Theme.of(context).textTheme.bodyLarge
+                    ?.copyWith(fontWeight: FontWeight.w500)),
+            SizedBox(height: 1.h),
+            Wrap(
+              spacing: 2.w,
+              runSpacing: 1.h,
+              children: _activityLevelOptions.map((level) {
+                final isSelected = _selectedActivityLevel.toLowerCase() == level.toLowerCase();
+                return ChoiceChip(
+                  label: Text(level[0].toUpperCase() + level.substring(1)),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _selectedActivityLevel = level;
+                        _hasUnsavedChanges = true;
+                      });
+                    }
+                  },
+                  selectedColor: Theme.of(context).colorScheme.primary
+                      .withValues(alpha: 0.2),
+                  checkmarkColor: Theme.of(context).colorScheme.primary,
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
             // BMI Preview
             if (_heightCm != null &&
                 _weightKg != null &&
@@ -869,7 +891,7 @@ class _ProfileSetupState extends State<ProfileSetup>
             ],
             SizedBox(height: 2.h),
             _buildInfoTip(
-                'Height and weight help us calculate your BMI and personalize calorie goals.'),
+                'Height, weight, and activity level help us calculate your BMR, TDEE, and personalize target calories & macros.'),
           ],
         ),
       ),
@@ -1142,19 +1164,9 @@ class _ProfileSetupState extends State<ProfileSetup>
 
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-        width: 1,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
+      color: Colors.white,
+      borderRadius: FoodInsightRadius.mdAll,
+      boxShadow: FoodInsightShadows.subtleCard,
     );
   }
 
