@@ -358,7 +358,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                             end: 0,
                             duration: 500.ms,
                             curve: Curves.easeOutCubic),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 20.h), // Ensures content scrolls fully above bottom nav and FAB
                   ],
                 ),
               ),
@@ -432,7 +432,12 @@ class _HomeDashboardState extends State<HomeDashboard>
           ],
         ),
         // ──────────── Skeuomorphic FAB ────────────
-        floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
+        floatingActionButton: _currentIndex == 0
+            ? Padding(
+                padding: EdgeInsets.only(bottom: 9.h), // Push above bottom nav
+                child: _buildScanFab(),
+              )
+            : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
