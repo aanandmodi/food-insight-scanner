@@ -50,8 +50,9 @@
 
     <!-- CONTENT BODY -->
     <LinearLayout
+        android:id="@+id/ll_body"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_below="@id/header_layout"
         android:layout_marginTop="20dp"
         android:baselineAligned="false"
@@ -227,4 +228,42 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- QUICK ACTIONS -->
+    <LinearLayout
+        android:id="@+id/ll_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ll_body"
+        android:layout_marginTop="20dp"
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <TextView
+            android:id="@+id/btn_log_meal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_pill"
+            android:gravity="center"
+            android:padding="12dp"
+            android:text="Log Meal"
+            android:textColor="#C82855"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/btn_scan"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_pill"
+            android:gravity="center"
+            android:padding="12dp"
+            android:text="Scan Food"
+            android:textColor="#C82855"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
 </RelativeLayout>
