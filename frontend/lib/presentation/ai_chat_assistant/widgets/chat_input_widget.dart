@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-
 import '../../../theme/app_design_system.dart';
 
 class ChatInputWidget extends StatefulWidget {
@@ -62,115 +61,108 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.2.h),
+      padding: EdgeInsets.only(left: 4.w, right: 4.w, top: 1.5.h, bottom: MediaQuery.of(context).padding.bottom + 1.h),
       decoration: BoxDecoration(
         color: FoodInsightColors.warmWhite,
-        boxShadow: [
-          BoxShadow(
-            color: FoodInsightColors.embossedShadow.withValues(alpha: 0.1),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+        border: Border(
+          top: BorderSide(
+            color: FoodInsightColors.outlineGray.withValues(alpha: 0.5),
+            width: 1,
           ),
-        ],
+        ),
       ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: FoodInsightShadows.subtleCard,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6.w),
+                border: Border.all(
+                  color: FoodInsightColors.outlineGray.withValues(alpha: 0.8),
+                  width: 1,
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4.w),
                       child: TextField(
                         controller: widget.textController,
                         enabled: !widget.isLoading,
-                        maxLines: null,
+                        maxLines: 4,
+                        minLines: 1,
                         textCapitalization: TextCapitalization.sentences,
+                        style: FoodInsightTypography.body(size: 15),
                         decoration: InputDecoration(
-                          hintText: 'Ask about nutrition, ingredients...',
+                          hintText: 'Ask about nutrition...',
                           hintStyle: FoodInsightTypography.body(
-                            size: 14,
+                            size: 15,
                             color: FoodInsightColors.midGray,
                           ),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 4.w,
-                            vertical: 1.5.h,
-                          ),
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 1.5.h),
                         ),
-                        style: FoodInsightTypography.body(
-                          size: 14,
-                          color: FoodInsightColors.deepCharcoal,
-                        ),
-                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
-                    if (!_hasText)
-                      GestureDetector(
-                        onTap: _handleVoiceTap,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 3.w),
-                          child: Icon(
-                            Icons.mic_rounded,
-                            color: FoodInsightColors.scannerGreen,
-                            size: 5.5.w,
-                          ),
-                        ),
+                  ),
+                  if (!_hasText)
+                    IconButton(
+                      icon: Icon(
+                        Icons.mic_rounded,
+                        color: FoodInsightColors.midGray,
+                        size: 6.w,
                       ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(width: 2.w),
-            GestureDetector(
-              onTap: widget.isLoading ? null : _sendMessage,
-              child: Container(
-                width: 12.w,
-                height: 12.w,
-                decoration: BoxDecoration(
-                  gradient: _hasText && !widget.isLoading
-                      ? FoodInsightColors.healthyGradient
-                      : null,
-                  color: _hasText && !widget.isLoading
-                      ? null
-                      : FoodInsightColors.lightGray,
-                  shape: BoxShape.circle,
-                  boxShadow: _hasText && !widget.isLoading
-                      ? [
+                      onPressed: _handleVoiceTap,
+                    ),
+                  if (_hasText)
+                    Container(
+                      margin: EdgeInsets.all(1.w),
+                      decoration: BoxDecoration(
+                        color: FoodInsightColors.scannerGreen,
+                        shape: BoxShape.circle,
+                        boxShadow: [
                           BoxShadow(
-                            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.35),
-                            blurRadius: 12,
-                            spreadRadius: 1,
+                            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
-                        ]
-                      : null,
-                ),
-                child: widget.isLoading
-                    ? Padding(
-                        padding: EdgeInsets.all(3.w),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            FoodInsightColors.scannerGreen,
-                          ),
-                        ),
-                      )
-                    : Icon(
-                        Icons.send_rounded,
-                        color: _hasText
-                            ? Colors.white
-                            : FoodInsightColors.midGray,
-                        size: 5.w,
+                        ],
                       ),
+                      child: IconButton(
+                        icon: widget.isLoading
+                            ? SizedBox(
+                                width: 5.w,
+                                height: 5.w,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Icon(
+                                Icons.arrow_upward_rounded,
+                                color: Colors.white,
+                                size: 5.w,
+                              ),
+                        onPressed: widget.isLoading ? null : _sendMessage,
+                      ),
+                    ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
