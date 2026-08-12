@@ -489,34 +489,35 @@ class _HomeDashboardState extends State<HomeDashboard>
     return SafeArea(
       child: Container(
         margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
-        child: ClipRRect(
-          borderRadius: FoodInsightRadius.xxlAll,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.55),
-                borderRadius: FoodInsightRadius.xxlAll,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 24,
-                    spreadRadius: -4,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.95), // Highly opaque to prevent visual mess without blur
+            borderRadius: FoodInsightRadius.xxlAll,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 24,
+                spreadRadius: -4,
+                offset: const Offset(0, 8),
               ),
-              child: MediaQuery.removePadding(
-                context: context,
-                removeBottom: true,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 1.h),
-                  child: BottomNavigationBar(
-                    currentIndex: _currentIndex,
-                    onTap: _onBottomNavTap,
-                    type: BottomNavigationBarType.fixed,
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
+              BoxShadow(
+                color: FoodInsightColors.outlineGray.withValues(alpha: 0.3),
+                blurRadius: 0,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: MediaQuery.removePadding(
+            context: context,
+            removeBottom: true,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 1.h),
+              child: BottomNavigationBar(
+                currentIndex: _currentIndex,
+                onTap: _onBottomNavTap,
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
                     selectedItemColor: FoodInsightColors.scannerGreen,
                     unselectedItemColor: FoodInsightColors.midGray,
                     selectedLabelStyle: FoodInsightTypography.caption(

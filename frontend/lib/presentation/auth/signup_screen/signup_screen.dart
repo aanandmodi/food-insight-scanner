@@ -143,26 +143,23 @@ class _SignupScreenState extends State<SignupScreen>
                               },
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                                  child: Container(
-                                    padding: EdgeInsets.all(2.w),
-                                    decoration: BoxDecoration(
+                                child: Container(
+                                  padding: EdgeInsets.all(2.w),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.15)
+                                        : colorScheme.surface.withValues(alpha: 0.95), // Highly opaque
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
                                       color: isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : colorScheme.surface.withValues(alpha: 0.8),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.white.withValues(alpha: 0.15)
-                                            : colorScheme.outline.withValues(alpha: 0.3),
-                                      ),
+                                          ? Colors.white.withValues(alpha: 0.25)
+                                          : colorScheme.outline.withValues(alpha: 0.4),
                                     ),
-                                    child: CustomIconWidget(
-                                      iconName: 'arrow_back',
-                                      color: colorScheme.onSurface,
-                                      size: 24,
-                                    ),
+                                  ),
+                                  child: CustomIconWidget(
+                                    iconName: 'arrow_back',
+                                    color: colorScheme.onSurface,
+                                    size: 24,
                                   ),
                                 ),
                               ),
