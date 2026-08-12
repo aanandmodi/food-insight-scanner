@@ -19,7 +19,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <View
+            <FrameLayout
                 android:layout_width="4dp"
                 android:layout_height="16dp"
                 android:background="#FA3964" />
