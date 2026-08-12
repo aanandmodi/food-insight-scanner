@@ -270,6 +270,7 @@ class CloudFunctionService {
 User: $name
 Health Goal: $healthGoal
 Activity Level: $activityLevel
+Device Timezone: ${DateTime.now().timeZoneName} (Use this to infer the user's region and suggest local, regional cuisine. For example, if IST, suggest authentic Indian diet plans and recipes.)
 ${dietPrefs is List && dietPrefs.isNotEmpty ? 'Dietary Preferences: ${dietPrefs.join(", ")}\nIMPORTANT: Strictly follow these dietary preferences. If the user is Vegetarian, do NOT suggest non-veg meals.' : ''}
 ${allergies is List && allergies.isNotEmpty ? 'Allergies: ${allergies.join(", ")}\nIMPORTANT: NEVER suggest foods containing these allergens.' : ''}
 ${diseases is List && diseases.isNotEmpty ? 'Medical Conditions: ${diseases.join(", ")}\nIMPORTANT: Ensure meal suggestions are safe for these conditions.' : ''}
