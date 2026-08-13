@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
+    android:background="@drawable/widget_bg_skeuomorphic"
+    android:padding="16dp">
+
+    <!-- TOP HEADER -->
+    <RelativeLayout
+        android:id="@+id/header_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:animateLayoutChanges="true">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="4dp"
+                android:layout_height="16dp"
+                android:background="#FF5252" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:letterSpacing="0.08"
+                android:shadowColor="#40000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:text="CALORIE BURN &amp; ACTIVITY"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_graph_goal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_pill"
+            android:text="Goal: 400 kcal"
+            android:textColor="#FF5252"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <!-- CHART CANVAS IMAGEVIEW -->
+    <RelativeLayout
+        android:id="@+id/chart_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_above="@+id/metrics_layout"
+        android:layout_below="@+id/header_layout"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
+        android:animateLayoutChanges="true">
+
+        <ImageView
+            android:id="@+id/iv_chart"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="Calorie Burn Chart"
+            android:scaleType="fitXY" />
+    </RelativeLayout>
+
+    <!-- METRICS SUMMARY ROW -->
+    <LinearLayout
+        android:id="@+id/metrics_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:animateLayoutChanges="true"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- ACTIVE CALORIES -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_active_cals"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:shadowColor="#40000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:text="240 kcal"
+                android:textColor="#FF5252"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ACTIVE CALS"
+                android:textColor="#A0A0A0"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- STEPS -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_steps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:shadowColor="#40000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:text="5,680"
+                android:textColor="#10B981"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="STEPS"
+                android:textColor="#A0A0A0"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- DISTANCE -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:shadowColor="#40000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:text="4.3 km"
+                android:textColor="#3B82F6"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DISTANCE"
+                android:textColor="#A0A0A0"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>

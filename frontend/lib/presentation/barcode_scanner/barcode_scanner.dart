@@ -16,7 +16,11 @@ import './widgets/scanning_animation_widget.dart';
 import './widgets/success_flash_widget.dart';
 
 class BarcodeScanner extends StatefulWidget {
-  const BarcodeScanner({super.key});
+  final bool isActive;
+  const BarcodeScanner({
+    super.key,
+    this.isActive = true,
+  });
 
   @override
   State<BarcodeScanner> createState() => _BarcodeScannerState();
@@ -41,7 +45,25 @@ class _BarcodeScannerState extends State<BarcodeScanner>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeScanner();
+    if (widget.isActive) {
+      _initializeScanner();
+    }
+  }
+
+  @override
+  void didUpdateWidget(BarcodeScanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      if (widget.isActive) {
+        if (_scannerController == null) {
+          _initializeScanner();
+        } else {
+          _scannerController!.start();
+        }
+      } else {
+        _scannerController?.stop();
+      }
+    }
   }
 
   @override
@@ -53,11 +75,13 @@ class _BarcodeScannerState extends State<BarcodeScanner>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_scannerController == null || !_isInitialized) return;
+    if (_scannerController == null || !_isInitialized || !widget.isActive) return;
 
     switch (state) {
       case AppLifecycleState.resumed:
-        _scannerController!.start();
+        if (widget.isActive) {
+          _scannerController!.start();
+        }
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
@@ -257,7 +281,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
       body: Stack(
         children: [
           // Camera preview or permission request
-          if (_hasPermission && _isInitialized && _scannerController != null)
+          if (widget.isActive && _hasPermission && _isInitialized && _scannerController != null)
             MobileScanner(
               controller: _scannerController!,
               onDetect: _onBarcodeDetected,
