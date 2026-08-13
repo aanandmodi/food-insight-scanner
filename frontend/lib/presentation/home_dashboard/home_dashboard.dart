@@ -34,10 +34,11 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class _HomeDashboardState extends State<HomeDashboard>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
   late AnimationController _refreshController;
   bool _isRefreshing = false;
+  int _unlockAnimationKey = 0;
 
   final Map<String, dynamic> _nutritionData = {
     'calories': 0,
@@ -59,6 +60,7 @@ class _HomeDashboardState extends State<HomeDashboard>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refreshController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -67,6 +69,22 @@ class _HomeDashboardState extends State<HomeDashboard>
       context.read<UserProfileProvider>().fetchProfile();
     });
     _loadUserData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      setState(() {
+        _unlockAnimationKey++;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -187,12 +205,6 @@ class _HomeDashboardState extends State<HomeDashboard>
       if (sugar > 20) return 'warning';
     }
     return 'safe';
-  }
-
-  @override
-  void dispose() {
-    _refreshController.dispose();
-    super.dispose();
   }
 
   Future<void> _handleRefresh() async {
@@ -487,8 +499,11 @@ class _HomeDashboardState extends State<HomeDashboard>
             IndexedStack(
               index: _currentIndex,
               children: [
-                _buildHomeContent(),
-                const BarcodeScanner(),
+                KeyedSubtree(
+                  key: ValueKey('home_content_$_unlockAnimationKey'),
+                  child: _buildHomeContent(),
+                ),
+                BarcodeScanner(isActive: _currentIndex == 1),
                 AiChatAssistant(initialImage: _selectedImage),
                 const ProfileScreen(),
               ],
