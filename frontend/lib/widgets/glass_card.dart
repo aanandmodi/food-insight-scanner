@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
@@ -28,7 +27,9 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = backgroundColor ??
-        (isDark ? AppTheme.glassDarkBg : Colors.white.withValues(alpha: 0.7));
+        (isDark
+            ? AppTheme.glassDarkBg.withValues(alpha: 0.95)
+            : Colors.white.withValues(alpha: 0.95));
     final border = borderColor ??
         (isDark ? AppTheme.glassDarkBorder : AppTheme.glassBorderLight);
 
@@ -39,7 +40,7 @@ class GlassCard extends StatelessWidget {
         child: Container(
           padding: padding ?? const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? AppTheme.glassDarkBg.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95), // Highly opaque color for performance
+            color: bg,
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
               color: border,
