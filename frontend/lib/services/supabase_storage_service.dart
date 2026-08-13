@@ -20,6 +20,7 @@ class SupabaseStorageService {
   }) async {
     if (_isInitialized) return;
     try {
+      // ignore: deprecated_member_use
       await Supabase.initialize(
         url: supabaseUrl,
         anonKey: anonKey,
@@ -31,13 +32,7 @@ class SupabaseStorageService {
     }
   }
 
-  bool get isReady {
-    try {
-      return _isInitialized || Supabase.instance.client != null;
-    } catch (_) {
-      return false;
-    }
-  }
+  bool get isReady => _isInitialized;
 
   SupabaseClient? get _client {
     try {
