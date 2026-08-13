@@ -12,11 +12,16 @@ class SupabaseStorageService {
   bool _isInitialized = false;
   static const String defaultBucket = 'food-insight-uploads';
 
-  /// Initialize Supabase with your project URL and public anon key.
+  static const String defaultSupabaseUrl = 'https://tslcgavpkujkfexzmisk.supabase.co';
+  static const String defaultAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzbGNnYXZwa3Vqa2ZleHptaXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MTIzNDAsImV4cCI6MjEwMjE4ODM0MH0.I5Es-XmBiTfXHxsOUenEQpfxCXFUtTCVfr4enDULO5M';
+  static const String defaultPublishableKey = 'sb_publishable_qazTUN379u3XfEcjHxq2zA_4N1rrqNr';
+
+  /// Initialize Supabase with project URL and public key.
   /// Call this in main() or when storage is first accessed.
   Future<void> initialize({
-    required String supabaseUrl,
-    required String anonKey,
+    String supabaseUrl = defaultSupabaseUrl,
+    String anonKey = defaultAnonKey,
   }) async {
     if (_isInitialized) return;
     try {

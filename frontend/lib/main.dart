@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'core/app_export.dart';
 import 'services/local_database_service.dart';
+import 'services/supabase_storage_service.dart';
 // Corrected Path
 import 'widgets/custom_error_widget.dart';
 
@@ -68,6 +69,13 @@ Future<void> main() async {
       debugPrint('Local database initialized successfully.');
     } catch (e) {
       debugPrint('Error initializing local database: $e');
+    }
+
+    // Initialize 100% free Supabase Cloud Storage
+    try {
+      await SupabaseStorageService().initialize();
+    } catch (e) {
+      debugPrint('Error initializing Supabase Storage: $e');
     }
 
     // It's better to manage this state within a state management solution
