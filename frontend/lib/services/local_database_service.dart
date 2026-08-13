@@ -303,6 +303,15 @@ class LocalDatabaseService {
     debugPrint('Deleted $deleted scan_history row(s) for barcode=$barcode');
   }
 
+  /// Clear all local tables (used on user sign-out to prevent data leakage across accounts).
+  Future<void> clearAllLocalData() async {
+    final db = _database;
+    await db.delete('diet_log');
+    await db.delete('scan_history');
+    await db.delete('shopping_list');
+    debugPrint('LocalDatabaseService: Cleared all local tables for account switch.');
+  }
+
   /// Clear all local diet log entries (used on sign-out).
   Future<void> clearDietLog() async {
     await _database.delete('diet_log');

@@ -366,11 +366,11 @@ class AuthService {
         debugPrint('Error clearing local scan history: $e');
       }
 
-      // Clear local diet log (SQLite)
+      // Clear all local SQLite tables (scan_history, diet_log, shopping_list)
       try {
-        await LocalDatabaseService().clearDietLog();
+        await LocalDatabaseService().clearAllLocalData();
       } catch (e) {
-        debugPrint('Error clearing local diet log: $e');
+        debugPrint('Error clearing local database tables: $e');
       }
     } catch (e) {
       debugPrint('Error clearing local data: $e');
