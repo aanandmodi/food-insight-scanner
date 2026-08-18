@@ -9,12 +9,14 @@ class QuickActionsSection extends StatelessWidget {
   final VoidCallback onScanBarcode;
   final VoidCallback onUploadImage;
   final VoidCallback onChatWithAI;
+  final VoidCallback onShoppingList;
 
   const QuickActionsSection({
     super.key,
     required this.onScanBarcode,
     required this.onUploadImage,
     required this.onChatWithAI,
+    required this.onShoppingList,
   });
 
   @override
@@ -47,7 +49,7 @@ class QuickActionsSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          // Two side-by-side action items
+          // First row of action items
           Row(
             children: [
               Expanded(
@@ -74,15 +76,31 @@ class QuickActionsSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          // Full-width interactive AI card with glowing gradients
-          _PremiumActionCard(
-            icon: Icons.auto_awesome_rounded,
-            title: 'AI Smart Chat',
-            subtitle: 'Ask about recipes, safe ingredients, and health advice',
-            startColor: FoodInsightColors.purpleAccent,
-            endColor: const Color(0xFFBD54E0),
-            onTap: onChatWithAI,
-            isWide: true,
+          // Second row of action items
+          Row(
+            children: [
+              Expanded(
+                child: _PremiumActionCard(
+                  icon: Icons.shopping_cart_rounded,
+                  title: 'Shopping List',
+                  subtitle: 'Manage groceries',
+                  startColor: FoodInsightColors.warningAmber,
+                  endColor: const Color(0xFFF09819),
+                  onTap: onShoppingList,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _PremiumActionCard(
+                  icon: Icons.auto_awesome_rounded,
+                  title: 'AI Smart Chat',
+                  subtitle: 'Get health advice',
+                  startColor: FoodInsightColors.purpleAccent,
+                  endColor: const Color(0xFFBD54E0),
+                  onTap: onChatWithAI,
+                ),
+              ),
+            ],
           ),
         ],
       ),

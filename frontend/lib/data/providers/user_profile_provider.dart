@@ -26,11 +26,6 @@ class UserProfileProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     
-    // Always attempt cloud sync first if authenticated
-    if (AuthService().isAuthenticated) {
-      await syncWithCloud();
-    }
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final name = prefs.getString('user_name');
@@ -45,8 +40,8 @@ class UserProfileProvider extends ChangeNotifier {
         _profile = UserProfile(
           uid: AuthService().currentUser?.uid ?? 'local_user',
           name: name,
-          email: AuthService().currentUser?.email ?? prefs.getString('user_email') ?? 'local@user.app',
-          photoUrl: AuthService().currentUser?.photoURL,
+          email: AuthService().currentUser?.email ?? prefs.getString('user_email') ?? '',
+          photoUrl: AuthService().currentUser?.photoURL ?? prefs.getString('user_photoUrl'),
           gender: prefs.getString('user_gender') ?? 'Male',
           dateOfBirth: dob,
           heightCm: prefs.getDouble('user_height') ?? 170.0,
@@ -60,9 +55,6 @@ class UserProfileProvider extends ChangeNotifier {
           profileCompleted: prefs.getBool('profile_completed') ?? true,
         );
       } else {
-        // No local profile data exists — leave _profile as null.
-        // The auth gate / splash screen will check auth state and route
-        // to the login screen or profile setup accordingly.
         _profile = null;
       }
     } catch (e) {
@@ -71,6 +63,13 @@ class UserProfileProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+
+    // Attempt cloud sync in the background if authenticated
+    if (AuthService().isAuthenticated) {
+      syncWithCloud().catchError((e) {
+        debugPrint('Background cloud sync failed: $e');
+      });
     }
   }
 
@@ -84,6 +83,9 @@ class UserProfileProvider extends ChangeNotifier {
       await prefs.setString('user_name', newProfile.name);
       if (newProfile.email != null) {
         await prefs.setString('user_email', newProfile.email!);
+      }
+      if (newProfile.photoUrl != null) {
+        await prefs.setString('user_photoUrl', newProfile.photoUrl!);
       }
       await prefs.setString('user_gender', newProfile.gender);
       if (newProfile.dateOfBirth != null) {
@@ -129,7 +131,7 @@ class UserProfileProvider extends ChangeNotifier {
         final newProfile = UserProfile(
           uid: AuthService().currentUser?.uid ?? 'cloud_user',
           name: cloudData['name'] ?? 'User',
-          email: AuthService().currentUser?.email ?? cloudData['email'] ?? 'local@user.app',
+          email: AuthService().currentUser?.email ?? cloudData['email'] ?? '',
           photoUrl: AuthService().currentUser?.photoURL ?? cloudData['photoUrl'],
           gender: cloudData['gender'] ?? 'Male',
           dateOfBirth: cloudData['dateOfBirth'] != null ? DateTime.tryParse(cloudData['dateOfBirth']) : null,

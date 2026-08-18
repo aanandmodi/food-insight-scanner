@@ -325,6 +325,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                       userName: profile?.name ?? 'User',
                       currentDate: _formatCurrentDate(),
                       photoUrl: profile?.photoUrl,
+                      email: profile?.email,
                     )
                         .animate()
                         .fadeIn(
@@ -371,6 +372,9 @@ class _HomeDashboardState extends State<HomeDashboard>
                       },
                       onUploadImage: _handleUploadImage,
                       onChatWithAI: _navigateToAIChat,
+                      onShoppingList: () {
+                        Navigator.pushNamed(context, '/shopping-list');
+                      },
                     )
                         .animate()
                         .fadeIn(
@@ -420,12 +424,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                     SizedBox(height: 2.h),
                     MealPlanPreviewWidget(
                       onViewPlan: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MealPlannerScreen(),
-                          ),
-                        );
+                        Navigator.pushNamed(context, AppRoutes.mealPlanner);
                       },
                     )
                         .animate()
