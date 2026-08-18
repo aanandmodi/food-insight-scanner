@@ -51,7 +51,9 @@ class CloudFunctionService {
   }
 
   String _extractJson(String content) {
+    if (content.trim().isEmpty) return "{}";
     var cleaned = content.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+    if (cleaned.isEmpty) return "{}";
     final start = cleaned.indexOf('{');
     final end = cleaned.lastIndexOf('}');
     if (start != -1 && end != -1) {
@@ -188,7 +190,7 @@ class CloudFunctionService {
         ];
 
         final aiResponse = await _callGroq(
-          model: 'openai/gpt-oss-20b',
+          model: 'llama-3.3-70b-versatile',
           messages: messages,
           temperature: asJson ? 0.2 : 0.5,
           maxTokens: 256,
@@ -239,7 +241,7 @@ class CloudFunctionService {
   Future<Map<String, dynamic>?> parseMeal(String description) async {
     try {
       final response = await _callGroq(
-        model: 'openai/gpt-oss-20b',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             "role": "system",
@@ -252,8 +254,8 @@ class CloudFunctionService {
         ],
         temperature: 0.1,
         maxTokens: 256,
+        responseFormat: {"type": "json_object"},
       );
-
       final raw = response['choices']?[0]?['message']?['content'] ?? "";
       final cleaned = _extractJson(raw);
       
@@ -375,7 +377,7 @@ Format:
 }''';
 
       final response = await _callGroq(
-        model: 'openai/gpt-oss-20b',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             "role": "system",
@@ -392,7 +394,8 @@ Format:
       );
 
       final raw = response['choices']?[0]?['message']?['content'] ?? "{}";
-      final parsed = jsonDecode(raw);
+      final cleaned = _extractJson(raw);
+      final parsed = jsonDecode(cleaned);
       return parsed;
     } catch (e) {
       debugPrint('recalibrateMacrosWithAI error: $e');
@@ -427,7 +430,7 @@ Example format:
 }''';
 
       final response = await _callGroq(
-        model: 'openai/gpt-oss-20b',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             "role": "system",
@@ -562,7 +565,7 @@ Never use markdown blocks for the JSON. Just output the exact text string format
       }
 
       final response = await _callGroq(
-        model: 'openai/gpt-oss-20b',
+        model: 'llama-3.3-70b-versatile',
         messages: groqMessages,
         temperature: 0.7,
         maxTokens: 1024,
@@ -638,7 +641,7 @@ Never use markdown blocks for the JSON. Just output the exact text string format
           'Return ONLY the suggestions, one per line, without numbering or bullets.';
 
       final response = await _callGroq(
-        model: 'openai/gpt-oss-20b',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             "role": "system",

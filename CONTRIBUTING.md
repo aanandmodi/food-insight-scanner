@@ -1,4 +1,4 @@
-# Contributing to NutriScan AI — Food Insight Scanner
+# Contributing to Food Insight Scanner
 
 Thank you for your interest in contributing! This guide will help you get started.
 

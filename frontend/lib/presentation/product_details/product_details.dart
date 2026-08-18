@@ -41,6 +41,10 @@ class _ProductDetailsState extends State<ProductDetails> {
   // Product data received from route arguments
   Map<String, dynamic> productData = {};
 
+  // Loading state for when we receive a barcode string and need to fetch
+  bool _isLoadingProduct = false;
+  bool _didProcessArgs = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,12 +55,55 @@ class _ProductDetailsState extends State<ProductDetails> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_didProcessArgs) return;
+    _didProcessArgs = true;
+
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic>) {
+      // Direct product data (from barcode scanner)
       setState(() {
         productData = args;
       });
-      _loadAlternatives(); 
+      _loadAlternatives();
+    } else if (args is String && args.isNotEmpty) {
+      // Barcode string (from scan history) — need to fetch product data
+      _fetchProductByBarcode(args);
+    }
+  }
+
+  Future<void> _fetchProductByBarcode(String barcode) async {
+    setState(() {
+      _isLoadingProduct = true;
+    });
+
+    try {
+      final data = await CloudFunctionService().analyzeProduct(barcode);
+      if (data != null && mounted) {
+        setState(() {
+          productData = data;
+          _isLoadingProduct = false;
+        });
+        _loadAlternatives();
+      } else if (mounted) {
+        setState(() {
+          _isLoadingProduct = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load product details.', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            backgroundColor: FoodInsightColors.healthRed,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      debugPrint('Error fetching product by barcode: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingProduct = false;
+        });
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -215,7 +262,19 @@ class _ProductDetailsState extends State<ProductDetails> {
       return Scaffold(
         backgroundColor: FoodInsightColors.warmWhite,
         body: Center(
-          child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+              if (_isLoadingProduct) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Loading product details...',
+                  style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray),
+                ),
+              ],
+            ],
+          ),
         ),
       );
     }

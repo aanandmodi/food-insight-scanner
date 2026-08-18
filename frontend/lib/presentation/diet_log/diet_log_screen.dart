@@ -54,9 +54,14 @@ class _DietLogScreenState extends State<DietLogScreen> {
 
       List<Map<String, dynamic>> entries = [];
       try {
-        entries = await LocalDatabaseService().getDietLogByDate(dateString);
+        entries = await FirestoreService().getDietLog(dateString);
       } catch (e) {
-        debugPrint('Local diet log query failed: $e');
+        debugPrint('Firestore diet log query failed: $e');
+        try {
+          entries = await LocalDatabaseService().getDietLogByDate(dateString);
+        } catch (e2) {
+          debugPrint('Local diet log query failed: $e2');
+        }
       }
 
       UserProfile? profileProviderData;
