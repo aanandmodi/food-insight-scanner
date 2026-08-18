@@ -15,6 +15,8 @@ import '../presentation/profile/profile_screen.dart';
 import '../presentation/diet_log/diet_log_screen.dart';
 import '../presentation/settings/settings_screen.dart';
 import '../presentation/shopping_list/shopping_list_screen.dart';
+import '../presentation/meal_planner/meal_planner_screen.dart';
+import '../presentation/meal_planner/meal_planner_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
@@ -32,6 +34,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String settings = '/settings';
   static const String shoppingList = '/shopping-list';
+  static const String mealPlanner = '/meal-planner';
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const AuthGate(),
@@ -76,6 +79,9 @@ class AppRoutes {
         break;
       case shoppingList:
         page = const ShoppingListScreen();
+        break;
+      case mealPlanner:
+        page = const MealPlannerScreen();
         break;
       default:
         return null;

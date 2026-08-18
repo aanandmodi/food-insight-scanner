@@ -8,17 +8,19 @@ class GreetingHeader extends StatelessWidget {
   final String userName;
   final String currentDate;
   final String? photoUrl;
+  final String? email;
 
   const GreetingHeader({
     super.key,
     required this.userName,
     required this.currentDate,
     this.photoUrl,
+    this.email,
   });
 
   @override
   Widget build(BuildContext context) {
-    final userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'W';
+    final userInitial = (email != null && email!.isNotEmpty) ? email![0].toUpperCase() : (userName.isNotEmpty ? userName[0].toUpperCase() : 'W');
 
     return Container(
       padding: EdgeInsets.fromLTRB(6.w, 3.h, 6.w, 1.h),

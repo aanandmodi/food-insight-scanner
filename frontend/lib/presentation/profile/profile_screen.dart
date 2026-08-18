@@ -235,9 +235,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     : null,
                                 child: profile?.photoUrl == null
                                     ? Text(
-                                        displayName.isNotEmpty
-                                            ? displayName[0].toUpperCase()
-                                            : 'U',
+                                        (profile?.email != null && profile!.email!.isNotEmpty)
+                                            ? profile!.email![0].toUpperCase()
+                                            : displayName.isNotEmpty
+                                                ? displayName[0].toUpperCase()
+                                                : 'U',
                                         style: FoodInsightTypography.display(
                                           size: 28,
                                           weight: FontWeight.w800,
@@ -296,6 +298,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 100.ms)
                             .slideY(begin: 0.05, end: 0),
+
+                      SizedBox(height: 3.h),
+                      
+                      // Quick Links Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              title: 'Shopping List',
+                              icon: Icons.shopping_cart_rounded,
+                              color: FoodInsightColors.warningAmber,
+                              onTap: () => Navigator.pushNamed(context, '/shopping-list'),
+                            ),
+                          ),
+                          SizedBox(width: 3.w),
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              title: 'Scan History',
+                              icon: Icons.history_rounded,
+                              color: FoodInsightColors.infoBlue,
+                              onTap: () => Navigator.pushNamed(context, '/scan-history'),
+                            ),
+                          ),
+                        ],
+                      )
+                          .animate()
+                          .fadeIn(duration: 500.ms, delay: 120.ms)
+                          .slideY(begin: 0.05, end: 0),
 
                       SizedBox(height: 3.h),
 
@@ -401,6 +433,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(BuildContext context, {required String title, required IconData icon, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 3.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: FoodInsightRadius.mdAll,
+          boxShadow: FoodInsightShadows.subtleCard,
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              title,
+              style: FoodInsightTypography.body(
+                size: 13,
+                weight: FontWeight.w700,
+                color: FoodInsightColors.deepCharcoal,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
