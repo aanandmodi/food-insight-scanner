@@ -140,6 +140,7 @@ class _ProfileSetupState extends State<ProfileSetup>
       }
 
       if (cloudProfile != null) {
+        if (!mounted) return;
         setState(() {
           _userName = cloudProfile!['name'] ?? '';
           _nameController.text = _userName;

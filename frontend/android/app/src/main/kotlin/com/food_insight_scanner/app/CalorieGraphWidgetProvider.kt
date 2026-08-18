@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.*
 import android.net.Uri
+import android.util.Log
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 
@@ -17,40 +18,84 @@ class CalorieGraphWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences
     ) {
-        appWidgetIds.forEach { widgetId ->
-            val views = RemoteViews(context.packageName, R.layout.widget_layout_graph).apply {
-                val activeCals = widgetData.getInt("active_calories", 0)
-                val activeCalsGoal = widgetData.getInt("active_calories_goal", 400)
-                val steps = widgetData.getInt("steps", 0)
-                val distanceKm = widgetData.getFloat("distance_km", 0.0f)
-                val hourlyBurnDataStr = widgetData.getString("hourly_burn_data", "") ?: ""
+        try {
+            appWidgetIds.forEach { widgetId ->
+                val views = RemoteViews(context.packageName, R.layout.widget_layout_graph).apply {
+                    val activeCals = getSafeInt(widgetData, "active_calories", 0)
+                    val activeCalsGoal = getSafeInt(widgetData, "active_calories_goal", 400)
+                    val steps = getSafeInt(widgetData, "steps", 0)
+                    val distanceKm = getSafeFloat(widgetData, "distance_km", 0.0f)
+                    val hourlyBurnDataStr = widgetData.getString("hourly_burn_data", "") ?: ""
 
-                setTextViewText(R.id.tv_graph_goal, "Goal: $activeCalsGoal kcal")
-                setTextViewText(R.id.tv_active_cals, "$activeCals kcal")
-                setTextViewText(R.id.tv_steps, String.format("%,d", steps))
-                setTextViewText(R.id.tv_distance, String.format("%.1f km", distanceKm))
+                    setTextViewText(R.id.tv_graph_goal, "Goal: $activeCalsGoal kcal")
+                    setTextViewText(R.id.tv_active_cals, "$activeCals kcal")
+                    setTextViewText(R.id.tv_steps, String.format("%,d", steps))
+                    setTextViewText(R.id.tv_distance, String.format("%.1f km", distanceKm))
 
-                // Render dynamic 24-hour calorie burn chart bitmap
-                val chartBitmap = createChartBitmap(hourlyBurnDataStr, activeCalsGoal)
-                setImageViewBitmap(R.id.iv_chart, chartBitmap)
+                    // Render dynamic 24-hour calorie burn chart bitmap
+                    val chartBitmap = createChartBitmap(hourlyBurnDataStr, activeCalsGoal)
+                    setImageViewBitmap(R.id.iv_chart, chartBitmap)
 
-                // Launch App Intent on Tap
-                val appIntent = Intent(context, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = Uri.parse("foodinsight://home")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    // Launch App Intent on Tap
+                    val appIntent = Intent(context, MainActivity::class.java).apply {
+                        action = Intent.ACTION_VIEW
+                        data = Uri.parse("foodinsight://home")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val pendingIntent = PendingIntent.getActivity(
+                        context,
+                        widgetId,
+                        appIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    setOnClickPendingIntent(R.id.chart_container, pendingIntent)
+                    setOnClickPendingIntent(R.id.header_layout, pendingIntent)
+                    setOnClickPendingIntent(R.id.metrics_layout, pendingIntent)
                 }
-                val pendingIntent = PendingIntent.getActivity(
-                    context,
-                    widgetId,
-                    appIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                setOnClickPendingIntent(R.id.chart_container, pendingIntent)
-                setOnClickPendingIntent(R.id.header_layout, pendingIntent)
-                setOnClickPendingIntent(R.id.metrics_layout, pendingIntent)
+                appWidgetManager.updateAppWidget(widgetId, views)
             }
-            appWidgetManager.updateAppWidget(widgetId, views)
+        } catch (e: Throwable) {
+            Log.e("CalorieGraphWidget", "Widget update error: ${e.message}", e)
+        }
+    }
+
+    private fun getSafeInt(prefs: SharedPreferences, key: String, defaultVal: Int): Int {
+        return try {
+            prefs.getInt(key, defaultVal)
+        } catch (_: Exception) {
+            try {
+                prefs.getLong(key, defaultVal.toLong()).toInt()
+            } catch (_: Exception) {
+                try {
+                    prefs.getFloat(key, defaultVal.toFloat()).toInt()
+                } catch (_: Exception) {
+                    try {
+                        prefs.getString(key, null)?.toIntOrNull() ?: defaultVal
+                    } catch (_: Exception) {
+                        defaultVal
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getSafeFloat(prefs: SharedPreferences, key: String, defaultVal: Float): Float {
+        return try {
+            prefs.getFloat(key, defaultVal)
+        } catch (_: Exception) {
+            try {
+                prefs.getInt(key, defaultVal.toInt()).toFloat()
+            } catch (_: Exception) {
+                try {
+                    prefs.getLong(key, defaultVal.toLong()).toFloat()
+                } catch (_: Exception) {
+                    try {
+                        prefs.getString(key, null)?.toFloatOrNull() ?: defaultVal
+                    } catch (_: Exception) {
+                        defaultVal
+                    }
+                }
+            }
         }
     }
 
@@ -67,7 +112,6 @@ class CalorieGraphWidgetProvider : HomeWidgetProvider() {
                 values[i] = parts[i].toFloatOrNull() ?: 0f
             }
         } else {
-            // Default sample distribution if no data available
             val mock = floatArrayOf(
                 5f, 2f, 0f, 0f, 0f, 10f, 35f, 55f, 40f, 30f, 45f, 60f,
                 75f, 50f, 40f, 35f, 50f, 65f, 45f, 30f, 20f, 15f, 10f, 5f

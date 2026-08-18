@@ -8,6 +8,8 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/prototype_button.dart';
+import 'package:provider/provider.dart';
+import '../../../data/providers/user_profile_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -82,6 +84,8 @@ class _SignupScreenState extends State<SignupScreen>
         displayName: _nameController.text.trim(),
       );
       if (mounted) {
+        // Force a fresh fetch/sync from Firestore now that the user is logged in
+        Provider.of<UserProfileProvider>(context, listen: false).fetchProfile();
         Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
       }
     } catch (e) {

@@ -123,13 +123,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _resetProfileData() async {
+  Future<void> _handleLogout() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Reset Profile', style: FoodInsightTypography.heading(size: 20, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal)),
-        content: Text('Are you sure you want to reset your personal profile setup?', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray)),
+        title: Text(
+          'Log Out',
+          style: FoodInsightTypography.heading(size: 18, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal),
+        ),
+        content: Text(
+          'Are you sure you want to log out of your account?',
+          style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -141,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               backgroundColor: FoodInsightColors.scannerGreen,
               shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
             ),
-            child: Text('Reset Profile', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            child: Text('Log Out', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
           ),
         ],
       ),
@@ -149,25 +155,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirmed == true) {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('user_name');
-        await prefs.remove('profile_completed');
+        await _authService.signOut();
         if (mounted) {
           context.read<UserProfileProvider>().clearProfile();
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.profileSetup, (route) => false);
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error resetting profile: $e')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
         }
       }
     }
   }
 
-  Future<void> _clearAllLocalData() async {
+  Future<void> _handleDeleteAccount() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -178,14 +179,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SizedBox(width: 2.w),
             Expanded(
               child: Text(
-                'Clear All Local Data',
+                'Delete Account',
                 style: FoodInsightTypography.heading(size: 18, weight: FontWeight.w800, color: FoodInsightColors.healthRed),
               ),
             ),
           ],
         ),
         content: Text(
-          'This action is permanent. All your local data including profile setup, scan history, and diet logs will be completely cleared from this device.',
+          'This action is permanent and cannot be undone. All your data will be deleted.',
           style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray),
         ),
         actions: [
@@ -199,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               backgroundColor: FoodInsightColors.healthRed,
               shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
             ),
-            child: Text('Clear Everything', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            child: Text('Delete', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
           ),
         ],
       ),
@@ -207,25 +208,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirmed == true) {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        await LocalDatabaseService().clearScans();
-        await LocalDatabaseService().clearDietLog();
-        await LocalDatabaseService().clearCheckedShoppingItems();
-
+        await _authService.deleteAccount();
         if (mounted) {
           context.read<UserProfileProvider>().clearProfile();
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.profileSetup, (route) => false);
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error clearing data: $e'),
-              backgroundColor: FoodInsightColors.healthRed,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting account: $e')));
         }
       }
     }
@@ -424,9 +414,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               SizedBox(height: 4.h),
 
-              // Reset Profile Data
+              // Log Out
               GestureDetector(
-                onTap: _resetProfileData,
+                onTap: _handleLogout,
                 child: Container(
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(vertical: 2.h),
@@ -444,10 +434,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.restart_alt_rounded, color: FoodInsightColors.scannerGreenDark),
+                      Icon(Icons.logout_rounded, color: FoodInsightColors.scannerGreenDark),
                       SizedBox(width: 2.w),
                       Text(
-                        'Reset Profile Setup',
+                        'Log Out',
                         style: FoodInsightTypography.heading(
                           size: 16,
                           weight: FontWeight.w700,
@@ -461,13 +451,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               SizedBox(height: 3.h),
 
-              // Clear All Local Data
+              // Delete Account
               Center(
                 child: TextButton.icon(
-                  onPressed: _clearAllLocalData,
-                  icon: Icon(Icons.delete_forever_rounded, color: FoodInsightColors.healthRed, size: 20),
+                  onPressed: _handleDeleteAccount,
+                  icon: Icon(Icons.person_remove_rounded, color: FoodInsightColors.healthRed, size: 20),
                   label: Text(
-                    'Clear All Local Data',
+                    'Delete Account',
                     style: FoodInsightTypography.body(
                       size: 14,
                       weight: FontWeight.w700,

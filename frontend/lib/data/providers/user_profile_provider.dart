@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/user_profile.dart';
+import '../../services/firestore_service.dart';
+import '../../services/auth_service.dart';
 
 class UserProfileProvider extends ChangeNotifier {
   UserProfile? _profile;
@@ -12,14 +14,22 @@ class UserProfileProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   UserProfileProvider() {
-    fetchProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchProfile();
+    });
   }
 
   /// Fetches the user profile from local SharedPreferences.
+  /// If a user is logged in, it will first attempt to sync with the cloud.
   Future<void> fetchProfile() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+    
+    // Always attempt cloud sync first if authenticated
+    if (AuthService().isAuthenticated) {
+      await syncWithCloud();
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -33,9 +43,10 @@ class UserProfileProvider extends ChangeNotifier {
         }
 
         _profile = UserProfile(
-          uid: 'local_user',
+          uid: AuthService().currentUser?.uid ?? 'local_user',
           name: name,
-          email: prefs.getString('user_email') ?? 'local@user.app',
+          email: AuthService().currentUser?.email ?? prefs.getString('user_email') ?? 'local@user.app',
+          photoUrl: AuthService().currentUser?.photoURL,
           gender: prefs.getString('user_gender') ?? 'Male',
           dateOfBirth: dob,
           heightCm: prefs.getDouble('user_height') ?? 170.0,
@@ -49,22 +60,10 @@ class UserProfileProvider extends ChangeNotifier {
           profileCompleted: prefs.getBool('profile_completed') ?? true,
         );
       } else {
-        // Fallback default local profile so app features work immediately
-        _profile = UserProfile(
-          uid: 'local_user',
-          name: 'Local User',
-          email: 'local@user.app',
-          gender: 'Male',
-          heightCm: 170.0,
-          weightKg: 70.0,
-          diseases: [],
-          allergies: [],
-          dietaryPreferences: [],
-          healthGoals: 'Healthy Lifestyle',
-          age: 25,
-          activityLevel: 'moderate',
-          profileCompleted: false,
-        );
+        // No local profile data exists — leave _profile as null.
+        // The auth gate / splash screen will check auth state and route
+        // to the login screen or profile setup accordingly.
+        _profile = null;
       }
     } catch (e) {
       debugPrint('Error loading local user profile: $e');
@@ -120,6 +119,37 @@ class UserProfileProvider extends ChangeNotifier {
     _profile = null;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  /// Syncs local state with Firestore data
+  Future<void> syncWithCloud() async {
+    try {
+      final cloudData = await FirestoreService().getUserProfile();
+      if (cloudData != null && cloudData.isNotEmpty) {
+        final newProfile = UserProfile(
+          uid: AuthService().currentUser?.uid ?? 'cloud_user',
+          name: cloudData['name'] ?? 'User',
+          email: AuthService().currentUser?.email ?? cloudData['email'] ?? 'local@user.app',
+          photoUrl: AuthService().currentUser?.photoURL ?? cloudData['photoUrl'],
+          gender: cloudData['gender'] ?? 'Male',
+          dateOfBirth: cloudData['dateOfBirth'] != null ? DateTime.tryParse(cloudData['dateOfBirth']) : null,
+          heightCm: (cloudData['heightCm'] as num?)?.toDouble() ?? 170.0,
+          weightKg: (cloudData['weightKg'] as num?)?.toDouble() ?? 70.0,
+          diseases: (cloudData['diseases'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+          allergies: (cloudData['allergies'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+          dietaryPreferences: (cloudData['dietaryPreferences'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+          healthGoals: cloudData['healthGoals'] ?? cloudData['healthGoal'] ?? 'Healthy Lifestyle',
+          age: (cloudData['age'] as num?)?.toInt() ?? 25,
+          activityLevel: cloudData['activityLevel'] ?? 'moderate',
+          profileCompleted: cloudData['profileCompleted'] ?? true,
+        );
+        
+        // This will update SharedPreferences AND _profile in memory
+        await saveProfile(newProfile);
+      }
+    } catch (e) {
+      debugPrint('Error syncing profile with cloud: $e');
+    }
   }
 }
 

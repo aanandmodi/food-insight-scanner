@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../core/app_export.dart';
 import '../../theme/app_design_system.dart';
 import '../../data/providers/user_profile_provider.dart';
+import '../../services/auth_service.dart';
+import '../../main.dart' show retryFirebaseInit;
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -37,18 +39,20 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeApp() async {
     try {
       _updateProgress('Loading secure environment...');
-      try {
-        await Firebase.initializeApp().timeout(const Duration(seconds: 3));
-      } catch (e) {
-        debugPrint('Firebase init optional skip: $e');
+      if (Firebase.apps.isEmpty) {
+        try {
+          await retryFirebaseInit();
+        } catch (e) {
+          debugPrint('Firebase init check skip: $e');
+        }
       }
 
       _updateProgress('Loading your profile...');
-      bool profileComplete = true;
       if (mounted) {
+        // Yield to the event loop so the initial build can complete
+        await Future.delayed(Duration.zero);
         final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
         await profileProvider.fetchProfile();
-        profileComplete = profileProvider.profile?.profileCompleted ?? true;
       }
       
       _updateProgress('Ready!');
@@ -57,10 +61,22 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
       final navigator = Navigator.of(context);
 
-      if (!profileComplete) {
-        navigator.pushReplacementNamed(AppRoutes.profileSetup);
+      // ── Auth Gate: Check if user is authenticated FIRST ──
+      final isAuthenticated = AuthService().isAuthenticated;
+
+      if (!isAuthenticated) {
+        // Not logged in → must go to login screen
+        navigator.pushReplacementNamed(AppRoutes.login);
       } else {
-        navigator.pushReplacementNamed(AppRoutes.homeDashboard);
+        // Logged in → check profile completeness
+        final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+        final profileComplete = profileProvider.profile?.profileCompleted ?? false;
+
+        if (!profileComplete) {
+          navigator.pushReplacementNamed(AppRoutes.profileSetup);
+        } else {
+          navigator.pushReplacementNamed(AppRoutes.homeDashboard);
+        }
       }
     } catch (e) {
       debugPrint('Initialization error: $e');
@@ -72,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen> {
         // Still attempt to navigate after a delay
         Future.delayed(const Duration(seconds: 2), () {
            if (mounted) {
-              Navigator.of(context).pushReplacementNamed(AppRoutes.homeDashboard);
+              Navigator.of(context).pushReplacementNamed(AppRoutes.login);
            }
         });
       }

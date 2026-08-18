@@ -43,6 +43,9 @@ This document tracks known issues, workarounds, and resolved bugs for the **Food
 | Alternative product click navigation | Missing arguments on click | Fixed passing arguments on product click | Aug 2026 |
 | Static fake nutrition goals | Hardcoded mock data | Wired up dynamic `UserUtils.calculateTDEE()` everywhere | Aug 2026 |
 | Profile offline fallback missing | No local cache for profile | Wired `SharedPreferences` as an offline profile fallback mechanism | Aug 2026 |
+| AI analysis & meal plan parse failures | Groq returning Markdown code blocks (` ```json `) | Implemented robust `_extractJson` to slice JSON substring manually | Aug 2026 |
+| Incorrect profile photo/email on Home & Profile | Always falling back to `local@user.app` | Updated `UserProfileProvider` to pull `email` and `photoURL` directly from Google Auth | Aug 2026 |
+| AI Alternative products not price matched | Missing prompt requirement | Updated AI Prompt for Alternatives to require similar pricing | Aug 2026 |
 | 10 additional minor bugs | Various | Resolved 10 additional UI and state bugs across the app | Aug 2026 |
 
 ---

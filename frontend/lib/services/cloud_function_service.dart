@@ -50,6 +50,22 @@ class CloudFunctionService {
     return jsonDecode(response.body);
   }
 
+  String _extractJson(String content) {
+    var cleaned = content.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+    final start = cleaned.indexOf('{');
+    final end = cleaned.lastIndexOf('}');
+    if (start != -1 && end != -1) {
+      return cleaned.substring(start, end + 1);
+    }
+    // Check for lists
+    final listStart = cleaned.indexOf('[');
+    final listEnd = cleaned.lastIndexOf(']');
+    if (listStart != -1 && listEnd != -1) {
+      return cleaned.substring(listStart, listEnd + 1);
+    }
+    return cleaned;
+  }
+
   Map<String, dynamic>? _parseProductPayload(dynamic rawData) {
     try {
       if (rawData is! Map) return null;
@@ -86,6 +102,7 @@ class CloudFunctionService {
           'summary': '${aiRaw['summary'] ?? 'AI analysis unavailable.'}',
           'isHealthy': aiRaw['isHealthy'] == true,
           'warnings': (aiRaw['warnings'] as List?)?.cast<dynamic>().map((e) => '$e').toList() ?? <String>[],
+          'microNutrients': aiRaw['microNutrients'],
         },
         'lastUpdated': '${data['lastUpdated'] ?? ''}',
       };
@@ -171,7 +188,7 @@ class CloudFunctionService {
         ];
 
         final aiResponse = await _callGroq(
-          model: 'llama-3.1-8b-instant',
+          model: 'openai/gpt-oss-20b',
           messages: messages,
           temperature: asJson ? 0.2 : 0.5,
           maxTokens: 256,
@@ -179,7 +196,12 @@ class CloudFunctionService {
         );
         
         final content = aiResponse['choices']?[0]?['message']?['content'] ?? (asJson ? "{}" : "");
-        aiAnalysis = asJson ? jsonDecode(content) : content;
+        if (asJson) {
+          final cleaned = _extractJson(content);
+          aiAnalysis = jsonDecode(cleaned);
+        } else {
+          aiAnalysis = content;
+        }
       } catch (e) {
         debugPrint('AI analysis failed: $e');
         aiAnalysis = asJson ? {'summary': 'AI analysis unavailable.', 'isHealthy': false, 'warnings': []} : 'AI analysis unavailable.';
@@ -217,7 +239,7 @@ class CloudFunctionService {
   Future<Map<String, dynamic>?> parseMeal(String description) async {
     try {
       final response = await _callGroq(
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             "role": "system",
@@ -233,7 +255,7 @@ class CloudFunctionService {
       );
 
       final raw = response['choices']?[0]?['message']?['content'] ?? "";
-      final cleaned = raw.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+      final cleaned = _extractJson(raw);
       
       final parsed = jsonDecode(cleaned);
       return {
@@ -303,7 +325,7 @@ Output strictly a JSON object with this structure:
 }''';
 
       final response = await _callGroq(
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             "role": "system",
@@ -319,7 +341,7 @@ Output strictly a JSON object with this structure:
       );
 
       final raw = response['choices']?[0]?['message']?['content'] ?? "{}";
-      final cleaned = raw.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+      final cleaned = _extractJson(raw);
       
       return jsonDecode(cleaned);
     } catch (e) {
@@ -353,7 +375,7 @@ Format:
 }''';
 
       final response = await _callGroq(
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             "role": "system",
@@ -384,7 +406,7 @@ Format:
     Map<String, dynamic>? userProfile,
   }) async {
     try {
-      final prompt = '''Based on this product: "${productData['name']}" (Brand: ${productData['brand'] ?? "Unknown"}), suggest 3 healthier alternatives specifically available in the **Indian Market**.
+      final prompt = '''Based on this product: "${productData['name']}" (Brand: ${productData['brand'] ?? "Unknown"}), suggest 3 healthier alternatives specifically available in the **Indian Market**. The alternatives must be similar in price but healthier.
 
 User Context:
 ${userProfile != null ? jsonEncode(userProfile) : "None"}
@@ -405,7 +427,7 @@ Example format:
 }''';
 
       final response = await _callGroq(
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             "role": "system",
@@ -416,12 +438,13 @@ Example format:
             "content": prompt,
           }
         ],
-        temperature: 0.6,
+        temperature: 0.2,
         maxTokens: 1024,
+        responseFormat: {"type": "json_object"},
       );
 
       final raw = response['choices']?[0]?['message']?['content'] ?? "{}";
-      final cleaned = raw.replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+      final cleaned = _extractJson(raw);
       
       final parsed = jsonDecode(cleaned);
       if (parsed is List) {
@@ -539,7 +562,7 @@ Never use markdown blocks for the JSON. Just output the exact text string format
       }
 
       final response = await _callGroq(
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         messages: groqMessages,
         temperature: 0.7,
         maxTokens: 1024,
@@ -615,7 +638,7 @@ Never use markdown blocks for the JSON. Just output the exact text string format
           'Return ONLY the suggestions, one per line, without numbering or bullets.';
 
       final response = await _callGroq(
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             "role": "system",
