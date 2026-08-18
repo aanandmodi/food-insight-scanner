@@ -153,7 +153,7 @@ graph TD
 | **Frontend Framework** | **Flutter 3.x (Dart)** | Cross-platform high-performance UI rendering for iOS and Android. |
 | **State Management** | **Provider** | Lightweight, predictable reactive state propagation across screens. |
 | **UI & Animations** | **Sizer**, **flutter_animate**, **fl_chart** | Responsive sizing, smooth micro-interactions, and beautiful health progress charts. |
-| **Backend & Cloud Services**| **Firebase Cloud Functions (TypeScript/Node.js)** | Secure API gateway, serverless AI orchestration, and database operations. |
+| **Backend & Cloud Services**| **Direct HTTP REST APIs** | Secured serverless orchestration removed in favor of direct Groq & OFF HTTP calls to bypass Firebase Blaze constraints. |
 | **AI Inference Engine** | **Groq AI API (LLama 3.3 70B)** | Lightning-fast LLM inference for safety analysis, chat, and meal parsing. |
 | **Remote Database** | **Cloud Firestore** | Real-time, cloud-synced document database for user profiles and cloud scan logs. |
 | **Local Database** | **SQLite (`sqflite`)** | Fast, reliable local offline storage for scan history and shopping lists. |

@@ -21,6 +21,7 @@ class AuthService {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
+    serverClientId: '579993459207-6rcmc0fgucpdc01f3rhvmtlc1oprlou4.apps.googleusercontent.com',
   );
 
   // ──────────────────────────── Firebase Readiness ────────────────────────────
@@ -76,11 +77,14 @@ class AuthService {
 
   /// Sign in with email and password
   Future<User?> signInWithEmail(String email, String password) async {
+    if (!isFirebaseReady) {
+      await retryInit();
+    }
     final auth = _auth;
     if (auth == null) {
       throw AuthException(
         code: 'firebase-unavailable',
-        message: 'Firebase is not available. Please check your internet connection and try again.',
+        message: 'Unable to connect to Google Services. Please check your internet connection and try restarting the app.',
       );
     }
 
@@ -110,11 +114,14 @@ class AuthService {
     String password, {
     String? displayName,
   }) async {
+    if (!isFirebaseReady) {
+      await retryInit();
+    }
     final auth = _auth;
     if (auth == null) {
       throw AuthException(
         code: 'firebase-unavailable',
-        message: 'Firebase is not available. Please check your internet connection and try again.',
+        message: 'Unable to connect to Google Services. Please check your internet connection and try restarting the app.',
       );
     }
 
@@ -188,11 +195,14 @@ class AuthService {
 
   /// Initiates the Google Sign-In flow and authenticates with Firebase.
   Future<User?> signInWithGoogle() async {
+    if (!isFirebaseReady) {
+      await retryInit();
+    }
     final auth = _auth;
     if (auth == null) {
       throw AuthException(
         code: 'firebase-unavailable',
-        message: 'Firebase is not available. Please check your internet connection.',
+        message: 'Unable to connect to Google Services. Please check your internet connection and try restarting the app.',
       );
     }
 

@@ -6,8 +6,10 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_design_system.dart';
+import 'package:provider/provider.dart';
+import '../../../data/providers/user_profile_provider.dart';
 
-enum _AuthMethod { none, email, google, guest }
+enum _AuthMethod { none, email, google }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -104,6 +106,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _navigateAfterAuth() {
     if (!mounted) return;
+    
+    // Force a fresh fetch/sync from Firestore now that the user is logged in
+    Provider.of<UserProfileProvider>(context, listen: false).fetchProfile();
+
     // Go to authGate which will determine next screen (profile setup or home)
     Navigator.pushReplacementNamed(context, AppRoutes.authGate);
   }
@@ -143,41 +149,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  Future<void> _handleGuestSignIn() async {
-    HapticFeedback.lightImpact();
-    _setLoading(true, _AuthMethod.guest);
-    try {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
-      }
-    } catch (e) {
-      debugPrint('Guest local sign-in failed: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  Future<void> _handleRetryConnection() async {
-    if (_isRetrying) return;
-    setState(() => _isRetrying = true);
-    HapticFeedback.lightImpact();
-    try {
-      final success = await _authService.retryInit();
-      if (mounted) {
-        if (success) {
-          _showSnackBar('Connected successfully!', isError: false);
-          setState(() {});
-        } else {
-          _showSnackBar(
-              'Unable to connect. Check your internet and try again.');
-        }
-      }
-    } catch (e) {
-      _showSnackBar('Connection failed: $e');
-    } finally {
-      if (mounted) setState(() => _isRetrying = false);
-    }
-  }
 
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
@@ -228,9 +199,7 @@ class _LoginScreenState extends State<LoginScreen>
                           children: [
                             SizedBox(height: 5.h),
 
-                            // ── Firebase Offline Banner ──
-                            if (!_authService.isFirebaseReady)
-                              _buildOfflineBanner(),
+
 
                             // ── Logo & Brand ──
                             _buildBrandSection(),
@@ -261,8 +230,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                             SizedBox(height: 2.h),
 
-                            // ── Guest / Offline ──
-                            _buildSecondaryActions(),
+
 
                             const Spacer(),
 
@@ -284,78 +252,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildOfflineBanner() {
-    return GestureDetector(
-      onTap: _isRetrying ? null : _handleRetryConnection,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        margin: EdgeInsets.only(bottom: 2.h),
-        decoration: BoxDecoration(
-          color: FoodInsightColors.warningAmberLight,
-          borderRadius: FoodInsightRadius.mdAll,
-          border: Border.all(
-            color: FoodInsightColors.warningAmber.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: FoodInsightColors.warningAmber.withValues(alpha: 0.15),
-                borderRadius: FoodInsightRadius.xsAll,
-              ),
-              child: const Icon(
-                Icons.cloud_off_rounded,
-                color: FoodInsightColors.warningAmber,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Offline Mode',
-                    style: FoodInsightTypography.body(
-                      size: 13,
-                      weight: FontWeight.w700,
-                      color: FoodInsightColors.deepCharcoal,
-                    ),
-                  ),
-                  Text(
-                    'Tap to retry connection',
-                    style: FoodInsightTypography.caption(
-                      size: 11,
-                      color: FoodInsightColors.midGray,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_isRetrying)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(FoodInsightColors.warningAmber),
-                ),
-              )
-            else
-              const Icon(
-                Icons.refresh_rounded,
-                color: FoodInsightColors.warningAmber,
-                size: 22,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildBrandSection() {
     return Column(
@@ -728,124 +624,6 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSecondaryActions() {
-    return Column(
-      children: [
-        // Guest mode
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: TextButton(
-            onPressed: _isLoading ? null : _handleGuestSignIn,
-            style: TextButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: FoodInsightRadius.mdAll,
-              ),
-            ),
-            child: _isLoading && _activeMethod == _AuthMethod.guest
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        FoodInsightColors.midGray,
-                      ),
-                    ),
-                  )
-                : Text(
-                    'Continue as Guest',
-                    style: FoodInsightTypography.body(
-                      size: 15,
-                      weight: FontWeight.w600,
-                      color: FoodInsightColors.infoBlue,
-                    ),
-                  ),
-          ),
-        ),
-
-        // Retry connection (only when offline)
-        if (!_authService.isFirebaseReady) ...[
-          SizedBox(height: 1.h),
-          _buildRetrySection(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildRetrySection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: FoodInsightColors.healthRedLight,
-        borderRadius: FoodInsightRadius.mdAll,
-        border: Border.all(
-          color: FoodInsightColors.healthRed.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                color: FoodInsightColors.healthRed,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Some features require an internet connection.',
-                  style: FoodInsightTypography.caption(
-                    size: 12,
-                    weight: FontWeight.w500,
-                    color: FoodInsightColors.healthRed,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: ElevatedButton.icon(
-              onPressed: _isRetrying ? null : _handleRetryConnection,
-              icon: _isRetrying
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.refresh_rounded, size: 16),
-              label: Text(
-                _isRetrying ? 'Connecting...' : 'Retry Connection',
-                style: FoodInsightTypography.caption(
-                  size: 13,
-                  weight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: FoodInsightColors.healthRed,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: FoodInsightRadius.xsAll,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

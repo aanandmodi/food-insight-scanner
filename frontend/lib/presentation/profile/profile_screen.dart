@@ -10,6 +10,7 @@ import '../../models/user_profile.dart';
 import '../../theme/app_design_system.dart';
 import '../../services/local_database_service.dart';
 import '../../services/cloud_function_service.dart';
+import '../../services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,13 +23,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UserProfileProvider>().fetchProfile();
-    });
   }
 
   Future<void> _loadProfile() async {
     await context.read<UserProfileProvider>().fetchProfile();
+  }
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          'Log Out',
+          style: FoodInsightTypography.heading(size: 18, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal),
+        ),
+        content: Text(
+          'Are you sure you want to log out of your account?',
+          style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: FoodInsightColors.midGray)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FoodInsightColors.scannerGreen,
+              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
+            ),
+            child: Text('Log Out', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await AuthService().signOut();
+        if (mounted) {
+          context.read<UserProfileProvider>().clearProfile();
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
+        }
+      }
+    }
   }
 
   String _getDisplayName(UserProfile? profile) {
@@ -96,6 +139,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: Icon(Icons.settings_rounded, color: FoodInsightColors.midGray),
             onPressed: () => Navigator.pushNamed(context, '/settings'),
+          ),
+          IconButton(
+            icon: Icon(Icons.logout_rounded, color: FoodInsightColors.healthRed),
+            onPressed: _handleLogout,
           ),
         ],
       ),
@@ -183,16 +230,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: CircleAvatar(
                                 radius: 12.w,
                                 backgroundColor: FoodInsightColors.scannerGreenLight,
-                                child: Text(
-                                  displayName.isNotEmpty
-                                      ? displayName[0].toUpperCase()
-                                      : 'U',
-                                  style: FoodInsightTypography.display(
-                                    size: 28,
-                                    weight: FontWeight.w800,
-                                    color: FoodInsightColors.scannerGreen,
-                                  ),
-                                ),
+                                backgroundImage: profile?.photoUrl != null
+                                    ? NetworkImage(profile!.photoUrl!)
+                                    : null,
+                                child: profile?.photoUrl == null
+                                    ? Text(
+                                        displayName.isNotEmpty
+                                            ? displayName[0].toUpperCase()
+                                            : 'U',
+                                        style: FoodInsightTypography.display(
+                                          size: 28,
+                                          weight: FontWeight.w800,
+                                          color: FoodInsightColors.scannerGreen,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
                             SizedBox(height: 1.5.h),

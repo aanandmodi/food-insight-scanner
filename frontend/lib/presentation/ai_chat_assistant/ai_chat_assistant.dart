@@ -196,14 +196,26 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          String userMsg = "I apologize, but I'm having trouble connecting. Please try again in a moment.";
+          String bannerMsg = 'Error communicating with AI. Please check your internet.';
+          
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('401') || errStr.contains('api key')) {
+             bannerMsg = 'Invalid API Key. Please update it in Settings.';
+             userMsg = "My AI brain isn't authorized right now! Please check the API key in the app Settings.";
+          } else if (errStr.contains('429')) {
+             bannerMsg = 'API Rate limit exceeded. Try again later.';
+             userMsg = "Whoa, slow down! I'm getting too many requests right now. Please give me a moment to catch my breath.";
+          }
+          
           _messages.add({
             "id": _messages.length + 1,
-            "message": "I apologize, but I'm having trouble connecting. Please try again in a moment.",
+            "message": userMsg,
             "isUser": false,
             "timestamp": DateTime.now(),
           });
 
-          _errorMessage = 'Error communicating with AI. Please check your internet.';
+          _errorMessage = bannerMsg;
         });
       }
     } finally {

@@ -18,19 +18,23 @@ class LocalDatabaseService {
 
   /// Initialise the database. Call once from `main()`.
   Future<void> initialize() async {
-    if (_db != null) return;
+    if (_db != null && _db!.isOpen) return;
 
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, 'nutricore.db');
+    try {
+      final dbPath = await getDatabasesPath();
+      final path = p.join(dbPath, 'nutricore.db');
 
-    _db = await openDatabase(
-      path,
-      version: 2,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-    );
+      _db = await openDatabase(
+        path,
+        version: 2,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
 
-    debugPrint('LocalDatabaseService initialised at $path');
+      debugPrint('LocalDatabaseService initialised at $path');
+    } catch (e) {
+      debugPrint('Error in LocalDatabaseService initialize: $e');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -107,18 +111,23 @@ class LocalDatabaseService {
     }
   }
 
-  Database get _database {
-    if (_db == null) throw StateError('LocalDatabaseService not initialised. Call initialize() first.');
-    return _db!;
+  Future<Database?> get _database async {
+    if (_db == null || !_db!.isOpen) {
+      await initialize();
+    }
+    return _db;
   }
 
   // ──────────────────────────── Diet Log ────────────────────────────
 
   /// Insert a diet entry. Returns the row id.
   Future<int> insertDietEntry(Map<String, dynamic> entry) async {
+    final db = await _database;
+    if (db == null) return -1;
+
     final localId = entry['id'] as String? ?? 'local_${DateTime.now().millisecondsSinceEpoch}';
 
-    return _database.insert('diet_log', {
+    return db.insert('diet_log', {
       'local_id': localId,
       'firestore_id': entry['firestoreId'],
       'name': entry['name'] ?? 'Unknown',
@@ -139,7 +148,10 @@ class LocalDatabaseService {
 
   /// Update the Firestore ID and sync status after cloud save.
   Future<void> markDietEntrySynced(String localId, String firestoreId) async {
-    await _database.update(
+    final db = await _database;
+    if (db == null) return;
+
+    await db.update(
       'diet_log',
       {'firestore_id': firestoreId, 'sync_status': 'synced'},
       where: 'local_id = ?',
@@ -149,19 +161,30 @@ class LocalDatabaseService {
 
   /// Get diet entries for a specific date (YYYY-MM-DD).
   Future<List<Map<String, dynamic>>> getDietLogByDate(String dateString) async {
-    final rows = await _database.query(
-      'diet_log',
-      where: 'date = ?',
-      whereArgs: [dateString],
-      orderBy: 'time DESC',
-    );
+    final db = await _database;
+    if (db == null) return [];
 
-    return rows.map(_rowToDietEntry).toList();
+    try {
+      final rows = await db.query(
+        'diet_log',
+        where: 'date = ?',
+        whereArgs: [dateString],
+        orderBy: 'time DESC',
+      );
+
+      return rows.map(_rowToDietEntry).toList();
+    } catch (e) {
+      debugPrint('Error getting diet log by date: $e');
+      return [];
+    }
   }
 
   /// Delete a diet entry by its local_id or firestore_id.
   Future<void> deleteDietEntry(String entryId) async {
-    final deleted = await _database.delete(
+    final db = await _database;
+    if (db == null) return;
+
+    final deleted = await db.delete(
       'diet_log',
       where: 'local_id = ? OR firestore_id = ?',
       whereArgs: [entryId, entryId],
@@ -171,7 +194,10 @@ class LocalDatabaseService {
 
   /// Get all unsynced diet entries (for cloud sync on reconnect).
   Future<List<Map<String, dynamic>>> getUnsyncedDietEntries() async {
-    final rows = await _database.query(
+    final db = await _database;
+    if (db == null) return [];
+
+    final rows = await db.query(
       'diet_log',
       where: "sync_status = 'local'",
     );
@@ -199,7 +225,10 @@ class LocalDatabaseService {
   // ──────────────────────────── Shopping List ────────────────────────────
 
   Future<List<Map<String, dynamic>>> getShoppingList() async {
-    final rows = await _database.query(
+    final db = await _database;
+    if (db == null) return [];
+
+    final rows = await db.query(
       'shopping_list',
       orderBy: 'created_at DESC',
     );
@@ -214,8 +243,11 @@ class LocalDatabaseService {
   }
 
   Future<void> addShoppingItem(Map<String, dynamic> item) async {
+    final db = await _database;
+    if (db == null) return;
+
     final localId = 'shop_${DateTime.now().millisecondsSinceEpoch}';
-    await _database.insert('shopping_list', {
+    await db.insert('shopping_list', {
       'local_id': localId,
       'name': item['name'] ?? 'Item',
       'brand': item['brand'] ?? '',
@@ -226,7 +258,10 @@ class LocalDatabaseService {
   }
 
   Future<void> toggleShoppingItem(String localId, bool checked) async {
-    await _database.update(
+    final db = await _database;
+    if (db == null) return;
+
+    await db.update(
       'shopping_list',
       {'checked': checked ? 1 : 0},
       where: 'local_id = ?',
@@ -235,7 +270,10 @@ class LocalDatabaseService {
   }
 
   Future<void> deleteShoppingItem(String localId) async {
-    await _database.delete(
+    final db = await _database;
+    if (db == null) return;
+
+    await db.delete(
       'shopping_list',
       where: 'local_id = ?',
       whereArgs: [localId],
@@ -243,7 +281,10 @@ class LocalDatabaseService {
   }
 
   Future<void> clearCheckedShoppingItems() async {
-    await _database.delete(
+    final db = await _database;
+    if (db == null) return;
+
+    await db.delete(
       'shopping_list',
       where: 'checked = 1',
     );
@@ -253,11 +294,14 @@ class LocalDatabaseService {
 
   /// Insert a scanned product into local history.
   Future<int> insertScan(Map<String, dynamic> product) async {
+    final db = await _database;
+    if (db == null) return -1;
+
     final nutrition = product['nutrition'] as Map<String, dynamic>? ?? {};
     final ingredients = product['ingredients'] as List? ?? [];
     final allergens = product['allergens'] as List? ?? [];
 
-    return _database.insert('scan_history', {
+    return db.insert('scan_history', {
       'barcode': product['barcode'] ?? '',
       'name': product['name'],
       'brand': product['brand'],
@@ -277,25 +321,38 @@ class LocalDatabaseService {
 
   /// Get scan history, most recent first.
   Future<List<Map<String, dynamic>>> getScanHistory({int limit = 50}) async {
-    final rows = await _database.query(
-      'scan_history',
-      orderBy: 'scanned_at DESC',
-      limit: limit,
-    );
+    final db = await _database;
+    if (db == null) return [];
 
-    return rows.map(_rowToProduct).toList();
+    try {
+      final rows = await db.query(
+        'scan_history',
+        orderBy: 'scanned_at DESC',
+        limit: limit,
+      );
+
+      return rows.map(_rowToProduct).toList();
+    } catch (e) {
+      debugPrint('Error loading scan history: $e');
+      return [];
+    }
   }
 
   /// Clear all local scan history (used on sign-out).
   Future<void> clearScans() async {
-    await _database.delete('scan_history');
+    final db = await _database;
+    if (db == null) return;
+    await db.delete('scan_history');
   }
 
   /// Delete a scan from local history by barcode.
   /// No-op if barcode is empty.
   Future<void> deleteScanByBarcode(String barcode) async {
     if (barcode.trim().isEmpty) return;
-    final deleted = await _database.delete(
+    final db = await _database;
+    if (db == null) return;
+
+    final deleted = await db.delete(
       'scan_history',
       where: 'barcode = ?',
       whereArgs: [barcode],
@@ -305,7 +362,9 @@ class LocalDatabaseService {
 
   /// Clear all local tables (used on user sign-out to prevent data leakage across accounts).
   Future<void> clearAllLocalData() async {
-    final db = _database;
+    final db = await _database;
+    if (db == null) return;
+
     await db.delete('diet_log');
     await db.delete('scan_history');
     await db.delete('shopping_list');
@@ -314,7 +373,9 @@ class LocalDatabaseService {
 
   /// Clear all local diet log entries (used on sign-out).
   Future<void> clearDietLog() async {
-    await _database.delete('diet_log');
+    final db = await _database;
+    if (db == null) return;
+    await db.delete('diet_log');
   }
 
   Map<String, dynamic> _rowToProduct(Map<String, dynamic> row) {

@@ -25,6 +25,14 @@ class SupabaseStorageService {
   }) async {
     if (_isInitialized) return;
     try {
+      // Check if already initialized by Supabase singleton
+      try {
+        final _ = Supabase.instance.client;
+        _isInitialized = true;
+        debugPrint('SupabaseStorageService: Already initialized.');
+        return;
+      } catch (_) {}
+
       // ignore: deprecated_member_use
       await Supabase.initialize(
         url: supabaseUrl,
@@ -38,6 +46,13 @@ class SupabaseStorageService {
   }
 
   bool get isReady => _isInitialized;
+
+  /// Ensures Supabase is initialized before first use (lazy init).
+  /// Safe to call multiple times — no-ops if already initialized.
+  Future<void> ensureInitialized() async {
+    if (_isInitialized) return;
+    await initialize();
+  }
 
   SupabaseClient? get _client {
     try {
@@ -54,6 +69,7 @@ class SupabaseStorageService {
     required File imageFile,
     String bucketName = defaultBucket,
   }) async {
+    await ensureInitialized();
     final client = _client;
     if (client == null) {
       debugPrint('SupabaseStorageService: Client not initialized.');
@@ -89,6 +105,7 @@ class SupabaseStorageService {
     required File imageFile,
     String bucketName = defaultBucket,
   }) async {
+    await ensureInitialized();
     final client = _client;
     if (client == null) {
       debugPrint('SupabaseStorageService: Client not initialized.');

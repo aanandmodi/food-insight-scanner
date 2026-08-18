@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../data/providers/user_profile_provider.dart';
+import '../presentation/auth/login_screen/login_screen.dart';
 import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/profile_setup/profile_setup.dart';
+import '../services/auth_service.dart';
 import '../theme/app_design_system.dart';
 
-/// A gate widget that checks local user profile completion and renders
-/// HomeDashboard or ProfileSetup.
+/// A gate widget that checks authentication state FIRST, then local user
+/// profile completion, and renders the appropriate screen.
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // ── Step 1: Check if user is authenticated ──
+    final isAuthenticated = AuthService().isAuthenticated;
+
+    if (!isAuthenticated) {
+      // Not logged in — show login screen
+      return const LoginScreen();
+    }
+
+    // ── Step 2: User is authenticated — check profile completeness ──
     return Consumer<UserProfileProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
@@ -62,4 +73,3 @@ class AuthGate extends StatelessWidget {
     );
   }
 }
-

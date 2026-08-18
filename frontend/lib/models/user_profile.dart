@@ -4,6 +4,7 @@ class UserProfile {
   final String? uid;
   final String name;
   final String? email;
+  final String? photoUrl;
   final String gender;
   final DateTime? dateOfBirth;
   final double? heightCm;
@@ -27,6 +28,7 @@ class UserProfile {
     this.uid,
     required this.name,
     this.email,
+    this.photoUrl,
     this.gender = '',
     this.dateOfBirth,
     this.heightCm,
@@ -63,6 +65,7 @@ class UserProfile {
       uid: map['uid'] as String?,
       name: (map['name'] as String?) ?? '',
       email: map['email'] as String?,
+      photoUrl: map['photoUrl'] as String?,
       gender: (map['gender'] as String?) ?? '',
       dateOfBirth: dob,
       heightCm: (map['heightCm'] as num?)?.toDouble(),
@@ -88,6 +91,7 @@ class UserProfile {
       if (uid != null) 'uid': uid,
       'name': name,
       if (email != null) 'email': email,
+      if (photoUrl != null) 'photoUrl': photoUrl,
       'gender': gender,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'heightCm': heightCm,
@@ -123,6 +127,7 @@ class UserProfile {
     int? age,
     String? activityLevel,
     bool? profileCompleted,
+    String? photoUrl,
     double? customCaloriesGoal,
     double? customProteinGoal,
     double? customCarbsGoal,
@@ -144,6 +149,7 @@ class UserProfile {
       age: age ?? this.age,
       activityLevel: activityLevel ?? this.activityLevel,
       profileCompleted: profileCompleted ?? this.profileCompleted,
+      photoUrl: photoUrl ?? this.photoUrl,
       customCaloriesGoal: customCaloriesGoal ?? this.customCaloriesGoal,
       customProteinGoal: customProteinGoal ?? this.customProteinGoal,
       customCarbsGoal: customCarbsGoal ?? this.customCarbsGoal,

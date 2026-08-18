@@ -7,11 +7,13 @@ import '../../../theme/app_design_system.dart';
 class GreetingHeader extends StatelessWidget {
   final String userName;
   final String currentDate;
+  final String? photoUrl;
 
   const GreetingHeader({
     super.key,
     required this.userName,
     required this.currentDate,
+    this.photoUrl,
   });
 
   @override
@@ -60,7 +62,9 @@ class GreetingHeader extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(27),
-                child: _buildAvatarFallback(userInitial),
+                child: photoUrl != null 
+                    ? Image.network(photoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildAvatarFallback(userInitial))
+                    : _buildAvatarFallback(userInitial),
               ),
             ),
           ).animate().scale(

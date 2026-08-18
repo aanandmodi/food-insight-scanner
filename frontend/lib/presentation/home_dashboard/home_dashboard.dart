@@ -65,9 +65,6 @@ class _HomeDashboardState extends State<HomeDashboard>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UserProfileProvider>().fetchProfile();
-    });
     _loadUserData();
   }
 
@@ -177,11 +174,11 @@ class _HomeDashboardState extends State<HomeDashboard>
     try {
       await HomeWidget.saveWidgetData<int>('calories_consumed', calConsumed);
       await HomeWidget.saveWidgetData<int>('calories_goal', calGoal);
-      await HomeWidget.saveWidgetData<int>('carbs_consumed', _nutritionData['carbs'] ?? 0); // using actual if available, else 0
+      await HomeWidget.saveWidgetData<int>('carbs_consumed', (_nutritionData['carbs'] as num?)?.toInt() ?? 0);
       await HomeWidget.saveWidgetData<int>('carbs_goal', carbsGoal);
       await HomeWidget.saveWidgetData<int>('protein_consumed', proteinConsumed);
       await HomeWidget.saveWidgetData<int>('protein_goal', proteinGoal);
-      await HomeWidget.saveWidgetData<int>('fat_consumed', _nutritionData['fat'] ?? 0);
+      await HomeWidget.saveWidgetData<int>('fat_consumed', (_nutritionData['fat'] as num?)?.toInt() ?? 0);
       await HomeWidget.saveWidgetData<int>('fat_goal', fatGoal);
       await HomeWidget.updateWidget(name: 'MacroWidgetProvider');
     } catch (e) {
@@ -327,6 +324,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                     GreetingHeader(
                       userName: profile?.name ?? 'User',
                       currentDate: _formatCurrentDate(),
+                      photoUrl: profile?.photoUrl,
                     )
                         .animate()
                         .fadeIn(

@@ -1,5 +1,5 @@
-  // lib/main.dart
-
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'core/app_export.dart';
 import 'services/local_database_service.dart';
-import 'services/supabase_storage_service.dart';
+
 // Corrected Path
 import 'widgets/custom_error_widget.dart';
 
@@ -50,6 +50,19 @@ Future<bool> retryFirebaseInit() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Catch synchronous and rendering errors without closing app
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError (guarded): ${details.exceptionAsString()}');
+  };
+
+  // Catch asynchronous and platform channel errors without closing app
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('PlatformDispatcher uncaught error (guarded): $error\n$stack');
+    return true; // Prevents app termination
+  };
+
   // Don't block app startup indefinitely on Firebase init.
   // If Firebase init hangs/fails on a device, we still render UI and allow retry.
   try {
@@ -71,12 +84,8 @@ Future<void> main() async {
       debugPrint('Error initializing local database: $e');
     }
 
-    // Initialize 100% free Supabase Cloud Storage
-    try {
-      await SupabaseStorageService().initialize();
-    } catch (e) {
-      debugPrint('Error initializing Supabase Storage: $e');
-    }
+    // Supabase Storage is lazy-initialized on first upload to avoid
+    // conflicting with Firebase's activity handlers at startup.
 
     // It's better to manage this state within a state management solution
     // to avoid global variables.
