@@ -1,17 +1,17 @@
-# 🥗 NutriScan AI - Food Insight Scanner
+# 🥗 Food Insight Scanner
 > **Product Requirements & Specification Document**
 
 ---
 
 ## 📌 Executive Summary
 
-**NutriScan AI - Food Insight Scanner** is a modern, cross-platform mobile application designed to empower individuals to make healthier, safer, and data-driven food choices. Combining real-time barcode scanning, deep AI ingredient analysis, conversational natural language meal logging, personalized next-day diet planning, and offline-capable data synchronization, NutriScan AI transforms nutritional ambiguity into actionable personal health intelligence.
+**Food Insight Scanner** is a modern, cross-platform mobile application designed to empower individuals to make healthier, safer, and data-driven food choices. Combining real-time barcode scanning, deep AI ingredient analysis, conversational natural language meal logging, personalized next-day diet planning, and offline-capable data synchronization, Food Insight transforms nutritional ambiguity into actionable personal health intelligence.
 
 ---
 
 ## 🎯 Target Users & User Personas
 
-NutriScan AI caters to diverse user demographics with distinct nutritional, health, and dietary monitoring needs:
+Food Insight caters to diverse user demographics with distinct nutritional, health, and dietary monitoring needs:
 
 | User Persona | Key Needs & Pain Points | Primary Features Used |
 | :--- | :--- | :--- |
@@ -24,7 +24,7 @@ NutriScan AI caters to diverse user demographics with distinct nutritional, heal
 
 ## 🎨 Design Philosophy & Visual Identity
 
-NutriScan AI bridges physical tactile feedback with modern digital transparency, heavily inspired by the premium visual aesthetics of **Apple Health**.
+Food Insight bridges physical tactile feedback with modern digital transparency, heavily inspired by the premium visual aesthetics of **Apple Health**.
 
 ```mermaid
 graph LR
@@ -165,7 +165,7 @@ graph TD
 ## 🔒 Security, Privacy & Data Storage
 
 > [!IMPORTANT]
-> User health and dietary information is classified as sensitive data. NutriScan AI enforces strict security isolation across remote and local storage tiers.
+> User health and dietary information is classified as sensitive data. Food Insight enforces strict security isolation across remote and local storage tiers.
 
 1. **Firebase Security Rules**: User profile documents and personal scan logs in Cloud Firestore are restricted strictly to the authenticated `uid` owner.
 2. **Anonymous / Guest Mode**: Users can test full app capabilities locally without creating a permanent identity. Accounts can be upgraded seamlessly to Google Sign-In.

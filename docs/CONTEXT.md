@@ -1,11 +1,11 @@
-# 🥗 NutriScan AI - Food Insight Scanner | Context & Architecture Guide
+# 🥗 Food Insight Scanner | Context & Architecture Guide
 
 This document is designed to provide comprehensive context, architectural patterns, UI/UX guidelines, and feature breakdowns for AI assistants or new developers working on this codebase. 
 
 ---
 
 ## 📌 Project Overview
-**NutriScan AI** is an AI-powered dietary companion built with **Flutter (Frontend)** and **Firebase (Backend)**. It allows users to scan food barcodes, log meals, track macro/micro-nutrients, and converse with a context-aware AI dietary assistant.
+**Food Insight** is an AI-powered dietary companion built with **Flutter (Frontend)** and **Firebase (Backend)**. It allows users to scan food barcodes, log meals, track macro/micro-nutrients, and converse with a context-aware AI dietary assistant.
 
 - **Primary AI Engine:** Groq API (`llama-3.3-70b-versatile` & `llama-3.1-8b-instant`) accessed via direct HTTP (migrated away from Cloud Functions).
 - **Product Database:** Open Food Facts (OFF) REST APIs.

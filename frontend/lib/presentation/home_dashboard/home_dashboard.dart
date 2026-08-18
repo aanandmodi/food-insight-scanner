@@ -9,11 +9,13 @@ import 'package:home_widget/home_widget.dart';
 
 
 import '../../services/product_service.dart';
+import '../../services/firestore_service.dart';
 import '../../services/local_database_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../theme/app_design_system.dart';
+import '../../routes/app_routes.dart';
 import '../profile/profile_screen.dart';
 import '../barcode_scanner/barcode_scanner.dart';
 import '../ai_chat_assistant/ai_chat_assistant.dart';
@@ -88,14 +90,20 @@ class _HomeDashboardState extends State<HomeDashboard>
     try {
       final scanHistory = await ProductService().getScanHistory();
 
-      // Load Diet Log for today from Local SQLite Database
+      // Load Diet Log for today from merged Firestore + local SQLite
       final dateString =
           "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
       List<Map<String, dynamic>> entries = [];
       try {
-        entries = await LocalDatabaseService().getDietLogByDate(dateString);
+        entries = await FirestoreService().getDietLog(dateString);
       } catch (e) {
-        debugPrint('Error pulling home diet log from local db: $e');
+        debugPrint('Error pulling home diet log: $e');
+        // Fallback to local-only if Firestore merge fails
+        try {
+          entries = await LocalDatabaseService().getDietLogByDate(dateString);
+        } catch (e2) {
+          debugPrint('Error pulling home diet log from local db: $e2');
+        }
       }
 
       // Calculate totals from today's diet log

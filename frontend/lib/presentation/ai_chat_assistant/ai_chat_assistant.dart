@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../services/cloud_function_service.dart';
 import '../../services/local_database_service.dart';
+import '../../services/firestore_service.dart';
 import '../../models/user_profile.dart';
 import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
@@ -50,7 +51,17 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       final now = DateTime.now();
       final dateString =
           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      final entries = await LocalDatabaseService().getDietLogByDate(dateString);
+      List<Map<String, dynamic>> entries = [];
+      try {
+        entries = await FirestoreService().getDietLog(dateString);
+      } catch (e) {
+        debugPrint('Firestore diet log query failed: $e');
+        try {
+          entries = await LocalDatabaseService().getDietLogByDate(dateString);
+        } catch (e2) {
+          debugPrint('Local diet log query failed: $e2');
+        }
+      }
 
       if (entries.isNotEmpty) {
         final buffer = StringBuffer();
