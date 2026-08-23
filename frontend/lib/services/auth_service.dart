@@ -73,6 +73,56 @@ class AuthService {
   /// Whether user is authenticated (Firebase or offline guest)
   bool get isAuthenticated => currentUser != null;
 
+  /// True when the session is a guest (anonymous) session. Guests can be
+  /// upgraded to a real account without losing their data — see
+  /// [linkAnonymousWithEmail] / [linkAnonymousWithGoogle].
+  bool get isGuest => currentUser?.isAnonymous ?? false;
+
+  /// Whether the signed-in email user has verified their address.
+  /// Anonymous and Google users are always considered verified.
+  bool get isEmailVerified {
+    final user = currentUser;
+    if (user == null) return false;
+    if (user.isAnonymous) return true;
+    final usesPassword =
+        user.providerData.any((p) => p.providerId == 'password');
+    return !usesPassword || user.emailVerified;
+  }
+
+  /// Take ownership of rows that were written before sign-in (guest usage),
+  /// so nothing the user logged is lost when they create an account.
+  Future<void> _adoptLocalData(String uid) async {
+    try {
+      await LocalDatabaseService().adoptLocalRows(uid);
+    } catch (e) {
+      debugPrint('adoptLocalRows failed (non-fatal): $e');
+    }
+  }
+
+  /// Creates the Firestore profile document if the user does not have one yet.
+  /// Never overwrites an existing profile.
+  Future<void> _ensureProfileDocument(User user, {String? displayName}) async {
+    try {
+      final existingProfile = await FirestoreService()
+          .getUserProfile()
+          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+      if (existingProfile != null) return;
+
+      await FirestoreService().saveUserProfile({
+        'email': user.email ?? '',
+        // Deliberately blank when unknown: a placeholder like "User" reads as a
+        // real, completed profile everywhere downstream.
+        'name': (displayName ?? user.displayName ?? '').trim(),
+        'photoUrl': user.photoURL ?? '',
+        'isAnonymous': user.isAnonymous,
+        'createdAt': DateTime.now().toIso8601String(),
+        'profileCompleted': false,
+      });
+    } catch (e) {
+      debugPrint('Firestore profile init error (non-fatal): $e');
+    }
+  }
+
   // ──────────────────────────── Email / Password ────────────────────────────
 
   /// Sign in with email and password
@@ -94,8 +144,13 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
-      debugPrint('Signed in with email: ${userCredential.user?.email}');
-      return userCredential.user;
+      final user = userCredential.user;
+      if (user != null) {
+        await _adoptLocalData(user.uid);
+        await _ensureProfileDocument(user);
+      }
+      debugPrint('Signed in with email: ${user?.email}');
+      return user;
     } on FirebaseAuthException catch (e) {
       debugPrint('Email sign-in error: ${e.code} - ${e.message}');
       throw AuthException.fromFirebase(e);
@@ -141,20 +196,13 @@ class AuthService {
       // Initialize Firestore profile
       final user = auth.currentUser ?? userCredential.user;
       if (user != null) {
+        await _adoptLocalData(user.uid);
+        await _ensureProfileDocument(user, displayName: displayName);
+        // Fire-and-forget: a failed verification mail must not block signup.
         try {
-          final existingProfile = await FirestoreService()
-              .getUserProfile()
-              .timeout(const Duration(seconds: 5), onTimeout: () => null);
-          if (existingProfile == null) {
-            await FirestoreService().saveUserProfile({
-              'email': user.email ?? '',
-              'name': user.displayName ?? displayName ?? 'User',
-              'createdAt': DateTime.now().toIso8601String(),
-              'profileCompleted': false,
-            });
-          }
+          if (!user.emailVerified) await user.sendEmailVerification();
         } catch (e) {
-          debugPrint('Firestore profile init error (non-fatal): $e');
+          debugPrint('Could not send verification email (non-fatal): $e');
         }
       }
 
@@ -231,21 +279,8 @@ class AuthService {
       // Initialize Firestore profile if it doesn't exist
       final user = userCredential.user;
       if (user != null) {
-        try {
-          final existingProfile = await FirestoreService()
-              .getUserProfile()
-              .timeout(const Duration(seconds: 5), onTimeout: () => null);
-          if (existingProfile == null) {
-            await FirestoreService().saveUserProfile({
-              'email': user.email ?? '',
-              'name': user.displayName ?? 'Google User',
-              'createdAt': DateTime.now().toIso8601String(),
-              'profileCompleted': false,
-            });
-          }
-        } catch (e) {
-          debugPrint('Firestore profile init error (non-fatal): $e');
-        }
+        await _adoptLocalData(user.uid);
+        await _ensureProfileDocument(user);
       }
 
       debugPrint('Successfully signed in with Google: ${user?.displayName}');
@@ -275,6 +310,9 @@ class AuthService {
 
   /// Signs in the user anonymously (Guest Mode).
   Future<User?> signInAnonymously() async {
+    if (!isFirebaseReady) {
+      await retryInit();
+    }
     final auth = _auth;
     if (auth == null) {
       throw AuthException(
@@ -285,11 +323,141 @@ class AuthService {
 
     try {
       final UserCredential userCredential = await auth.signInAnonymously();
-      debugPrint('Signed in anonymously: ${userCredential.user?.uid}');
-      return userCredential.user;
+      final user = userCredential.user;
+      if (user != null) {
+        await _adoptLocalData(user.uid);
+        // Guests need a profile document too, otherwise every read falls
+        // through to the local cache and their data never syncs.
+        await _ensureProfileDocument(user);
+      }
+      debugPrint('Signed in anonymously: ${user?.uid}');
+      return user;
     } on FirebaseAuthException catch (e) {
       debugPrint('Anonymous sign-in error: ${e.code} - ${e.message}');
       throw AuthException.fromFirebase(e);
+    }
+  }
+
+  /// Upgrades the current guest session to a permanent email account,
+  /// **keeping the same uid** so all previously logged data carries over.
+  Future<User?> linkAnonymousWithEmail(
+    String email,
+    String password, {
+    String? displayName,
+  }) async {
+    final user = currentUser;
+    if (user == null || !user.isAnonymous) {
+      throw AuthException(
+        code: 'not-a-guest',
+        message: 'You are already signed in with a permanent account.',
+      );
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: email.trim(),
+        password: password,
+      );
+      final result = await user.linkWithCredential(credential);
+      final linked = result.user;
+
+      if (linked != null) {
+        if (displayName != null && displayName.trim().isNotEmpty) {
+          await linked.updateDisplayName(displayName.trim());
+          await linked.reload();
+        }
+        try {
+          await FirestoreService().saveUserProfile({
+            'email': linked.email ?? email.trim(),
+            'isAnonymous': false,
+          });
+        } catch (e) {
+          debugPrint('Profile update after link failed (non-fatal): $e');
+        }
+        try {
+          if (!linked.emailVerified) await linked.sendEmailVerification();
+        } catch (_) {}
+      }
+
+      debugPrint('Guest account upgraded to ${linked?.email}');
+      return _auth?.currentUser ?? linked;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Anonymous link error: ${e.code} - ${e.message}');
+      throw AuthException.fromFirebase(e);
+    }
+  }
+
+  /// Upgrades the current guest session to a permanent Google account,
+  /// keeping the same uid.
+  Future<User?> linkAnonymousWithGoogle() async {
+    final user = currentUser;
+    if (user == null || !user.isAnonymous) {
+      throw AuthException(
+        code: 'not-a-guest',
+        message: 'You are already signed in with a permanent account.',
+      );
+    }
+
+    try {
+      await _googleSignIn.signOut();
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final result = await user.linkWithCredential(credential);
+      final linked = result.user;
+      if (linked != null) {
+        try {
+          await FirestoreService().saveUserProfile({
+            'email': linked.email ?? '',
+            'photoUrl': linked.photoURL ?? '',
+            'isAnonymous': false,
+          });
+        } catch (e) {
+          debugPrint('Profile update after link failed (non-fatal): $e');
+        }
+      }
+      return _auth?.currentUser ?? linked;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Google link error: ${e.code} - ${e.message}');
+      throw AuthException.fromFirebase(e);
+    } catch (e) {
+      throw AuthException(
+        code: 'google-link-failed',
+        message: 'Could not connect your Google account. Please try again.',
+      );
+    }
+  }
+
+  /// Re-sends the verification email to the current user.
+  Future<void> sendEmailVerification() async {
+    final user = currentUser;
+    if (user == null) {
+      throw AuthException(
+        code: 'no-user',
+        message: 'You need to be signed in to verify your email.',
+      );
+    }
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      throw AuthException.fromFirebase(e);
+    }
+  }
+
+  /// Refreshes the cached user so `emailVerified` reflects reality.
+  Future<bool> reloadUser() async {
+    try {
+      await currentUser?.reload();
+      return isEmailVerified;
+    } catch (e) {
+      debugPrint('User reload failed: $e');
+      return isEmailVerified;
     }
   }
 
@@ -298,6 +466,9 @@ class AuthService {
   /// Signs the current user out and clears ALL local cached data.
   /// This is an atomic operation — Firebase signout + Google signout + local purge.
   Future<void> signOut() async {
+    // Capture the uid *before* signing out — afterwards the local database can
+    // no longer tell which rows belonged to this user.
+    final departingUid = currentUser?.uid;
     try {
       // 1. Sign out of Google first (prevents reuse of cached credentials)
       try {
@@ -314,60 +485,138 @@ class AuthService {
       }
 
       // 3. Clear all local user data
-      await _clearLocalData();
+      await _clearLocalData(uid: departingUid);
 
       debugPrint('User signed out successfully — all local data cleared.');
     } catch (e) {
       debugPrint('Error during sign out: $e');
       // Even if something failed, still clear local data
-      await _clearLocalData();
+      await _clearLocalData(uid: departingUid);
     }
   }
 
-  /// Delete the current user account and purge all data
-  Future<void> deleteAccount() async {
+  /// Delete the current user account and purge all data.
+  ///
+  /// Firebase refuses `delete()` with `requires-recent-login` when the session
+  /// is older than ~5 minutes. Since Google Play requires in-app account
+  /// deletion to actually work, we reauthenticate first when we can:
+  ///  * password users → pass [password]
+  ///  * Google users   → silent re-consent through the Google Sign-In flow
+  Future<void> deleteAccount({String? password}) async {
+    final user = _auth?.currentUser;
+    if (user == null) {
+      throw AuthException(
+        code: 'no-user',
+        message: 'You are not signed in.',
+      );
+    }
+
     try {
-      // Delete Firestore profile first
+      await _reauthenticateIfPossible(user, password);
+      final deletedUid = user.uid;
+
+      // Delete Firestore profile + subcollections before losing the token.
       try {
         await FirestoreService().deleteUserProfile();
       } catch (e) {
         debugPrint('Firestore profile delete error (non-fatal): $e');
       }
 
-      // Delete Firebase Auth account
-      await _auth?.currentUser?.delete();
+      await user.delete();
 
-      // Sign out of Google
       try {
         await _googleSignIn.signOut();
       } catch (e) {
         debugPrint('Google sign-out error (non-fatal): $e');
       }
 
-      // Clear all local data
-      await _clearLocalData();
+      await _clearLocalData(uid: deletedUid);
 
       debugPrint('Account deleted successfully.');
     } on FirebaseAuthException catch (e) {
       debugPrint('Account deletion error: ${e.code}');
+      if (e.code == 'requires-recent-login') {
+        throw AuthException(
+          code: 'requires-recent-login',
+          message:
+              'For your security, please sign in again and then delete your account.',
+        );
+      }
       throw AuthException.fromFirebase(e);
     }
   }
 
+  Future<void> _reauthenticateIfPossible(User user, String? password) async {
+    final providers = user.providerData.map((p) => p.providerId).toList();
+
+    try {
+      if (providers.contains('password') &&
+          password != null &&
+          password.isNotEmpty &&
+          (user.email ?? '').isNotEmpty) {
+        final cred = EmailAuthProvider.credential(
+          email: user.email!,
+          password: password,
+        );
+        await user.reauthenticateWithCredential(cred);
+        return;
+      }
+
+      if (providers.contains('google.com')) {
+        final googleUser =
+            await _googleSignIn.signInSilently() ?? await _googleSignIn.signIn();
+        if (googleUser != null) {
+          final googleAuth = await googleUser.authentication;
+          await user.reauthenticateWithCredential(
+            GoogleAuthProvider.credential(
+              accessToken: googleAuth.accessToken,
+              idToken: googleAuth.idToken,
+            ),
+          );
+        }
+      }
+      // Anonymous users need no reauthentication.
+    } on FirebaseAuthException catch (e) {
+      // Surface bad-password immediately rather than failing later on delete().
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        throw AuthException.fromFirebase(e);
+      }
+      debugPrint('Reauthentication skipped: ${e.code}');
+    } catch (e) {
+      debugPrint('Reauthentication skipped: $e');
+    }
+  }
+
   /// Clears all locally cached user data to prevent leakage between accounts.
-  Future<void> _clearLocalData() async {
+  Future<void> _clearLocalData({String? uid}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('user_name');
-      await prefs.remove('user_gender');
-      await prefs.remove('user_dob');
-      await prefs.remove('user_height');
-      await prefs.remove('user_weight');
-      await prefs.remove('user_diseases');
-      await prefs.remove('user_allergies');
-      await prefs.remove('user_health_goal');
-      await prefs.remove('user_dietary_preferences');
-      await prefs.remove('profile_completed');
+      // Every key any screen writes about the user must be listed here, or the
+      // next account inherits the previous one's values.
+      const userKeys = <String>[
+        'user_name',
+        'user_email',
+        'user_photoUrl',
+        'user_gender',
+        'user_dob',
+        'user_age',
+        'user_height',
+        'user_weight',
+        'user_diseases',
+        'user_allergies',
+        'user_health_goal',
+        'user_dietary_preferences',
+        'user_activity_level',
+        'profile_completed',
+        'custom_calories_goal',
+        'custom_protein_goal',
+        'custom_carbs_goal',
+        'custom_fat_goal',
+        'last_ai_recalibration',
+      ];
+      for (final key in userKeys) {
+        await prefs.remove(key);
+      }
 
       // Clear local scan history (SQLite)
       try {
@@ -378,7 +627,7 @@ class AuthService {
 
       // Clear all local SQLite tables (scan_history, diet_log, shopping_list)
       try {
-        await LocalDatabaseService().clearAllLocalData();
+        await LocalDatabaseService().clearAllLocalData(forUid: uid);
       } catch (e) {
         debugPrint('Error clearing local database tables: $e');
       }

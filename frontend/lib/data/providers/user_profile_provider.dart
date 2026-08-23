@@ -1,157 +1,216 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/user_profile.dart';
-import '../../services/firestore_service.dart';
-import '../../services/auth_service.dart';
 
+import '../../core/utils/data_refresh_bus.dart';
+import '../../models/user_profile.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../../services/local_database_service.dart';
+
+/// Owns the signed-in user's profile and keeps it bound to the Firebase uid.
+///
+/// Behaviour that this class guarantees (each point was previously broken):
+///  * It re-fetches on every **change of user** and clears on sign-out, so one
+///    account never sees another's profile.
+///  * `profileCompleted` is only ever true because onboarding said so — it is
+///    never inferred or forced, which is what used to let brand-new users skip
+///    setup and land on an empty dashboard named "User".
+///  * Saving writes to Firestore as well as SharedPreferences, so profile edits
+///    actually reach the cloud and survive a reinstall.
 class UserProfileProvider extends ChangeNotifier {
   UserProfile? _profile;
-  bool _isLoading = false;
+  bool _isLoading = true;
   String? _errorMessage;
+  String? _boundUid;
+  StreamSubscription<User?>? _authSub;
+  bool _disposed = false;
 
   UserProfile? get profile => _profile;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  /// True when the last load failed for a reason other than "no profile yet".
+  /// The gate uses this to show a retry instead of dumping the user into
+  /// onboarding after a transient network failure.
+  bool get hasError => _errorMessage != null;
+
+  /// True only when we positively know onboarding is finished.
+  bool get isProfileComplete => _profile?.profileCompleted == true;
+
+  /// The uid this profile belongs to, for debugging / assertions.
+  String? get boundUid => _boundUid;
+
   UserProfileProvider() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      fetchProfile();
-    });
+    _listenToAuth();
   }
 
-  /// Fetches the user profile from local SharedPreferences.
-  /// If a user is logged in, it will first attempt to sync with the cloud.
+  void _listenToAuth() {
+    try {
+      _authSub = AuthService()
+          .authStateChanges
+          .distinct((a, b) => a?.uid == b?.uid)
+          .listen(_onUserChanged, onError: (Object e) {
+        debugPrint('Auth stream error in UserProfileProvider: $e');
+      });
+    } catch (e) {
+      debugPrint('Could not attach auth listener: $e');
+      // Firebase unavailable — still try a local read so offline users see data.
+      WidgetsBinding.instance.addPostFrameCallback((_) => fetchProfile());
+    }
+  }
+
+  Future<void> _onUserChanged(User? user) async {
+    _boundUid = user?.uid;
+
+    if (user == null) {
+      _profile = null;
+      _errorMessage = null;
+      _isLoading = false;
+      _safeNotify();
+      return;
+    }
+
+    // Claim anything the user logged before signing in.
+    try {
+      await LocalDatabaseService().adoptLocalRows(user.uid);
+    } catch (e) {
+      debugPrint('adoptLocalRows failed: $e');
+    }
+
+    await fetchProfile();
+  }
+
+  /// Loads the profile for the current user: Firestore first, SharedPreferences
+  /// as an offline fallback (both handled by [FirestoreService.getUserProfile]).
   Future<void> fetchProfile() async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
-    
+    _safeNotify();
+
+    final authUser = AuthService().currentUser;
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final name = prefs.getString('user_name');
+      final data = await FirestoreService().getUserProfile();
 
-      if (name != null && name.isNotEmpty) {
-        final dobStr = prefs.getString('user_dob');
-        DateTime? dob;
-        if (dobStr != null) {
-          dob = DateTime.tryParse(dobStr);
-        }
-
-        _profile = UserProfile(
-          uid: AuthService().currentUser?.uid ?? 'local_user',
-          name: name,
-          email: AuthService().currentUser?.email ?? prefs.getString('user_email') ?? '',
-          photoUrl: AuthService().currentUser?.photoURL ?? prefs.getString('user_photoUrl'),
-          gender: prefs.getString('user_gender') ?? 'Male',
-          dateOfBirth: dob,
-          heightCm: prefs.getDouble('user_height') ?? 170.0,
-          weightKg: prefs.getDouble('user_weight') ?? 70.0,
-          diseases: prefs.getStringList('user_diseases') ?? [],
-          allergies: prefs.getStringList('user_allergies') ?? [],
-          dietaryPreferences: prefs.getStringList('user_dietary_preferences') ?? [],
-          healthGoals: prefs.getString('user_health_goal') ?? 'Healthy Lifestyle',
-          age: prefs.getInt('user_age') ?? 25,
-          activityLevel: prefs.getString('user_activity_level') ?? 'moderate',
-          profileCompleted: prefs.getBool('profile_completed') ?? true,
-        );
-      } else {
+      if (data == null) {
+        // No profile anywhere — a genuinely new user. Onboarding will create it.
         _profile = null;
+      } else {
+        var loaded = UserProfile.fromMap(data);
+
+        // Identity always comes from Firebase Auth, never from the cached copy.
+        loaded = loaded.copyWith(
+          uid: authUser?.uid ?? loaded.uid,
+          email: authUser?.email ?? loaded.email,
+          photoUrl: authUser?.photoURL ?? loaded.photoUrl,
+        );
+
+        // A profile with no name is not usable — treat it as "not set up yet".
+        _profile = loaded.name.trim().isEmpty ? null : loaded;
+
+        // Keep the offline cache in step with what we just read.
+        if (_profile != null) {
+          await _writeToPrefs(_profile!);
+        }
       }
     } catch (e) {
-      debugPrint('Error loading local user profile: $e');
+      debugPrint('Error loading user profile: $e');
       _errorMessage = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
-    }
-
-    // Attempt cloud sync in the background if authenticated
-    if (AuthService().isAuthenticated) {
-      syncWithCloud().catchError((e) {
-        debugPrint('Background cloud sync failed: $e');
-      });
+      _safeNotify();
     }
   }
 
-  /// Save or update the profile locally in SharedPreferences and memory.
-  Future<void> saveProfile(UserProfile newProfile) async {
+  /// Persist the profile locally **and** to Firestore.
+  ///
+  /// [markCompleted] must be passed explicitly by onboarding when it finishes.
+  /// Everything else preserves the flag that is already on [newProfile] — the
+  /// old implementation force-set it to true on every save, including during
+  /// cloud sync, which silently completed profiles that were never filled in.
+  Future<bool> saveProfile(UserProfile newProfile,
+      {bool? markCompleted}) async {
     _isLoading = true;
-    notifyListeners();
+    _safeNotify();
 
+    final authUser = AuthService().currentUser;
+    final resolved = newProfile.copyWith(
+      uid: authUser?.uid ?? newProfile.uid,
+      email: authUser?.email ?? newProfile.email,
+      photoUrl: authUser?.photoURL ?? newProfile.photoUrl,
+      profileCompleted: markCompleted ?? newProfile.profileCompleted,
+    );
+
+    bool cloudOk = false;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', newProfile.name);
-      if (newProfile.email != null) {
-        await prefs.setString('user_email', newProfile.email!);
+      await _writeToPrefs(resolved);
+      cloudOk = await FirestoreService().saveUserProfile(resolved.toMap());
+      if (!cloudOk) {
+        debugPrint('Profile saved locally; cloud write will retry on next sync');
       }
-      if (newProfile.photoUrl != null) {
-        await prefs.setString('user_photoUrl', newProfile.photoUrl!);
-      }
-      await prefs.setString('user_gender', newProfile.gender);
-      if (newProfile.dateOfBirth != null) {
-        await prefs.setString('user_dob', newProfile.dateOfBirth!.toIso8601String());
-      }
-      if (newProfile.heightCm != null) {
-        await prefs.setDouble('user_height', newProfile.heightCm!);
-      }
-      if (newProfile.weightKg != null) {
-        await prefs.setDouble('user_weight', newProfile.weightKg!);
-      }
-      await prefs.setStringList('user_diseases', newProfile.diseases);
-      await prefs.setStringList('user_allergies', newProfile.allergies);
-      await prefs.setStringList('user_dietary_preferences', newProfile.dietaryPreferences);
-      await prefs.setString('user_health_goal', newProfile.healthGoals);
-      await prefs.setInt('user_age', newProfile.age);
-      await prefs.setString('user_activity_level', newProfile.activityLevel);
-      await prefs.setBool('profile_completed', true);
-
-      _profile = newProfile.copyWith(profileCompleted: true);
+      _profile = resolved;
       _errorMessage = null;
+      DataRefreshBus.profileChanged();
     } catch (e) {
-      debugPrint('Error saving local profile: $e');
+      debugPrint('Error saving profile: $e');
       _errorMessage = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
+    return cloudOk;
   }
 
-  /// Utility to clear profile / reset
+  Future<void> _writeToPrefs(UserProfile p) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', p.name);
+    if (p.email != null) await prefs.setString('user_email', p.email!);
+    if (p.photoUrl != null) {
+      await prefs.setString('user_photoUrl', p.photoUrl!);
+    }
+    await prefs.setString('user_gender', p.gender);
+    if (p.dateOfBirth != null) {
+      await prefs.setString('user_dob', p.dateOfBirth!.toIso8601String());
+    }
+    if (p.heightCm != null) await prefs.setDouble('user_height', p.heightCm!);
+    if (p.weightKg != null) await prefs.setDouble('user_weight', p.weightKg!);
+    await prefs.setStringList('user_diseases', p.diseases);
+    await prefs.setStringList('user_allergies', p.allergies);
+    await prefs.setStringList(
+        'user_dietary_preferences', p.dietaryPreferences);
+    await prefs.setString('user_health_goal', p.healthGoals);
+    await prefs.setInt('user_age', p.age);
+    await prefs.setString('user_activity_level', p.activityLevel);
+    // Mirrors the real flag instead of hardcoding true.
+    await prefs.setBool('profile_completed', p.profileCompleted);
+  }
+
+  /// Clear in-memory profile (called on sign-out).
   void clearProfile() {
     _profile = null;
     _errorMessage = null;
+    _boundUid = null;
+    _isLoading = false;
+    _safeNotify();
+  }
+
+  /// Re-read the cloud copy. Kept for callers that want an explicit refresh;
+  /// unlike the old version it does not write back through [saveProfile], so it
+  /// can no longer flip `profileCompleted` from false to true.
+  Future<void> syncWithCloud() => fetchProfile();
+
+  void _safeNotify() {
+    if (_disposed) return;
     notifyListeners();
   }
 
-  /// Syncs local state with Firestore data
-  Future<void> syncWithCloud() async {
-    try {
-      final cloudData = await FirestoreService().getUserProfile();
-      if (cloudData != null && cloudData.isNotEmpty) {
-        final newProfile = UserProfile(
-          uid: AuthService().currentUser?.uid ?? 'cloud_user',
-          name: cloudData['name'] ?? 'User',
-          email: AuthService().currentUser?.email ?? cloudData['email'] ?? '',
-          photoUrl: AuthService().currentUser?.photoURL ?? cloudData['photoUrl'],
-          gender: cloudData['gender'] ?? 'Male',
-          dateOfBirth: cloudData['dateOfBirth'] != null ? DateTime.tryParse(cloudData['dateOfBirth']) : null,
-          heightCm: (cloudData['heightCm'] as num?)?.toDouble() ?? 170.0,
-          weightKg: (cloudData['weightKg'] as num?)?.toDouble() ?? 70.0,
-          diseases: (cloudData['diseases'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          allergies: (cloudData['allergies'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          dietaryPreferences: (cloudData['dietaryPreferences'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          healthGoals: cloudData['healthGoals'] ?? cloudData['healthGoal'] ?? 'Healthy Lifestyle',
-          age: (cloudData['age'] as num?)?.toInt() ?? 25,
-          activityLevel: cloudData['activityLevel'] ?? 'moderate',
-          profileCompleted: cloudData['profileCompleted'] ?? true,
-        );
-        
-        // This will update SharedPreferences AND _profile in memory
-        await saveProfile(newProfile);
-      }
-    } catch (e) {
-      debugPrint('Error syncing profile with cloud: $e');
-    }
+  @override
+  void dispose() {
+    _disposed = true;
+    _authSub?.cancel();
+    super.dispose();
   }
 }
-

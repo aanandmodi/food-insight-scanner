@@ -6,11 +6,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/app_export.dart';
 import 'package:provider/provider.dart';
 import '../../services/firestore_service.dart';
-import '../../services/local_database_service.dart';
 import '../../services/cloud_function_service.dart';
+import '../../services/product_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 import './widgets/action_bar_widget.dart';
 import './widgets/alternatives_widget.dart';
@@ -49,7 +48,6 @@ class _ProductDetailsState extends State<ProductDetails> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadUserProfile();
   }
 
   @override
@@ -64,11 +62,18 @@ class _ProductDetailsState extends State<ProductDetails> {
       setState(() {
         productData = args;
       });
-      _loadAlternatives();
     } else if (args is String && args.isNotEmpty) {
       // Barcode string (from scan history) — need to fetch product data
       _fetchProductByBarcode(args);
+      return;
     }
+
+    // Alternatives are personalised, so they must wait for the profile.
+    // Previously both ran concurrently and the AI was prompted with empty
+    // allergies/goals on almost every open.
+    _loadUserProfile().then((_) {
+      if (mounted) _loadAlternatives();
+    });
   }
 
   Future<void> _fetchProductByBarcode(String barcode) async {
@@ -77,13 +82,16 @@ class _ProductDetailsState extends State<ProductDetails> {
     });
 
     try {
-      final data = await CloudFunctionService().analyzeProduct(barcode);
+      // Goes through ProductService so we inherit the network timeout and the
+      // offline fallback to the last cached copy of this product.
+      final data = await ProductService().getProductByBarcode(barcode);
       if (data != null && mounted) {
         setState(() {
           productData = data;
           _isLoadingProduct = false;
         });
-        _loadAlternatives();
+        await _loadUserProfile();
+        if (mounted) _loadAlternatives();
       } else if (mounted) {
         setState(() {
           _isLoadingProduct = false;
@@ -107,9 +115,23 @@ class _ProductDetailsState extends State<ProductDetails> {
     }
   }
 
+  /// Reads the profile from [UserProfileProvider] (the single source of truth)
+  /// and only falls back to SharedPreferences when it hasn't loaded yet.
   Future<void> _loadUserProfile() async {
     try {
+      final profile = context.read<UserProfileProvider>().profile;
+      if (profile != null) {
+        if (!mounted) return;
+        setState(() {
+          userAllergies = profile.allergies;
+          dietaryPreference = profile.dietaryPreferences.join(', ');
+          healthGoal = profile.healthGoals;
+        });
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
       setState(() {
         userAllergies = prefs.getStringList('user_allergies') ?? [];
         dietaryPreference =
@@ -175,8 +197,43 @@ class _ProductDetailsState extends State<ProductDetails> {
     }
   }
 
+  /// Pull-to-refresh actually re-fetches the product now; it used to just
+  /// `await Future.delayed(1s)` and show the same stale data.
   Future<void> _onRefresh() async {
-    await Future.delayed(const Duration(seconds: 1));
+    final barcode = (productData['barcode'] ?? '').toString();
+    if (barcode.isEmpty) return;
+
+    final fresh = await ProductService().getProductByBarcode(barcode);
+    if (!mounted || fresh == null) return;
+
+    setState(() {
+      productData = fresh;
+      _alternatives.clear();
+    });
+    // Re-derive suggestions against the refreshed nutrition data.
+    _loadAlternatives();
+  }
+
+  /// Cached rows and Firestore documents hand back maps with varying generic
+  /// types; a hard `as Map<String, dynamic>?` cast threw and blanked the whole
+  /// AI section. This normalises instead.
+  Map<String, dynamic>? _asStringMap(Object? value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((k, v) => MapEntry(k.toString(), v));
+    }
+    return null;
+  }
+
+  /// Sensible default meal slot based on the time of day — everything used to
+  /// be filed as "Snack".
+  String _mealTypeForNow(DateTime now) {
+    final h = now.hour;
+    if (h < 11) return 'Breakfast';
+    if (h < 16) return 'Lunch';
+    if (h < 21) return 'Dinner';
+    return 'Snack';
   }
 
   Future<void> _onAddToDietLog() async {
@@ -184,7 +241,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     try {
       final now = DateTime.now();
       final dateString = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      
+
       final entryData = {
         'name': productData['name'] ?? 'Unknown',
         'brand': productData['brand'] ?? 'Unknown',
@@ -193,19 +250,20 @@ class _ProductDetailsState extends State<ProductDetails> {
         'sugar': (productData['nutrition']?['sugar'] as num?)?.toDouble() ?? 0.0,
         'fat': (productData['nutrition']?['fat'] as num?)?.toDouble() ?? 0.0,
         'carbs': (productData['nutrition']?['carbs'] as num?)?.toDouble() ?? 0.0,
-        'serving': productData['serving_size'] ?? '1 serving',
-        'mealType': 'Snack',
+        // The normalized product map uses `servingSize`; the old `serving_size`
+        // key was always null, so every logged item said "1 serving".
+        'serving': productData['servingSize'] ??
+            productData['serving_size'] ??
+            '1 serving',
+        'mealType': _mealTypeForNow(now),
         'date': dateString,
         'time': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       };
 
-      await LocalDatabaseService().insertDietEntry(entryData);
-
-      try {
-        await FirestoreService().saveDietEntry(entryData);
-      } catch (e) {
-        debugPrint('Firestore save option skipped: $e');
-      }
+      // Single write path: saveDietEntry writes SQLite *and* Firestore and
+      // notifies the rest of the app. Calling insertDietEntry here as well used
+      // to create the same meal twice in the local log.
+      await FirestoreService().saveDietEntry(entryData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -454,7 +512,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                         SizedBox(height: 3.h),
                         // AI Analysis & Micro-nutrients
                         AiAnalysisWidget(
-                          aiAnalysis: productData['aiAnalysis'] as Map<String, dynamic>?,
+                          aiAnalysis: _asStringMap(productData['aiAnalysis']),
                         )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 450.ms)

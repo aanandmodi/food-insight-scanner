@@ -28,7 +28,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   _AuthMethod _activeMethod = _AuthMethod.none;
   bool _obscurePassword = true;
-  bool _isRetrying = false;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;

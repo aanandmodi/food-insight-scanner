@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
-import '../../services/local_database_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../theme/app_design_system.dart';
 

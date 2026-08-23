@@ -115,7 +115,6 @@ class _PremiumActionCard extends StatefulWidget {
   final Color startColor;
   final Color endColor;
   final VoidCallback onTap;
-  final bool isWide;
 
   const _PremiumActionCard({
     required this.icon,
@@ -124,7 +123,6 @@ class _PremiumActionCard extends StatefulWidget {
     required this.startColor,
     required this.endColor,
     required this.onTap,
-    this.isWide = false,
   });
 
   @override
@@ -156,7 +154,12 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // GestureDetector alone is invisible to TalkBack; the wrapper makes each
+    // card announce itself as a button with its title.
+    return Semantics(
+      button: true,
+      label: '${widget.title}. ${widget.subtitle}',
+      child: GestureDetector(
       onTapDown: (_) {
         HapticFeedback.lightImpact();
         _controller.forward();
@@ -175,7 +178,7 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
           );
         },
         child: Container(
-          padding: EdgeInsets.all(widget.isWide ? 18 : 20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
@@ -197,8 +200,9 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
               width: 1.5,
             ),
           ),
-          child: widget.isWide ? _buildWideLayout() : _buildSquareLayout(),
+          child: _buildSquareLayout(),
         ),
+      ),
       ),
     );
   }
@@ -227,46 +231,6 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWideLayout() {
-    return Row(
-      children: [
-        _buildIconContainer(),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.title,
-                style: FoodInsightTypography.heading(
-                  size: 15,
-                  weight: FontWeight.w800,
-                  color: FoodInsightColors.deepCharcoal,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                widget.subtitle,
-                style: FoodInsightTypography.caption(
-                  size: 12,
-                  weight: FontWeight.w600,
-                  color: FoodInsightColors.midGray,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-        Icon(
-          Icons.chevron_right_rounded,
-          size: 20,
-          color: FoodInsightColors.midGray.withValues(alpha: 0.6),
         ),
       ],
     );

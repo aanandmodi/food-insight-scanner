@@ -158,13 +158,17 @@ class _ProfileSetupState extends State<ProfileSetup>
           }
           _selectedDiseases = List<String>.from(cloudProfile['diseases'] ?? []);
           _selectedAllergies = List<String>.from(cloudProfile['allergies'] ?? []);
-          _selectedHealthGoal = cloudProfile['healthGoal'];
+          // `toMap()` writes `healthGoals`; older documents used `healthGoal`.
+          // Reading only the old key meant the goal never pre-selected on edit.
+          _selectedHealthGoal =
+              cloudProfile['healthGoals'] ?? cloudProfile['healthGoal'];
           _selectedDietaryPreferences =
               List<String>.from(cloudProfile['dietaryPreferences'] ?? []);
           _selectedActivityLevel = cloudProfile['activityLevel'] ?? 'moderate';
         });
       } else {
         // Load from local SharedPreferences
+        if (!mounted) return;
         setState(() {
           _userName = prefs.getString('user_name') ?? '';
           _nameController.text = _userName;
@@ -202,9 +206,9 @@ class _ProfileSetupState extends State<ProfileSetup>
     });
 
     try {
-      // ── 1. Always save to Local Cache and Provider first ──
+      // ── 1. Build the profile. The uid/email/photo are filled in by the
+      //      provider from Firebase Auth, so we never invent a fake uid. ──
       final userProfile = UserProfile(
-        uid: 'local_user',
         name: _userName,
         gender: _selectedGender,
         dateOfBirth: _dateOfBirth,
@@ -219,21 +223,13 @@ class _ProfileSetupState extends State<ProfileSetup>
         profileCompleted: true,
       );
 
+      // ── 2. One save path: the provider writes SharedPreferences *and*
+      //      Firestore, so the two can't drift apart. ──
+      bool cloudSaved = false;
       if (mounted) {
-        await Provider.of<UserProfileProvider>(context, listen: false).saveProfile(userProfile);
-      }
-
-      // ── 2. Try to save to Firestore (best-effort, non-blocking) ──
-      try {
-        final profileData = userProfile.toMap();
-        await FirestoreService().saveUserProfile(profileData).timeout(
-          const Duration(seconds: 2),
-          onTimeout: () {
-            debugPrint('Firestore save timed out — profile saved locally.');
-          },
-        );
-      } catch (e) {
-        debugPrint('Firestore save failed (profile is saved locally): $e');
+        cloudSaved = await Provider.of<UserProfileProvider>(context,
+                listen: false)
+            .saveProfile(userProfile, markCompleted: true);
       }
 
       // ── 3. Navigate to home ──
@@ -243,7 +239,15 @@ class _ProfileSetupState extends State<ProfileSetup>
 
         await Future.delayed(const Duration(milliseconds: 1500));
         if (mounted) {
+          // Dismiss the success dialog first. Without this,
+          // pushReplacementNamed replaced the *dialog* route and left the
+          // setup screen sitting underneath the dashboard.
+          Navigator.of(context, rootNavigator: true).pop();
           Navigator.pushReplacementNamed(context, '/home-dashboard');
+          if (!cloudSaved) {
+            debugPrint(
+                'Profile saved on device; it will sync when back online.');
+          }
         }
       }
     } catch (e) {

@@ -8,7 +8,7 @@ import 'package:sizer/sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/app_export.dart';
+import '../../core/utils/data_refresh_bus.dart';
 import '../../services/firestore_service.dart';
 import '../../services/local_database_service.dart';
 import '../../services/cloud_function_service.dart';
@@ -44,10 +44,25 @@ class _DietLogScreenState extends State<DietLogScreen> {
   void initState() {
     super.initState();
     _loadData();
+    // Meals can be logged from Product Details, the AI chat and the Meal
+    // Planner. Without this the log kept showing stale totals.
+    DataRefreshBus.dietLogRevision.addListener(_onExternalChange);
+    DataRefreshBus.profileRevision.addListener(_onExternalChange);
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    DataRefreshBus.dietLogRevision.removeListener(_onExternalChange);
+    DataRefreshBus.profileRevision.removeListener(_onExternalChange);
+    super.dispose();
+  }
+
+  void _onExternalChange() {
+    if (mounted) _loadData(showSpinner: false);
+  }
+
+  Future<void> _loadData({bool showSpinner = true}) async {
+    if (showSpinner) setState(() => _isLoading = true);
     try {
       final dateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final prefs = await SharedPreferences.getInstance();
@@ -57,6 +72,10 @@ class _DietLogScreenState extends State<DietLogScreen> {
         entries = await FirestoreService().getDietLog(dateString);
       } catch (e) {
         debugPrint('Firestore diet log query failed: $e');
+      }
+      // Also fall back when the cloud simply returned nothing — offline reads
+      // succeed with an empty list, which used to look like "no meals today".
+      if (entries.isEmpty) {
         try {
           entries = await LocalDatabaseService().getDietLogByDate(dateString);
         } catch (e2) {
@@ -121,28 +140,51 @@ class _DietLogScreenState extends State<DietLogScreen> {
     } catch (e) {
       debugPrint('Error loading diet log: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && _isLoading) setState(() => _isLoading = false);
     }
   }
 
+  /// Whether the user can move forward a day. Logging into the future made the
+  /// date strip walk off indefinitely with nothing to show.
+  bool get _canGoForward {
+    final today = DateTime.now();
+    final selected = DateTime(
+        _selectedDate.year, _selectedDate.month, _selectedDate.day);
+    return selected.isBefore(DateTime(today.year, today.month, today.day));
+  }
+
   void _changeDate(int days) {
+    if (days > 0 && !_canGoForward) {
+      HapticFeedback.selectionClick();
+      return;
+    }
     HapticFeedback.lightImpact();
     setState(() {
       _selectedDate = _selectedDate.add(Duration(days: days));
     });
-    _loadData();
+    // No full-screen spinner when only the date changed — the list swaps in
+    // place instead of blanking the whole screen.
+    _loadData(showSpinner: false);
   }
 
-  Future<void> _deleteEntry(String id) async {
+  Future<void> _deleteEntry(String? id) async {
+    if (id == null || id.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("This entry can't be deleted.")),
+        );
+      }
+      return;
+    }
     try {
       await LocalDatabaseService().deleteDietEntry(id);
       try {
         await FirestoreService().deleteDietEntry(id);
       } catch (_) {}
-      _loadData();
+      _loadData(showSpinner: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Entry deleted'),
             backgroundColor: FoodInsightColors.scannerGreen,
           ),
@@ -276,10 +318,9 @@ class _DietLogScreenState extends State<DietLogScreen> {
                     'date': dateString,
                   };
 
-                  await LocalDatabaseService().insertDietEntry(entry);
-                  try {
-                    await FirestoreService().saveDietEntry(entry);
-                  } catch (_) {}
+                  // saveDietEntry writes SQLite *and* Firestore. Calling
+                  // insertDietEntry first created a duplicate local row.
+                  await FirestoreService().saveDietEntry(entry);
                   if (ctx.mounted && Navigator.canPop(ctx)) {
                     Navigator.pop(ctx);
                   }
@@ -429,8 +470,15 @@ class _DietLogScreenState extends State<DietLogScreen> {
                            ),
                          ),
                          IconButton(
-                           icon: Icon(Icons.chevron_right_rounded, color: FoodInsightColors.deepCharcoal),
-                           onPressed: () => _changeDate(1),
+                           icon: Icon(
+                             Icons.chevron_right_rounded,
+                             color: _canGoForward
+                                 ? FoodInsightColors.deepCharcoal
+                                 : FoodInsightColors.lightGray,
+                           ),
+                           // Disabled on today so the strip can't wander into
+                           // dates that can never have entries.
+                           onPressed: _canGoForward ? () => _changeDate(1) : null,
                          ),
                        ],
                      )
@@ -583,7 +631,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
     final calories = (meal['calories'] as num?)?.toInt() ?? 0;
 
     return Dismissible(
-      key: Key(meal['id'] ?? UniqueKey().toString()),
+      key: ValueKey('meal-${meal['id'] ?? meal['name']}-${meal['time']}'),
       direction: DismissDirection.endToStart,
       background: Container(
         margin: EdgeInsets.only(bottom: 1.5.h),
@@ -595,7 +643,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
         alignment: Alignment.centerRight,
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
-      onDismissed: (_) => _deleteEntry(meal['id']),
+      onDismissed: (_) => _deleteEntry(meal['id']?.toString()),
       child: Container(
         margin: EdgeInsets.only(bottom: 1.5.h),
         padding: EdgeInsets.all(4.w),
