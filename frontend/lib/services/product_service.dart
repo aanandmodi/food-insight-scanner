@@ -1,14 +1,27 @@
-// lib/core/services/product_service.dart
+// lib/services/product_service.dart
 
 import 'package:flutter/foundation.dart';
 import 'firestore_service.dart';
 import 'local_database_service.dart';
 import 'cloud_function_service.dart';
 
-/// Service that fetches real product data via CloudFunctionService.
-///
-/// Delegates to the `analyzeProduct` method which
-/// handles OFF fetching, AI analysis, and Firestore caching.
+/// Outcome of persisting a scan, so the UI can tell the user what actually
+/// happened instead of silently dropping the record.
+class ScanSaveResult {
+  final bool savedLocally;
+  final bool savedToCloud;
+  final Object? error;
+
+  const ScanSaveResult({
+    required this.savedLocally,
+    required this.savedToCloud,
+    this.error,
+  });
+
+  bool get isPersisted => savedLocally || savedToCloud;
+}
+
+/// Service that fetches real product data via [CloudFunctionService].
 ///
 /// Local scan history is persisted in SQLite via [LocalDatabaseService].
 class ProductService {
@@ -18,43 +31,74 @@ class ProductService {
 
   final LocalDatabaseService _localDb = LocalDatabaseService();
 
-  /// Looks up a product by its barcode via CloudFunctionService.
-  /// Returns null if not found.
-  Future<Map<String, dynamic>?> getProductByBarcode(String barcode) async {
+  /// Looks up a product by barcode. Returns null if not found.
+  ///
+  /// Falls back to the local cache when the network lookup fails or times out,
+  /// so a previously scanned product still opens offline.
+  Future<Map<String, dynamic>?> getProductByBarcode(
+    String barcode, {
+    Duration timeout = const Duration(seconds: 25),
+  }) async {
     try {
       debugPrint('Fetching product via CloudFunctionService: $barcode');
-      final data = await CloudFunctionService().analyzeProduct(barcode);
+      final data =
+          await CloudFunctionService().analyzeProduct(barcode).timeout(timeout);
       if (data != null) {
         return Map<String, dynamic>.from(data);
       }
-      return null;
     } catch (e) {
-      debugPrint('Error fetching product: $e');
-      return null;
+      debugPrint('Error fetching product $barcode: $e');
     }
+
+    // Offline / failure path — serve the last known good copy if we have one.
+    try {
+      final cached = await _localDb.getScanByBarcode(barcode);
+      if (cached != null) {
+        debugPrint('Serving cached local product for $barcode');
+        return cached;
+      }
+    } catch (e) {
+      debugPrint('Local product cache miss for $barcode: $e');
+    }
+
+    return null;
   }
 
   /// Saves a scanned product to local SQLite history AND Firestore.
-  Future<void> saveToScanHistory(Map<String, dynamic> product) async {
+  ///
+  /// The two writes are independent: a local failure must not skip the cloud
+  /// write (and vice versa), and the caller is told whether anything landed.
+  Future<ScanSaveResult> saveToScanHistory(Map<String, dynamic> product) async {
+    Object? firstError;
+    bool local = false;
+    bool cloud = false;
+
     try {
-      // Save to local SQLite database
-      await _localDb.insertScan(product);
-
-      // Also save to Firestore for cloud sync
-      try {
-        await FirestoreService().saveScan(product);
-      } catch (e) {
-        debugPrint('Firestore scan save failed (offline?): $e');
-      }
-
-      // Note: product caching in Firestore is now done server-side
-      // by the scanProduct Cloud Function using Admin SDK.
+      local = await _localDb.insertScan(product) > 0;
     } catch (e) {
-      debugPrint('Error saving scan history: $e');
+      firstError ??= e;
+      debugPrint('Local scan save failed: $e');
     }
+
+    try {
+      cloud = await FirestoreService().saveScan(product);
+    } catch (e) {
+      firstError ??= e;
+      debugPrint('Firestore scan save failed (offline?): $e');
+    }
+
+    if (!local && !cloud) {
+      debugPrint('WARNING: scan for ${product['barcode']} was not persisted.');
+    }
+
+    return ScanSaveResult(
+      savedLocally: local,
+      savedToCloud: cloud,
+      error: firstError,
+    );
   }
 
-  /// Gets the scan history — reads from local SQLite database first.
+  /// Gets the scan history — local SQLite first, Firestore as a fallback.
   Future<List<Map<String, dynamic>>> getScanHistory() async {
     try {
       final localHistory = await _localDb.getScanHistory();
@@ -68,7 +112,7 @@ class ProductService {
     try {
       final firestoreHistory = await FirestoreService()
           .getScanHistory()
-          .timeout(const Duration(seconds: 2));
+          .timeout(const Duration(seconds: 6));
       if (firestoreHistory.isNotEmpty) {
         return firestoreHistory;
       }

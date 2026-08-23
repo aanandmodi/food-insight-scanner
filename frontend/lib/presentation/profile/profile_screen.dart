@@ -235,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     : null,
                                 child: profile?.photoUrl == null
                                     ? Text(
-                                        (profile?.email != null && profile!.email!.isNotEmpty)
+                                        (profile?.email?.isNotEmpty ?? false)
                                             ? profile!.email![0].toUpperCase()
                                             : displayName.isNotEmpty
                                                 ? displayName[0].toUpperCase()

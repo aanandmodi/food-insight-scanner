@@ -21,7 +21,6 @@ import '../barcode_scanner/barcode_scanner.dart';
 import '../ai_chat_assistant/ai_chat_assistant.dart';
 import 'widgets/diet_log_preview.dart';
 import 'widgets/meal_plan_preview.dart';
-import '../meal_planner/meal_planner_screen.dart';
 import './widgets/greeting_header.dart';
 import './widgets/nutrition_summary_card.dart';
 import './widgets/quick_actions_section.dart';

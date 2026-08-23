@@ -16,7 +16,6 @@ import '../presentation/diet_log/diet_log_screen.dart';
 import '../presentation/settings/settings_screen.dart';
 import '../presentation/shopping_list/shopping_list_screen.dart';
 import '../presentation/meal_planner/meal_planner_screen.dart';
-import '../presentation/meal_planner/meal_planner_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
