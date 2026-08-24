@@ -97,16 +97,37 @@ class AuthService {
     } catch (e) {
       debugPrint('adoptLocalRows failed (non-fatal): $e');
     }
+
+    // adoptLocalRows only rewrites user_id — the rows keep sync_status='local'.
+    // The one other caller of syncLocalEntriesToCloud() is retryInit(), which
+    // runs *before* authentication and therefore always no-ops on a null uid,
+    // so without this nothing ever retried the upload and signOut()'s purge
+    // deleted the entries outright. Bounded and swallowed: this runs after
+    // sign-in has already succeeded and must never delay or fail it.
+    try {
+      await FirestoreService()
+          .syncLocalEntriesToCloud()
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      debugPrint('Post-sign-in cloud sync failed (non-fatal): $e');
+    }
   }
 
   /// Creates the Firestore profile document if the user does not have one yet.
   /// Never overwrites an existing profile.
   Future<void> _ensureProfileDocument(User user, {String? displayName}) async {
     try {
-      final existingProfile = await FirestoreService()
-          .getUserProfile()
-          .timeout(const Duration(seconds: 8), onTimeout: () => null);
-      if (existingProfile != null) return;
+      final existing = await FirestoreService().loadUserProfile().timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => const ProfileLoadResult.failed(),
+          );
+
+      // Only create the document when the read positively confirmed there is
+      // none. A timeout or network error used to land here as well, and the
+      // merge-write below then stamped name:'' / profileCompleted:false over a
+      // complete cloud profile — silently wiping the user's onboarding just
+      // because their connection wobbled during sign-in.
+      if (existing.exists || existing.failed) return;
 
       await FirestoreService().saveUserProfile({
         'email': user.email ?? '',
@@ -187,10 +208,17 @@ class AuthService {
         password: password,
       );
 
-      // Update display name if provided
+      // Update display name if provided. The account already exists at this
+      // point, so a transient failure here must not bubble up to the outer
+      // catch and report the whole signup as failed — it would strand the user
+      // with an account they can't obviously recreate (email already in use).
       if (displayName != null && displayName.isNotEmpty) {
-        await userCredential.user?.updateDisplayName(displayName);
-        await userCredential.user?.reload();
+        try {
+          await userCredential.user?.updateDisplayName(displayName);
+          await userCredential.user?.reload();
+        } catch (e) {
+          debugPrint('Could not set display name (non-fatal): $e');
+        }
       }
 
       // Initialize Firestore profile
@@ -470,6 +498,20 @@ class AuthService {
     // no longer tell which rows belonged to this user.
     final departingUid = currentUser?.uid;
     try {
+      // 0. Flush anything still only on this device BEFORE dropping the session.
+      // Step 3's purge hard-deletes diet_log rows regardless of sync_status, and
+      // syncLocalEntriesToCloud() resolves the uid from the *live* auth session —
+      // so this must run here, ahead of the sign-outs below, or it silently
+      // no-ops on a null uid and the entries are lost from device and cloud
+      // alike. Time-boxed and swallowed: sign-out must never hang or fail.
+      try {
+        await FirestoreService()
+            .syncLocalEntriesToCloud()
+            .timeout(const Duration(seconds: 10));
+      } catch (e) {
+        debugPrint('Pre-sign-out flush failed (proceeding with sign-out): $e');
+      }
+
       // 1. Sign out of Google first (prevents reuse of cached credentials)
       try {
         await _googleSignIn.signOut();
@@ -613,6 +655,10 @@ class AuthService {
         'custom_carbs_goal',
         'custom_fat_goal',
         'last_ai_recalibration',
+        // AI-generated meal plan: account data, and it survived sign-out, so the
+        // next account opened Meal Planner to the previous user's plan.
+        'saved_meal_plan',
+        'saved_meal_plan_at',
       ];
       for (final key in userKeys) {
         await prefs.remove(key);

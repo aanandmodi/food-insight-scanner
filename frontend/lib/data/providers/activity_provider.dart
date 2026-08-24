@@ -24,6 +24,16 @@ class ActivityProvider extends ChangeNotifier {
   int? _initialBootSteps;
   int _initialBaseSteps = 0;
 
+  /// Day the baseline above belongs to. Without this the Health-Connect branch
+  /// kept adding today's delta to yesterday's total whenever the app stayed
+  /// open across midnight, so the ring opened the new day already full.
+  String? _baselineDate;
+
+  static String _dayKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
   int get steps => _steps;
   int get activeCalories => _activeCalories;
   double get distanceKm => _distanceKm;
@@ -82,6 +92,20 @@ class ActivityProvider extends ChangeNotifier {
 
   Future<void> _handlePedometerEvent(int cumulativeBootSteps) async {
     try {
+      final todayStr = _dayKey(DateTime.now());
+
+      // Day rolled over while the app was open: today starts from zero and the
+      // boot counter becomes the new reference point. Health Connect's own
+      // aggregate for the new day is picked up by the next refresh()/resync.
+      if (_baselineDate != null && _baselineDate != todayStr) {
+        _initialBootSteps = cumulativeBootSteps;
+        _initialBaseSteps = 0;
+        _steps = 0;
+        _activeCalories = 0;
+        _distanceKm = 0.0;
+      }
+      _baselineDate = todayStr;
+
       if (_initialBootSteps == null) {
         _initialBootSteps = cumulativeBootSteps;
         _initialBaseSteps = _steps;
@@ -100,7 +124,6 @@ class ActivityProvider extends ChangeNotifier {
       } else {
         // Fallback: use SharedPreferences to calculate steps from midnight baseline
         final prefs = await SharedPreferences.getInstance();
-        final todayStr = DateTime.now().toIso8601String().split('T')[0];
         final savedDate = prefs.getString('pedometer_today_date');
         int? startSteps = prefs.getInt('pedometer_today_start_steps');
 

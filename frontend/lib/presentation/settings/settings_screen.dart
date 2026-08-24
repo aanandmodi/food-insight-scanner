@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
+import '../../services/cloud_function_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../theme/app_design_system.dart';
 
@@ -98,6 +99,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } else {
         await prefs.setString('groq_api_key', result);
       }
+      // Drop the memoized key so the next AI request re-reads SharedPreferences
+      // instead of sending the old key until the app restarts.
+      CloudFunctionService().invalidateKeyCache();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -177,10 +177,15 @@ class _DietLogScreenState extends State<DietLogScreen> {
       return;
     }
     try {
-      await LocalDatabaseService().deleteDietEntry(id);
-      try {
-        await FirestoreService().deleteDietEntry(id);
-      } catch (_) {}
+      // FirestoreService.deleteDietEntry is the single delete path: it resolves
+      // the entry's firestore_id from the local row, deletes the SQLite row, and
+      // then deletes the cloud document.
+      //
+      // Deleting the local row here first (as this used to) destroyed the
+      // local_id -> firestore_id mapping before the cloud delete could read it,
+      // so a synced meal was only removed locally and then came straight back
+      // the next time getDietLog mirrored the surviving cloud doc.
+      await FirestoreService().deleteDietEntry(id);
       _loadData(showSpinner: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

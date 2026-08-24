@@ -10,6 +10,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/utils/data_refresh_bus.dart';
 import 'local_database_service.dart';
 
+/// Outcome of a profile read that distinguishes three cases the old nullable
+/// return conflated:
+///  * [data] non-null            → a profile was found.
+///  * [data] null, [failed] false → no profile exists (a genuinely new user).
+///  * [data] null, [failed] true  → the read failed (offline/timeout); the
+///    caller must NOT treat this as a new user or it will clobber the real
+///    cloud profile / force re-onboarding.
+class ProfileLoadResult {
+  final Map<String, dynamic>? data;
+  final bool failed;
+
+  const ProfileLoadResult.found(Map<String, dynamic> this.data) : failed = false;
+  const ProfileLoadResult.absent()
+      : data = null,
+        failed = false;
+  const ProfileLoadResult.failed()
+      : data = null,
+        failed = true;
+
+  bool get exists => data != null;
+}
+
 /// Service for managing user data in Firestore.
 /// All methods are resilient to Firebase being unavailable (offline mode).
 /// Diet log entries use SQLite (via [LocalDatabaseService]) as the local
@@ -204,9 +226,25 @@ class FirestoreService {
   /// Returns null when no profile exists anywhere. The previous version always
   /// returned a map — even when every value inside it was null — so callers saw
   /// a non-empty "profile" for brand-new users and skipped onboarding.
-  Future<Map<String, dynamic>?> getUserProfile() async {
+  ///
+  /// Prefer [loadUserProfile] when the caller needs to tell "this user has no
+  /// profile" apart from "we could not read it" — this shape cannot express the
+  /// difference and reports both as null.
+  Future<Map<String, dynamic>?> getUserProfile() async =>
+      (await loadUserProfile()).data;
+
+  /// Profile read that distinguishes an absent document from a failed read.
+  ///
+  /// Callers that treat null as "brand-new user" would otherwise overwrite a
+  /// real cloud profile, or force a returning user back through onboarding,
+  /// whenever Firestore merely timed out.
+  Future<ProfileLoadResult> loadUserProfile() async {
     final db = _firestore;
     final uid = _userId;
+
+    // Distinguishes "Firestore said this user has no document" from "we never
+    // got an answer". Only the former is safe to treat as a new user.
+    var cloudReadFailed = false;
 
     if (db != null && uid != null) {
       try {
@@ -216,11 +254,15 @@ class FirestoreService {
             .get()
             .timeout(const Duration(seconds: 8));
         if (doc.exists && doc.data() != null) {
-          return doc.data();
+          return ProfileLoadResult.found(doc.data()!);
         }
       } catch (e) {
+        cloudReadFailed = true;
         debugPrint('Error loading user profile: $e');
       }
+    } else if (uid != null) {
+      // Signed in but Firestore is unreachable — absence proves nothing.
+      cloudReadFailed = true;
     }
 
     try {
@@ -228,9 +270,13 @@ class FirestoreService {
       final name = prefs.getString('user_name');
       // Name is the one field onboarding always writes. Without it there is no
       // local profile to fall back to.
-      if (name == null || name.trim().isEmpty) return null;
+      if (name == null || name.trim().isEmpty) {
+        return cloudReadFailed
+            ? const ProfileLoadResult.failed()
+            : const ProfileLoadResult.absent();
+      }
 
-      return {
+      return ProfileLoadResult.found({
         'name': name,
         'email': prefs.getString('user_email'),
         'photoUrl': prefs.getString('user_photoUrl'),
@@ -246,10 +292,10 @@ class FirestoreService {
             prefs.getStringList('user_dietary_preferences') ?? const [],
         'diseases': prefs.getStringList('user_diseases') ?? const [],
         'profileCompleted': prefs.getBool('profile_completed') ?? false,
-      };
+      });
     } catch (e) {
       debugPrint('Error loading profile from SharedPreferences: $e');
-      return null;
+      return const ProfileLoadResult.failed();
     }
   }
 
@@ -414,16 +460,31 @@ class FirestoreService {
         firestoreData.remove('id');
         firestoreData.remove('source');
 
+        // Pre-allocate the document id CLIENT-SIDE and record it locally before
+        // the network write. The previous order (add() -> markDietEntrySynced)
+        // was a non-atomic two-step commit: if the process died in between, the
+        // cloud doc existed while the local row still had firestore_id = NULL,
+        // so getDietLog's dedup could not match them and the meal was listed —
+        // and re-uploaded — twice, double-counting its calories forever.
         final docRef =
-            await db.collection('diet_log').doc(uid).collection('entries').add({
+            db.collection('diet_log').doc(uid).collection('entries').doc();
+        await _localDb.markDietEntrySynced(localId, docRef.id);
+
+        // A bounded write: an un-timed-out await here left the caller's spinner
+        // up indefinitely on a flaky connection, and users re-tapped Save and
+        // inserted duplicate rows. Firestore keeps its own offline queue, so on
+        // timeout the write still lands later — we just stop blocking the UI.
+        await docRef.set({
           ...firestoreData,
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        }).timeout(const Duration(seconds: 10));
 
-        // Update local entry with Firestore ID so we can match later
-        await _localDb.markDietEntrySynced(localId, docRef.id);
         debugPrint('Diet entry also saved to Firestore: ${docRef.id}');
         cloudOk = true;
+      } on TimeoutException {
+        // Queued locally by Firestore and already marked synced above, so it
+        // will reconcile on reconnect rather than being uploaded a second time.
+        debugPrint('Firestore save timed out — queued for retry');
       } catch (e) {
         debugPrint('Firestore save failed (saved locally): $e');
       }
@@ -538,24 +599,37 @@ class FirestoreService {
       return;
     }
 
+    // Resolve the cloud document id BEFORE deleting the local row, because that
+    // row holds the only local_id -> firestore_id mapping.
+    //
+    // The previous `!entryId.startsWith('local_')` test was a broken heuristic:
+    // a *synced* entry is handed to the UI with id = 'local_…' (its local id)
+    // plus a separate firestoreId, so deleting one skipped the cloud delete
+    // entirely. The orphaned document was then re-downloaded by getDietLog's
+    // mirror step and the "deleted" meal reappeared on the next refresh.
+    final resolvedCloudId = await _localDb.getDietEntryFirestoreId(entryId);
+    // If the id is not a local_ id it is itself a Firestore doc id (that is how
+    // cloud-sourced entries are surfaced), so fall back to it.
+    final cloudId = resolvedCloudId ??
+        (entryId.startsWith('local_') ? null : entryId);
+
     // Delete from local SQLite
     await _localDb.deleteDietEntry(entryId);
 
     // Delete from Firestore if available
     final db = _firestore;
     final uid = _userId;
-    if (db != null && uid != null) {
+    if (db != null && uid != null && cloudId != null) {
       try {
-        // entryId might be a local ID or a Firestore ID
-        if (!entryId.startsWith('local_')) {
-          await db
-              .collection('diet_log')
-              .doc(uid)
-              .collection('entries')
-              .doc(entryId)
-              .delete();
-        }
+        await db
+            .collection('diet_log')
+            .doc(uid)
+            .collection('entries')
+            .doc(cloudId)
+            .delete()
+            .timeout(const Duration(seconds: 10));
       } catch (e) {
+        // Firestore queues the delete offline, so this still converges.
         debugPrint('Error deleting diet entry from Firestore: $e');
       }
     }
@@ -695,18 +769,24 @@ class FirestoreService {
           firestoreData.remove('source');
           firestoreData.remove('firestoreId');
 
-          final docRef = await db
+          // Same atomic pattern as saveDietEntry: pre-allocate the id and mark
+          // the local row synced BEFORE the write, so a crash mid-flush can
+          // never leave an unlinked cloud doc that this loop would re-upload
+          // (Firestore durably queues the set() and lands it on reconnect).
+          final docRef = db
               .collection('diet_log')
               .doc(uid)
               .collection('entries')
-              .add({
-            ...firestoreData,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+              .doc();
 
           if (localId != null) {
             await _localDb.markDietEntrySynced(localId, docRef.id);
           }
+
+          await docRef.set({
+            ...firestoreData,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
           debugPrint('Synced local entry to cloud: ${entry['name']}');
         } catch (e) {
           debugPrint('Failed to sync entry: $e');

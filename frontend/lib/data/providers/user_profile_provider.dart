@@ -93,11 +93,22 @@ class UserProfileProvider extends ChangeNotifier {
     final authUser = AuthService().currentUser;
 
     try {
-      final data = await FirestoreService().getUserProfile();
+      final result = await FirestoreService().loadUserProfile();
+      final data = result.data;
 
       if (data == null) {
-        // No profile anywhere — a genuinely new user. Onboarding will create it.
-        _profile = null;
+        if (result.failed) {
+          // The read failed (offline/timeout) — we do NOT know that this user is
+          // new. Reporting null here sent existing users back through
+          // onboarding, which then overwrote their real profile. Surface it as
+          // an error instead so the UI can show its retry branch, and keep any
+          // profile we already have in memory.
+          _errorMessage =
+              'Could not load your profile. Check your connection and retry.';
+        } else {
+          // No profile anywhere — a genuinely new user. Onboarding will create it.
+          _profile = null;
+        }
       } else {
         var loaded = UserProfile.fromMap(data);
 
