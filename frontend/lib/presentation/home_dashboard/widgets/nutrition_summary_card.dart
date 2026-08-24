@@ -152,11 +152,20 @@ class NutritionSummaryCard extends StatelessWidget {
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0);
   }
 
+  /// Group a number with thousands separators, e.g. 1900 -> "1,900".
+  ///
+  /// Uses integer division: the previous `(n / 1000).toStringAsFixed(0)`
+  /// *rounded* the leading group, so 1900 kcal displayed as "2,900" and any
+  /// value whose remainder was >= 500 was inflated by a full 1000.
   String _formatNumber(int n) {
-    if (n >= 1000) {
-      return '${(n / 1000).toStringAsFixed(0)},${(n % 1000).toString().padLeft(3, '0')}';
+    final digits = n.abs().toString();
+    final sign = n < 0 ? '-' : '';
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
+      buf.write(digits[i]);
     }
-    return n.toString();
+    return '$sign$buf';
   }
 }
 

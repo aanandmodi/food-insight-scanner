@@ -70,6 +70,22 @@ class _SplashScreenState extends State<SplashScreen> {
       } else {
         // Logged in → check profile completeness
         final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+
+        // A failed profile read is NOT the same as "profile incomplete". Sending
+        // a returning user to onboarding here (because profile came back null on
+        // a timeout) then let setup overwrite their real cloud profile. Show the
+        // retry state instead and let them try the load again.
+        if (profileProvider.hasError && profileProvider.profile == null) {
+          if (mounted) {
+            setState(() {
+              _hasError = true;
+              _loadingText =
+                  'Could not load your profile. Check your connection and retry.';
+            });
+          }
+          return;
+        }
+
         final profileComplete = profileProvider.profile?.profileCompleted ?? false;
 
         if (!profileComplete) {

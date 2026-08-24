@@ -345,6 +345,38 @@ class LocalDatabaseService {
     }
   }
 
+  /// Resolve the Firestore document id for an entry addressed by either its
+  /// `local_id` or its `firestore_id`.
+  ///
+  /// Needed because a *synced* entry is surfaced to the UI with `id` =
+  /// `local_…` (see [_rowToDietEntry]) while its cloud document is named by
+  /// `firestore_id`. Callers deleting an entry must resolve this **before**
+  /// removing the local row, since that row holds the only mapping between the
+  /// two ids. Returns null for entries that were never uploaded.
+  Future<String?> getDietEntryFirestoreId(String entryId) async {
+    if (entryId.trim().isEmpty) return null;
+    final db = await _database;
+    if (db == null) return null;
+
+    try {
+      final uids = _readableUids;
+      final rows = await db.query(
+        'diet_log',
+        columns: ['firestore_id'],
+        where:
+            '(local_id = ? OR firestore_id = ?) AND user_id IN (${List.filled(uids.length, '?').join(',')})',
+        whereArgs: [entryId, entryId, ...uids],
+        limit: 1,
+      );
+      if (rows.isEmpty) return null;
+      final id = rows.first['firestore_id'] as String?;
+      return (id == null || id.isEmpty) ? null : id;
+    } catch (e) {
+      debugPrint('Error resolving firestore id for $entryId: $e');
+      return null;
+    }
+  }
+
   /// Delete a diet entry by its local_id or firestore_id.
   Future<void> deleteDietEntry(String entryId) async {
     if (entryId.trim().isEmpty) return;

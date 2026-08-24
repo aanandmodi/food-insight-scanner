@@ -64,6 +64,36 @@ class UserUtils {
     }
   }
 
+  // ──────────────────────────── Health goal matching ────────────────────────────
+
+  /// Normalizes a stored health-goal value so matching works regardless of how
+  /// it was written. The profile setup screen stores snake_case values
+  /// (`weight_loss`, `muscle_gain`, `maintenance`, `general_health`) while
+  /// older documents and free-text defaults store human labels
+  /// (`Weight Loss`, `Healthy Lifestyle`). Underscores become spaces so a
+  /// single set of substring checks covers both.
+  static String _normalizeGoal(String? healthGoal) =>
+      (healthGoal ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z]+'), ' ');
+
+  /// True when the goal is some form of weight loss.
+  ///
+  /// Note `weight_loss` normalizes to `weight loss`, which contains `loss`
+  /// but *not* `lose` — both spellings must be checked.
+  static bool _isWeightLoss(String? healthGoal) {
+    final g = _normalizeGoal(healthGoal);
+    return g.contains('lose') || g.contains('loss') || g.contains('cut');
+  }
+
+  /// True when the goal is some form of muscle gain / bulking.
+  ///
+  /// Weight loss wins ties so both calorie and protein maths agree on goals
+  /// that mention each (e.g. "lose fat, gain definition").
+  static bool _isMuscleGain(String? healthGoal) {
+    if (_isWeightLoss(healthGoal)) return false;
+    final g = _normalizeGoal(healthGoal);
+    return g.contains('muscle') || g.contains('bulk') || g.contains('gain');
+  }
+
   /// Calculate Total Daily Energy Expenditure.
   ///
   /// TDEE = BMR × activity multiplier, then adjusted by health goal:
@@ -102,10 +132,9 @@ class UserUtils {
     double tdee = bmr * multiplier;
 
     // Apply health goal adjustment
-    final goalLower = (healthGoal ?? '').toLowerCase();
-    if (goalLower.contains('lose') || goalLower.contains('weight loss')) {
+    if (_isWeightLoss(healthGoal)) {
       tdee -= 500;
-    } else if (goalLower.contains('muscle') || goalLower.contains('bulk') || goalLower.contains('gain')) {
+    } else if (_isMuscleGain(healthGoal)) {
       tdee += 300;
     }
 
@@ -115,9 +144,8 @@ class UserUtils {
 
   /// Fallback calorie goals when body metrics are missing.
   static int _fallbackCalorieGoal(String? healthGoal) {
-    final goalLower = (healthGoal ?? '').toLowerCase();
-    if (goalLower.contains('lose')) return 1800;
-    if (goalLower.contains('muscle') || goalLower.contains('gain')) return 2500;
+    if (_isWeightLoss(healthGoal)) return 1800;
+    if (_isMuscleGain(healthGoal)) return 2500;
     return 2000;
   }
 
@@ -143,12 +171,11 @@ class UserUtils {
       return _fallbackProteinGoal(healthGoal);
     }
 
-    final goalLower = (healthGoal ?? '').toLowerCase();
     double gramsPerKg;
 
-    if (goalLower.contains('muscle') || goalLower.contains('bulk') || goalLower.contains('gain')) {
+    if (_isMuscleGain(healthGoal)) {
       gramsPerKg = 2.0;
-    } else if (goalLower.contains('lose') || goalLower.contains('weight loss')) {
+    } else if (_isWeightLoss(healthGoal)) {
       gramsPerKg = 1.2;
     } else {
       gramsPerKg = 0.8;
@@ -158,9 +185,8 @@ class UserUtils {
   }
 
   static int _fallbackProteinGoal(String? healthGoal) {
-    final goalLower = (healthGoal ?? '').toLowerCase();
-    if (goalLower.contains('muscle') || goalLower.contains('gain')) return 180;
-    if (goalLower.contains('lose')) return 120;
+    if (_isMuscleGain(healthGoal)) return 180;
+    if (_isWeightLoss(healthGoal)) return 120;
     return 100;
   }
 
