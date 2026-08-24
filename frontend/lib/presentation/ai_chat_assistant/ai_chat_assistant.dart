@@ -113,17 +113,26 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     super.dispose();
   }
 
-  String _buildConversationHistory() {
-    final historyMessages = _messages.length > 1 ? _messages.sublist(0, _messages.length -1) : _messages;
-    final history = StringBuffer();
-    
+  /// Structured prior turns for the model.
+  ///
+  /// The old string transcript ("User: …\nAssistant: …") split every reply on
+  /// newlines, so any multi-line answer was shredded into bogus turns and the
+  /// 20-turn window cap counted lines instead of messages.
+  List<Map<String, String>> _buildConversationHistory() {
+    // The just-added user message is passed separately as `message`.
+    final historyMessages =
+        _messages.length > 1 ? _messages.sublist(0, _messages.length - 1) : _messages;
+
+    final history = <Map<String, String>>[];
     for (final message in historyMessages) {
-      final sender = (message["isUser"] as bool) ? "User" : "Assistant";
-      final content = message["message"] as String;
-      history.writeln("$sender: $content");
+      final content = (message['message'] as String?)?.trim() ?? '';
+      if (content.isEmpty) continue;
+      history.add({
+        'role': (message['isUser'] as bool? ?? false) ? 'user' : 'assistant',
+        'content': content,
+      });
     }
-    
-    return history.toString();
+    return history;
   }
   
   Future<void> _updateQuickReplies() async {
@@ -171,7 +180,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
 
       final result = await _cloudFunctionService.chatWithAI(
         message: message,
-        conversationHistory: conversationHistory,
+        history: conversationHistory,
         userProfile: profile?.toMap() ?? {},
         mealLogContext: _mealLogContext,
       );
@@ -209,16 +218,29 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
         setState(() {
           String userMsg = "I apologize, but I'm having trouble connecting. Please try again in a moment.";
           String bannerMsg = 'Error communicating with AI. Please check your internet.';
-          
-          final errStr = e.toString().toLowerCase();
-          if (errStr.contains('401') || errStr.contains('api key')) {
-             bannerMsg = 'Invalid API Key. Please update it in Settings.';
-             userMsg = "My AI brain isn't authorized right now! Please check the API key in the app Settings.";
-          } else if (errStr.contains('429')) {
-             bannerMsg = 'API Rate limit exceeded. Try again later.';
-             userMsg = "Whoa, slow down! I'm getting too many requests right now. Please give me a moment to catch my breath.";
+
+          // Type-check instead of substring-matching. These exceptions stringify
+          // to a human-readable sentence that never contains the raw status code
+          // or the words "api key", so the old contains('429')/contains('api key')
+          // tests could never fire — every failure, including a rejected key or a
+          // rate limit, told the user to check their internet.
+          if (e is AiUnavailableException) {
+            bannerMsg = e.message;
+            userMsg =
+                "My AI brain isn't set up right now! ${e.message}";
+          } else if (e is AiRequestException) {
+            bannerMsg = e.message;
+            if (e.isAuthFailure) {
+              userMsg =
+                  "My AI brain isn't authorized right now! Please check the API key in the app Settings.";
+            } else if (e.isRateLimited) {
+              userMsg =
+                  "Whoa, slow down! I'm getting too many requests right now. Please give me a moment to catch my breath.";
+            } else {
+              userMsg = e.message;
+            }
           }
-          
+
           _messages.add({
             "id": _messages.length + 1,
             "message": userMsg,

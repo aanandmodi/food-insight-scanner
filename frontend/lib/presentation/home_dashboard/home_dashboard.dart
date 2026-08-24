@@ -122,7 +122,10 @@ class _HomeDashboardState extends State<HomeDashboard>
       if (!mounted) return;
       final profile = context.read<UserProfileProvider>().profile;
 
-      // Calculate dynamic targets based on user profile setup
+      // Calculate dynamic targets based on user profile setup. These MUST pass
+      // the same customGoal overrides as _buildHomeContent, or the home-screen
+      // widget (fed from here) shows the formula goal while the app shows the
+      // user's AI-adjusted / manually-set goal.
       final calGoal = UserUtils.calculateTDEE(
         weightKg: profile?.weightKg ?? 70.0,
         heightCm: profile?.heightCm ?? 170.0,
@@ -130,16 +133,24 @@ class _HomeDashboardState extends State<HomeDashboard>
         gender: profile?.gender ?? 'Male',
         activityLevel: profile?.activityLevel ?? 'moderate',
         healthGoal: profile?.healthGoals ?? '',
+        customGoal: profile?.customCaloriesGoal,
       );
 
       final proteinGoal = UserUtils.calculateProteinGoal(
         weightKg: profile?.weightKg ?? 70.0,
         healthGoal: profile?.healthGoals ?? '',
+        customGoal: profile?.customProteinGoal,
       );
 
       final sugarGoal = UserUtils.calculateSugarGoal(calGoal);
-      final carbsGoal = UserUtils.calculateCarbsGoal(calGoal);
-      final fatGoal = UserUtils.calculateFatGoal(calGoal);
+      final carbsGoal = UserUtils.calculateCarbsGoal(
+        calGoal,
+        customGoal: profile?.customCarbsGoal,
+      );
+      final fatGoal = UserUtils.calculateFatGoal(
+        calGoal,
+        customGoal: profile?.customFatGoal,
+      );
 
       setState(() {
         _nutritionData['calories'] = totalCals;
@@ -221,6 +232,11 @@ class _HomeDashboardState extends State<HomeDashboard>
     _refreshController.forward();
 
     await _loadUserData();
+
+    // The refresh awaits a network round-trip; if the user left the tab in the
+    // meantime the State is disposed and touching the controller or calling
+    // setState would throw.
+    if (!mounted) return;
 
     _refreshController.reverse();
 

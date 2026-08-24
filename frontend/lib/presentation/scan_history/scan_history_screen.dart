@@ -20,6 +20,24 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
   final FirestoreService _firestore = FirestoreService();
   final ProductService _productService = ProductService();
 
+  /// Held in state rather than built inline in the FutureBuilder. Creating the
+  /// future inside `build` restarted the SQLite query on every rebuild of the
+  /// enclosing StreamBuilder, which flashed a spinner over an already-rendered
+  /// list each time the auth/snapshot stream ticked.
+  late Future<List<Map<String, dynamic>>> _localHistory;
+
+  @override
+  void initState() {
+    super.initState();
+    _localHistory = _productService.getScanHistory();
+  }
+
+  void _reloadLocalHistory() {
+    setState(() {
+      _localHistory = _productService.getScanHistory();
+    });
+  }
+
   Future<void> _deleteScan(Map<String, dynamic> scan) async {
     final scanId = scan['id'] as String?;
     final barcode = (scan['barcode'] as String?) ?? '';
@@ -41,8 +59,8 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
           backgroundColor: FoodInsightColors.scannerGreen,
         ),
       );
-      // Trigger a rebuild to reflect local deletions if using future builder
-      setState(() {});
+      // Re-query so a local-only deletion disappears from the list.
+      _reloadLocalHistory();
     }
   }
 
@@ -83,7 +101,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
             }
 
             return FutureBuilder<List<Map<String, dynamic>>>(
-              future: _productService.getScanHistory(),
+              future: _localHistory,
               builder: (context, localSnapshot) {
                 if (localSnapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -177,8 +195,17 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     final name = scan['name'] ?? 'Unknown Product';
     final brand = scan['brand'] ?? 'Unknown Brand';
     final barcode = scan['barcode'] ?? '';
-    final score = scan['score'] ?? '0';
-    final imageUrl = scan['imageUrl'];
+    // Every producer of a scan map — ProductModel.toJson, ScanHistoryItem,
+    // LocalDatabaseService._rowToScan and CloudFunctionService — emits 'image'
+    // and 'nutriscore'. This screen was reading 'imageUrl' and 'score', which
+    // no producer ever sets, so the thumbnail always fell through to the
+    // placeholder and the Nutri-Score badge was permanently hidden.
+    final imageUrl = (scan['image'] ?? '').toString().trim();
+    // Open Food Facts also returns 'unknown' / 'not-applicable' grades; only
+    // a–e are meaningful, so anything else keeps the badge hidden rather than
+    // rendering a grey "NOT-APPLICABLE" chip.
+    final score = (scan['nutriscore'] ?? '').toString().trim().toLowerCase();
+    final hasScore = const {'a', 'b', 'c', 'd', 'e'}.contains(score);
 
     return Dismissible(
       key: Key(scan['id']?.toString() ?? barcode),
@@ -214,7 +241,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
           child: Row(
             children: [
               // Thumbnail
-              if (imageUrl != null && imageUrl.toString().isNotEmpty)
+              if (imageUrl.isNotEmpty)
                 ClipRRect(
                   borderRadius: FoodInsightRadius.smAll,
                   child: Image.network(
@@ -260,7 +287,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
               ),
               
               // Nutri-Score
-              if (score != '0') ...[
+              if (hasScore) ...[
                 SizedBox(width: 2.w),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 2.5.w, vertical: 0.8.h),

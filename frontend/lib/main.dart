@@ -167,6 +167,21 @@ class MyApp extends StatelessWidget {
         // The initial route is now the splash screen.
         initialRoute: AppRoutes.splash,
 
+        // Flutter's default initial-route handling splits '/splash-screen' into
+        // ['/', '/splash-screen'] and builds BOTH when each resolves. '/' maps to
+        // AuthGate, so every cold start mounted a second, competing gate
+        // underneath the splash: two authStateChanges listeners, a
+        // HomeDashboard/ProfileSetup built off-screen (duplicating their startup
+        // loads), and a back button that popped to that phantom route. Build only
+        // the route actually asked for.
+        onGenerateInitialRoutes: (initialRoute) => <Route<dynamic>>[
+          MaterialPageRoute(
+            settings: RouteSettings(name: initialRoute),
+            builder: AppRoutes.routes[initialRoute] ??
+                AppRoutes.routes[AppRoutes.splash]!,
+          ),
+        ],
+
         // AppRoutes defines the named routes for the app.
         routes: AppRoutes.routes,
 
