@@ -39,3 +39,18 @@ No Firebase Auth deletion trigger is deployed on Spark. External deletion reques
 - [Account deletion](https://food-insight-scanner-app.web.app/delete-account.html)
 
 These return HTTP 200. The app defaults to these URLs. Android's Health Connect rationale screen uses an identical bundled policy; run `python tools/sync_legal_assets.py` after editing legal pages.
+# Groq routing update — 30 September 2026
+
+Server environment: `AI_MODEL_FAST=openai/gpt-oss-20b`,
+`AI_MODEL_SMART=openai/gpt-oss-120b`, `AI_MODEL_FALLBACK=openai/gpt-oss-20b`.
+These are configurable defaults, with fast for parsing/explanations and smart
+for chat/plans/recalibration. At most one distinct fallback follows a transient
+failure. Provider 429 is returned with a bounded Retry-After hint and no retry.
+Each attempt times out after 22 seconds; invalid JSON is not retried.
+
+Official [models](https://console.groq.com/docs/models) and
+[free-plan limits](https://console.groq.com/docs/rate-limits) list both defaults
+on Free at this check: 30 RPM, 1,000 RPD, 8,000 TPM, 200,000 TPD. Account limits
+take precedence and can change. Do not upgrade the account automatically.
+Live success remains unverified until deployment access and secrets are available.
+Read `SIGNING_INCIDENT.md` before distributing any release.

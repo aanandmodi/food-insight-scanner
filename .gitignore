@@ -97,6 +97,11 @@ analyze.log
 .env.*
 !.env.example
 secrets.json
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
 
 # ── Native build cache (should never have been committed) ──
 **/.cxx/
