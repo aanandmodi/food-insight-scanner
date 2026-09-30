@@ -119,8 +119,8 @@ class GreetingHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // ── Right: Notification Bell & Date Badge ──
-          _buildNotificationBell(context).animate().scale(
+          // Settings stays available without implying nonexistent notifications.
+          _buildSettingsButton(context).animate().scale(
                 duration: 400.ms,
                 delay: 200.ms,
                 curve: Curves.easeOutBack,
@@ -146,67 +146,11 @@ class GreetingHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildNotificationBell(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No new alerts. Your nutrition is on track!'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  blurRadius: 4,
-                  offset: const Offset(-2, -2),
-                ),
-              ],
-              border: Border.all(
-                color: FoodInsightColors.lightGray.withValues(alpha: 0.4),
-                width: 1,
-              ),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.notifications_outlined,
-                color: FoodInsightColors.deepCharcoal,
-                size: 22,
-              ),
-            ),
-          ),
-        ),
-        // Active notification dot (Apple style)
-        Positioned(
-          top: 2,
-          right: 2,
-          child: Container(
-            width: 9,
-            height: 9,
-            decoration: const BoxDecoration(
-              color: FoodInsightColors.healthRed,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildSettingsButton(BuildContext context) => IconButton(
+    tooltip: 'Settings',
+    onPressed: () => Navigator.pushNamed(context, '/settings'),
+    icon: const Icon(Icons.settings_outlined, color: FoodInsightColors.deepCharcoal),
+  );
 
   String _getGreeting() {
     final hour = DateTime.now().hour;

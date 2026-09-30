@@ -482,7 +482,8 @@ class _ProductDetailsState extends State<ProductDetails> {
                           ),
                         ),
                       ),
-                    GestureDetector(
+                    if (context.watch<FeatureFlagService>().aiChatEnabled)
+                      GestureDetector(
                       onTap: () {
                         HapticFeedback.lightImpact();
                         _navigateToAIChat();
