@@ -10,6 +10,7 @@ class QuickActionsSection extends StatelessWidget {
   final VoidCallback onUploadImage;
   final VoidCallback onChatWithAI;
   final VoidCallback onShoppingList;
+  final bool aiChatEnabled;
 
   const QuickActionsSection({
     super.key,
@@ -17,6 +18,7 @@ class QuickActionsSection extends StatelessWidget {
     required this.onUploadImage,
     required this.onChatWithAI,
     required this.onShoppingList,
+    required this.aiChatEnabled,
   });
 
   @override
@@ -89,22 +91,27 @@ class QuickActionsSection extends StatelessWidget {
                   onTap: onShoppingList,
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _PremiumActionCard(
-                  icon: Icons.auto_awesome_rounded,
-                  title: 'AI Smart Chat',
-                  subtitle: 'Get health advice',
-                  startColor: FoodInsightColors.purpleAccent,
-                  endColor: const Color(0xFFBD54E0),
-                  onTap: onChatWithAI,
+              if (aiChatEnabled) ...[
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _PremiumActionCard(
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'AI Smart Chat',
+                    subtitle: 'Ask about nutrition',
+                    startColor: FoodInsightColors.scannerGreen,
+                    endColor: FoodInsightColors.scannerGreenDark,
+                    onTap: onChatWithAI,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideY(begin: 0.05, end: 0);
+    )
+        .animate()
+        .fadeIn(duration: 400.ms, delay: 100.ms)
+        .slideY(begin: 0.05, end: 0);
   }
 }
 
@@ -160,49 +167,49 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
       button: true,
       label: '${widget.title}. ${widget.subtitle}',
       child: GestureDetector(
-      onTapDown: (_) {
-        HapticFeedback.lightImpact();
-        _controller.forward();
-      },
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scale,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scale.value,
-            child: child,
-          );
+        onTapDown: (_) {
+          HapticFeedback.lightImpact();
+          _controller.forward();
         },
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 15,
-                spreadRadius: -2,
-                offset: const Offset(0, 6),
-              ),
-              BoxShadow(
-                color: widget.startColor.withValues(alpha: 0.02),
-                blurRadius: 25,
-                spreadRadius: 2,
-              ),
-            ],
-            border: Border.all(
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onTap();
+        },
+        onTapCancel: () => _controller.reverse(),
+        child: AnimatedBuilder(
+          animation: _scale,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scale.value,
+              child: child,
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
               color: Colors.white,
-              width: 1.5,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 15,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: widget.startColor.withValues(alpha: 0.02),
+                  blurRadius: 25,
+                  spreadRadius: 2,
+                ),
+              ],
+              border: Border.all(
+                color: Colors.white,
+                width: 1.5,
+              ),
             ),
+            child: _buildSquareLayout(),
           ),
-          child: _buildSquareLayout(),
         ),
-      ),
       ),
     );
   }

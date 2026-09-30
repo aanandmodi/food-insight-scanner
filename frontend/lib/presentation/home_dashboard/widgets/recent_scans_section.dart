@@ -45,7 +45,8 @@ class RecentScansSection extends StatelessWidget {
                       style: FoodInsightTypography.smallCaps(
                         size: 11,
                         weight: FontWeight.w900,
-                        color: FoodInsightColors.deepCharcoal.withValues(alpha: 0.8),
+                        color: FoodInsightColors.deepCharcoal
+                            .withValues(alpha: 0.8),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -77,17 +78,19 @@ class RecentScansSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          recentScans.isEmpty
-              ? _buildEmptyState()
-              : _buildScansList(),
+          recentScans.isEmpty ? _buildEmptyState() : _buildScansList(),
         ],
       ),
-    ).animate().fadeIn(duration: 450.ms, delay: 200.ms).slideY(begin: 0.05, end: 0);
+    )
+        .animate()
+        .fadeIn(duration: 450.ms, delay: 200.ms)
+        .slideY(begin: 0.05, end: 0);
   }
 
   /// Vertical list of scan items inside a white card
   Widget _buildScansList() {
-    final listItems = recentScans.length > 4 ? recentScans.sublist(0, 4) : recentScans;
+    final listItems =
+        recentScans.length > 4 ? recentScans.sublist(0, 4) : recentScans;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -117,7 +120,8 @@ class RecentScansSection extends StatelessWidget {
     );
   }
 
-  Widget _buildScanListItem(BuildContext context, Map<String, dynamic> scan, int index) {
+  Widget _buildScanListItem(
+      BuildContext context, Map<String, dynamic> scan, int index) {
     final safetyStatus = scan['safetyStatus'] as String? ?? 'unknown';
     final name = scan['name'] as String? ?? 'Unknown';
     final imageUrl = scan['image'] as String? ?? '';
@@ -168,7 +172,8 @@ class RecentScansSection extends StatelessWidget {
                           child: Icon(
                             Icons.fastfood_rounded,
                             size: 22,
-                            color: FoodInsightColors.midGray.withValues(alpha: 0.4),
+                            color: FoodInsightColors.midGray
+                                .withValues(alpha: 0.4),
                           ),
                         ),
                 ),
@@ -302,7 +307,7 @@ class RecentScansSection extends StatelessWidget {
   String _getSafetyText(String status) {
     switch (status.toLowerCase()) {
       case 'safe':
-        return 'Safe';
+        return 'View details';
       case 'warning':
         return 'Caution';
       case 'danger':

@@ -34,7 +34,7 @@ class MealPlanPreviewWidget extends StatelessWidget {
                         color: FoodInsightColors.scannerGreenLight,
                         borderRadius: FoodInsightRadius.smAll,
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.restaurant_menu_rounded,
                         color: FoodInsightColors.scannerGreen,
                         size: 20,

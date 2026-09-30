@@ -1,77 +1,15 @@
-# 🐛 Bug Tracking & Resolution Log
+# Known issues and launch gates
 
-This document tracks known issues, workarounds, and resolved bugs for the **Food Insight Scanner** project (Flutter frontend + Firebase Cloud Functions backend).
+| Severity | Issue | Required check or action |
+| --- | --- | --- |
+| Blocker | The new Supabase Free Edge backend is not deployed; its handlers and adapter pass local tests. Firebase intentionally remains on Spark. | Sign in to Supabase CLI, apply deletion migration, deploy Edge, set secrets and run a disposable account end to end. |
+| Blocker | Play Integrity/App Check and Google Sign-In require registered signing certificates. | Test a Play-installed release on a physical Android device. |
+| Blocker | Account deletion is only locally compiled; Supabase cleanup and external request handling are not integration tested. | Test with email, Google and guest accounts including rows, images and failed/retried cleanup. |
+| Blocker | Legal pages are deployed and return HTTP 200; URLs still need entering in Play. | Use the published URLs in the Play listing; they are already app defaults. |
+| High | Historical Supabase ai-proxy may remain deployed with Groq access. | Deploy the 410 response or remove the function and old secret after migration. |
+| High | `npm audit` reports two moderate transitive findings in backend dependencies. | Review upstream patched releases and upgrade after a focused regression pass. |
+| Medium | Android widget/privacy behavior needs device QA, including account switches. | Exercise all widget sizes and sign-out. |
+| Medium | Large text/TalkBack, low-end performance and Health Connect permission denial are unverified on devices. | Complete the QA matrix. |
+| Medium | Open Food Facts completeness and source license treatment need ongoing review. | Verify attribution and ODbL obligations for any redistributed cache. |
 
----
-
-## Resolved Bugs
-
-### 🔧 Build & Compilation
-
-| Bug | Root Cause | Resolution | Date |
-|-----|-----------|------------|------|
-| `MalformedJsonException` during Gradle build | Corrupted JSON files in `android/app/.cxx/` CMake cache | Delete `.cxx/` and `.gradle/` directories, rebuild | May 2026 |
-| `fluttertoast` compileSdk conflict | fluttertoast requires compileSdk 36+ | Updated `compileSdk` and `targetSdk` to 36 in `build.gradle` | May 2026 |
-| `BoxShadow` invalid `inset` parameter | Flutter's `BoxShadow` doesn't have an `inset` parameter | Removed the `boxShadow` from the progress track container | May 2026 |
-| `EdgeInsets.symmetric(vertical: 1.5).h` type error | `.h` extension called on `EdgeInsets` instead of `double` | Changed to `EdgeInsets.symmetric(vertical: 1.5.h)` | May 2026 |
-
-### 🔐 Authentication
-
-| Bug | Root Cause | Resolution | Date |
-|-----|-----------|------------|------|
-| Firebase initialization hanging on startup | No timeout on `Firebase.initializeApp()` | Added 12-second timeout with retry mechanism | May 2026 |
-| App crash when Firebase unavailable | Uncaught exceptions in auth flow | Added try-catch with graceful fallback UI and manual retry | May 2026 |
-| Navigation loop after sign-in | Direct navigation to dashboard skipping profile check | Implemented `AuthGate` to check profile completeness | May 2026 |
-
-### ☁️ Backend / Cloud Functions
-
-| Bug | Root Cause | Resolution | Date |
-|-----|-----------|------------|------|
-| GROQ_API_KEY not available in Cloud Functions | Using `process.env` instead of Firebase secrets | Migrated to `defineSecret` from firebase-functions/params | May 2026 |
-| Invalid AI model names causing 404 errors | Deprecated/invalid Groq model names | Updated to `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` | May 2026 |
-| `scanProduct` function not deployed | Missing export in `index.ts` | Added export statement to `index.ts` | May 2026 |
-| TypeScript compilation errors | Type mismatches in function signatures | Fixed type annotations across all function files | May 2026 |
-
-### 🚀 Major Redesign & Overhaul (August 2026)
-
-| Bug | Root Cause | Resolution | Date |
-|-----|-----------|------------|------|
-| `TextEditingController` disposal errors | Missing dispose in `diet_log_screen.dart` | Fixed controller disposal when adding manual entries | Aug 2026 |
-| Offline persistence broken | Aggressive 5-second `Future.timeout` blocks in `firestore_service.dart` | Removed timeout blocks | Aug 2026 |
-| Profile not fetching on login | Missing auth state listener | Wired `UserProfileProvider` to `FirebaseAuth.instance.authStateChanges()` | Aug 2026 |
-| Back-button tab-switching behavior | Improper routing in `barcode_scanner.dart` & `ai_chat_assistant.dart` | Fixed navigation and state handling | Aug 2026 |
-| Alternative product click navigation | Missing arguments on click | Fixed passing arguments on product click | Aug 2026 |
-| Static fake nutrition goals | Hardcoded mock data | Wired up dynamic `UserUtils.calculateTDEE()` everywhere | Aug 2026 |
-| Profile offline fallback missing | No local cache for profile | Wired `SharedPreferences` as an offline profile fallback mechanism | Aug 2026 |
-| AI analysis & meal plan parse failures | Groq returning Markdown code blocks (` ```json `) | Implemented robust `_extractJson` to slice JSON substring manually | Aug 2026 |
-| Incorrect profile photo/email on Home & Profile | Always falling back to `local@user.app` | Updated `UserProfileProvider` to pull `email` and `photoURL` directly from Google Auth | Aug 2026 |
-| AI Alternative products not price matched | Missing prompt requirement | Updated AI Prompt for Alternatives to require similar pricing | Aug 2026 |
-| 10 additional minor bugs | Various | Resolved 10 additional UI and state bugs across the app | Aug 2026 |
-
----
-
-## Known Issues / Limitations
-
-### ⚠️ Requires Action
-
-| Issue | Impact | Workaround |
-|-------|--------|------------|
-| Firebase Blaze plan required for Cloud Functions | AI features (chat, meal parsing, diet plans) won't work without deployed functions | Upgrade to Blaze at https://console.firebase.google.com/project/food-insight-scanner-app/usage/details |
-| Google Sign-In requires SHA fingerprints | Google auth fails on devices without registered SHA-1/SHA-256 | Add device fingerprints in Firebase Console → Project Settings → Android App |
-
-### 📝 Low Priority
-
-| Issue | Impact | Notes |
-|-------|--------|-------|
-| `flutter_markdown` package is discontinued | Still works but no future updates | Consider migrating to `flutter_markdown_plus` |
-| 82 packages have newer versions available | No functionality impact | Run `flutter pub outdated` to review |
-| Release APK is 82.4MB | Large for a utility app | Enable code shrinking and `minifyEnabled true` for release |
-| Deprecated API warnings during build | No functionality impact | `Note: Some input files use or override a deprecated API` |
-
----
-
-## How to Report Bugs
-
-1. Check this document first for known issues
-2. Open a GitHub Issue at https://github.com/aanandmodi/food-insight-scanner/issues
-3. Include: steps to reproduce, expected vs actual behavior, device/OS info, error logs
+No claim of beta readiness is made until these gates are closed. Issue status should be updated with evidence in the release record.

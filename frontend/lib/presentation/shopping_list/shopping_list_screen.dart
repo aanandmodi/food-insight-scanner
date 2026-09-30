@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
-import '../../services/firestore_service.dart';
-import '../../services/local_database_service.dart';
+import '../../services/user_data_service.dart';
 import '../../theme/app_design_system.dart';
 
 class ShoppingListScreen extends StatefulWidget {
@@ -16,7 +15,6 @@ class ShoppingListScreen extends StatefulWidget {
 }
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  final LocalDatabaseService _localDb = LocalDatabaseService();
   List<Map<String, dynamic>> _items = [];
   bool _isLoading = true;
 
@@ -29,7 +27,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _loadItems() async {
     setState(() => _isLoading = true);
     try {
-      final items = await _localDb.getShoppingList();
+      final items = await UserDataService().getShoppingList();
       if (mounted) {
         setState(() {
           _items = items;
@@ -45,9 +43,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _toggleItem(String id, bool checked) async {
     HapticFeedback.lightImpact();
     try {
-      await _localDb.toggleShoppingItem(id, checked);
       try {
-        await FirestoreService().toggleShoppingItem(id, checked);
+        await UserDataService().toggleShoppingItem(id, checked);
       } catch (_) {}
       await _loadItems();
     } catch (e) {
@@ -57,14 +54,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   Future<void> _deleteItem(String id) async {
     try {
-      await _localDb.deleteShoppingItem(id);
       try {
-        await FirestoreService().deleteShoppingItem(id);
+        await UserDataService().deleteShoppingItem(id);
       } catch (_) {}
       await _loadItems();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Item removed'),
             backgroundColor: FoodInsightColors.scannerGreen,
           ),
@@ -83,20 +79,33 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Clear Checked Items', style: FoodInsightTypography.heading(size: 20, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal)),
-        content: Text('Remove $checkedCount checked item(s)?', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray)),
+        title: Text('Clear Checked Items',
+            style: FoodInsightTypography.heading(
+                size: 20,
+                weight: FontWeight.w800,
+                color: FoodInsightColors.deepCharcoal)),
+        content: Text('Remove $checkedCount checked item(s)?',
+            style: FoodInsightTypography.body(
+                size: 14, color: FoodInsightColors.midGray)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: FoodInsightColors.midGray)),
+            child: Text('Cancel',
+                style: FoodInsightTypography.caption(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: FoodInsightColors.midGray)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: FoodInsightColors.scannerGreen,
-              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
+              shape:
+                  RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
             ),
-            child: Text('Clear', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            child: Text('Clear',
+                style: FoodInsightTypography.caption(
+                    size: 14, weight: FontWeight.w700, color: Colors.white)),
           ),
         ],
       ),
@@ -104,15 +113,43 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
     if (confirmed == true) {
       try {
-        await _localDb.clearCheckedShoppingItems();
         try {
-          await FirestoreService().clearCheckedShoppingItems();
+          await UserDataService().clearCheckedShoppingItems();
         } catch (_) {}
         await _loadItems();
       } catch (e) {
         debugPrint('Error clearing checked items: $e');
       }
     }
+  }
+
+  Future<void> _addItem() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text('Add shopping item'),
+              content: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration:
+                      const InputDecoration(hintText: 'e.g. Moong dal')),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel')),
+                TextButton(
+                    onPressed: () {
+                      if (controller.text.trim().isNotEmpty) {
+                        Navigator.pop(ctx, controller.text.trim());
+                      }
+                    },
+                    child: const Text('Add'))
+              ],
+            ));
+    if (name == null || !mounted) return;
+    await UserDataService().addShoppingItem({'name': name});
+    if (mounted) await _loadItems();
   }
 
   @override
@@ -122,6 +159,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
     return Scaffold(
       backgroundColor: FoodInsightColors.warmWhite,
+      floatingActionButton: FloatingActionButton(
+          onPressed: _addItem,
+          tooltip: 'Add shopping item',
+          child: const Icon(Icons.add)),
       appBar: AppBar(
         title: Text(
           'Shopping List',
@@ -134,11 +175,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         centerTitle: true,
         backgroundColor: FoodInsightColors.warmWhite,
         elevation: 0,
-        iconTheme: IconThemeData(color: FoodInsightColors.deepCharcoal),
+        iconTheme: const IconThemeData(color: FoodInsightColors.deepCharcoal),
         actions: [
           if (checkedItems.isNotEmpty)
             IconButton(
-              icon: Icon(Icons.delete_sweep_rounded, color: FoodInsightColors.scannerGreen),
+              icon: const Icon(Icons.delete_sweep_rounded,
+                  color: FoodInsightColors.scannerGreen),
               onPressed: () => _clearChecked(_items),
               tooltip: 'Clear checked items',
             ),
@@ -149,8 +191,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           gradient: FoodInsightColors.warmBackground,
         ),
         child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+            ? const Center(
+                child: CircularProgressIndicator(
+                    color: FoodInsightColors.scannerGreen),
               )
             : _items.isEmpty
                 ? _buildEmptyState()
@@ -201,7 +244,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         children: [
           Container(
             padding: EdgeInsets.all(5.w),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: FoodInsightColors.scannerGreenLight,
               shape: BoxShape.circle,
             ),
@@ -210,7 +253,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               size: 15.w,
               color: FoodInsightColors.scannerGreen,
             ),
-          ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack),
+          ).animate().scale(
+              delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack),
           SizedBox(height: 3.h),
           Text(
             'Your list is empty',
@@ -232,12 +276,16 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           SizedBox(height: 4.h),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
-            label: Text('Scan a Product', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            icon:
+                const Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
+            label: Text('Scan a Product',
+                style: FoodInsightTypography.caption(
+                    size: 14, weight: FontWeight.w700, color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: FoodInsightColors.scannerGreen,
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
-              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
+              shape:
+                  RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
             ),
           ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
         ],
@@ -276,7 +324,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             borderRadius: FoodInsightRadius.mdAll,
             boxShadow: FoodInsightShadows.subtleCard,
             border: Border.all(
-              color: checked ? FoodInsightColors.scannerGreenLight : Colors.transparent,
+              color: checked
+                  ? FoodInsightColors.scannerGreenLight
+                  : Colors.transparent,
               width: 1,
             ),
           ),
@@ -288,9 +338,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 height: 6.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: checked ? FoodInsightColors.scannerGreen : Colors.transparent,
+                  color: checked
+                      ? FoodInsightColors.scannerGreen
+                      : Colors.transparent,
                   border: Border.all(
-                    color: checked ? FoodInsightColors.scannerGreen : FoodInsightColors.outlineGray,
+                    color: checked
+                        ? FoodInsightColors.scannerGreen
+                        : FoodInsightColors.outlineGray,
                     width: 2,
                   ),
                 ),
@@ -299,9 +353,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     : null,
               ),
               SizedBox(width: 3.w),
-              
+
               // Thumbnail
-              if (item['imageUrl'] != null && item['imageUrl'].toString().isNotEmpty)
+              if (item['imageUrl'] != null &&
+                  item['imageUrl'].toString().isNotEmpty)
                 ClipRRect(
                   borderRadius: FoodInsightRadius.smAll,
                   child: Image.network(
@@ -309,14 +364,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     width: 12.w,
                     height: 12.w,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildPlaceholderIcon(),
                   ),
                 )
               else
                 _buildPlaceholderIcon(),
-              
+
               SizedBox(width: 3.w),
-              
+
               // Product details
               Expanded(
                 child: Column(
@@ -327,7 +383,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       style: FoodInsightTypography.body(
                         size: 15,
                         weight: FontWeight.w700,
-                        color: checked ? FoodInsightColors.midGray : FoodInsightColors.deepCharcoal,
+                        color: checked
+                            ? FoodInsightColors.midGray
+                            : FoodInsightColors.deepCharcoal,
                       ).copyWith(
                         decoration: checked ? TextDecoration.lineThrough : null,
                       ),
@@ -347,12 +405,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   ],
                 ),
               ),
-              
+
               // Nutri-Score
               if (score != '0') ...[
                 SizedBox(width: 2.w),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
                   decoration: BoxDecoration(
                     color: _getScoreColor(score).withValues(alpha: 0.1),
                     borderRadius: FoodInsightRadius.smAll,
@@ -382,7 +441,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         color: FoodInsightColors.warmWhite,
         borderRadius: FoodInsightRadius.smAll,
       ),
-      child: Icon(Icons.fastfood_rounded, color: FoodInsightColors.midGray, size: 6.w),
+      child: Icon(Icons.fastfood_rounded,
+          color: FoodInsightColors.midGray, size: 6.w),
     );
   }
 

@@ -1,3 +1,4 @@
+import '../../../widgets/custom_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -20,7 +21,9 @@ class GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userInitial = (email != null && email!.isNotEmpty) ? email![0].toUpperCase() : (userName.isNotEmpty ? userName[0].toUpperCase() : 'W');
+    final userInitial = (email != null && email!.isNotEmpty)
+        ? email![0].toUpperCase()
+        : (userName.isNotEmpty ? userName[0].toUpperCase() : 'W');
 
     return Container(
       padding: EdgeInsets.fromLTRB(6.w, 3.h, 6.w, 1.h),
@@ -64,8 +67,12 @@ class GreetingHeader extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(27),
-                child: photoUrl != null 
-                    ? Image.network(photoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildAvatarFallback(userInitial))
+                child: photoUrl != null
+                    ? CustomImageWidget(
+                        imageUrl: photoUrl,
+                        width: 54,
+                        height: 54,
+                        errorWidget: _buildAvatarFallback(userInitial))
                     : _buildAvatarFallback(userInitial),
               ),
             ),
@@ -88,7 +95,10 @@ class GreetingHeader extends StatelessWidget {
                     weight: FontWeight.w600,
                     color: FoodInsightColors.midGray,
                   ),
-                ).animate().fadeIn(duration: 300.ms).slideX(begin: -0.1, end: 0),
+                )
+                    .animate()
+                    .fadeIn(duration: 300.ms)
+                    .slideX(begin: -0.1, end: 0),
                 const SizedBox(height: 2),
                 Text(
                   userName.isNotEmpty ? userName : 'Welcome',
@@ -110,9 +120,7 @@ class GreetingHeader extends StatelessWidget {
           const SizedBox(width: 12),
 
           // ── Right: Notification Bell & Date Badge ──
-          _buildNotificationBell(context)
-              .animate()
-              .scale(
+          _buildNotificationBell(context).animate().scale(
                 duration: 400.ms,
                 delay: 200.ms,
                 curve: Curves.easeOutBack,

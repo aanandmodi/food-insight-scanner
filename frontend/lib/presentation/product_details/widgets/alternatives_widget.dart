@@ -11,7 +11,8 @@ class AlternativesWidget extends StatelessWidget {
     required this.alternatives,
   });
 
-  Widget _buildAlternativeCard(BuildContext context, Map<String, dynamic> product) {
+  Widget _buildAlternativeCard(
+      BuildContext context, Map<String, dynamic> product) {
     final isBetterChoice = (product['isBetterChoice'] as bool?) ?? false;
     final healthScore = (product['healthScore'] as num?)?.toInt() ?? 0;
 
@@ -62,7 +63,9 @@ class AlternativesWidget extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).colorScheme.primary
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
                               .withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
@@ -82,9 +85,9 @@ class AlternativesWidget extends StatelessWidget {
                           'Better Choice',
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ],
                     ),
@@ -101,9 +104,9 @@ class AlternativesWidget extends StatelessWidget {
                   Text(
                     (product['name'] as String?) ?? 'Unknown Product',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -111,9 +114,9 @@ class AlternativesWidget extends StatelessWidget {
                   Text(
                     'by ${(product['brand'] as String?) ?? 'Unknown Brand'}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -142,12 +145,17 @@ class AlternativesWidget extends StatelessWidget {
                             ),
                             SizedBox(width: 1.w),
                             Text(
-                              '$healthScore/100',
-                              style: Theme.of(context).textTheme.bodySmall
+                              product['healthScore'] == null
+                                  ? 'Not rated'
+                                  : '$healthScore/100',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
                                   ?.copyWith(
-                                color: _getHealthScoreColor(context, healthScore),
-                                fontWeight: FontWeight.w600,
-                              ),
+                                    color: _getHealthScoreColor(
+                                        context, healthScore),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                           ],
                         ),
@@ -155,12 +163,14 @@ class AlternativesWidget extends StatelessWidget {
                       const Spacer(),
                       if (product['price'] != null)
                         Text(
-                          product['price'] as String,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          product['price'].toString(),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                         ),
                     ],
                   ),
@@ -189,8 +199,7 @@ class AlternativesWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
           border: Border.all(
-            color:
-                Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           ),
         ),
         child: Column(
@@ -198,16 +207,20 @@ class AlternativesWidget extends StatelessWidget {
             CustomIconWidget(
               iconName: 'search_off',
               size: 32,
-              color: Theme.of(context).colorScheme.onSurface
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
                   .withValues(alpha: 0.4),
             ),
             SizedBox(height: 2.h),
             Text(
               'No alternatives available',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface
-                    .withValues(alpha: 0.6),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                  ),
             ),
           ],
         ),
@@ -233,9 +246,9 @@ class AlternativesWidget extends StatelessWidget {
                 Text(
                   'Better Alternatives',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                 ),
               ],
             ),
@@ -251,7 +264,8 @@ class AlternativesWidget extends StatelessWidget {
                 return GestureDetector(
                   onTap: () {
                     // Navigate to product details of alternative
-                    Navigator.pushNamed(context, '/product-details', arguments: alternatives[index]);
+                    Navigator.pushNamed(context, '/product-details',
+                        arguments: alternatives[index]);
                   },
                   child: _buildAlternativeCard(context, alternatives[index]),
                 );
@@ -263,4 +277,3 @@ class AlternativesWidget extends StatelessWidget {
     );
   }
 }
-

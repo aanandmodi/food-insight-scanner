@@ -1,149 +1,81 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { defineSecret } from "firebase-functions/params";
-import * as admin from "firebase-admin";
-import Groq from "groq-sdk";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
-// Ensure admin is initialised exactly once across all function files.
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+import { normalizeOpenFoodFacts, ProductFacts } from "./productNormalizer";
 
-const db = admin.firestore();
-const groqApiKeySecret = defineSecret("GROQ_API_KEY");
+if (!getApps().length) initializeApp();
+const db = getFirestore();
+const BARCODE = /^\d{8,14}$/;
 
-// ──────────────────────── Open Food Facts helpers ────────────────────────
-
-interface ParsedProduct {
-  barcode: string;
-  name: string;
-  brand: string;
-  category: string;
-  image: string;
-  nutrition: Record<string, number>;
-  ingredients: string[];
-  allergens: string[];
-  servingSize: string;
-  nutriscore: string | null;
-  novaGroup: number | null;
-  quantity: string;
-}
-
-async function fetchFromOpenFoodFacts(barcode: string): Promise<ParsedProduct | null> {
-  // Dynamic import for node-fetch (CommonJS compat)
-  const fetch = (await import("node-fetch")).default;
-
-  const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": "FoodInsightScanner/1.0 (CloudFunction)" },
+async function reserveOffLookup(): Promise<void> {
+  // Open Food Facts documents a 15/minute/IP product-read limit. Keep room for
+  // retries and avoid a burst of new barcodes from one beta backend IP.
+  const ref = db.doc("serviceLimits/offLookupMinute");
+  const minute = Math.floor(Date.now() / 60000);
+  await db.runTransaction(async (transaction) => {
+    const data = (await transaction.get(ref)).data() ?? {};
+    const used = data.minute === minute ? Number(data.count) || 0 : 0;
+    if (used >= 12) throw new HttpsError("resource-exhausted", "Product lookup is busy. Please try again shortly.");
+    transaction.set(ref, { minute, count: used + 1 });
   });
-
-  if (!res.ok) return null;
-
-  const json = (await res.json()) as any;
-  if (json.status !== 1 || !json.product) return null;
-
-  const raw = json.product;
-  const nutriments = raw.nutriments ?? {};
-
-  return {
-    barcode,
-    name: raw.product_name ?? "Unknown Product",
-    brand: raw.brands ?? "Unknown Brand",
-    category: raw.categories ?? "Uncategorized",
-    image: raw.image_front_url ?? raw.image_url ?? "",
-    nutrition: {
-      calories: nutriments["energy-kcal_100g"] ?? 0,
-      sugar: nutriments["sugars_100g"] ?? 0,
-      protein: nutriments["proteins_100g"] ?? 0,
-      sodium: nutriments["sodium_100g"] ?? 0,
-      fiber: nutriments["fiber_100g"] ?? 0,
-      fat: nutriments["fat_100g"] ?? 0,
-      carbs: nutriments["carbohydrates_100g"] ?? 0,
-    },
-    ingredients: (raw.ingredients_text ?? "")
-      .split(",")
-      .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 0),
-    allergens: (raw.allergens_tags ?? []).map((t: string) => t.replace("en:", "")),
-    servingSize: raw.serving_size ?? "Per 100g",
-    nutriscore: raw.nutriscore_grade ?? null,
-    novaGroup: raw.nova_group ?? null,
-    quantity: raw.quantity ?? "",
-  };
 }
 
-// ──────────────────────── AI Analysis ────────────────────────
-
-async function analyzeProduct(groq: Groq, product: ParsedProduct): Promise<string> {
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are an expert nutritionist. Provide a concise health analysis of the scanned product in 2-3 sentences. Mention positives and negatives.",
-      },
-      {
-        role: "user",
-        content: `Analyze: ${product.name} by ${product.brand}.\nNutrition per 100g: ${JSON.stringify(product.nutrition)}\nIngredients: ${product.ingredients.join(", ")}`,
-      },
-    ],
-    temperature: 0.5,
-    max_tokens: 256,
-  });
-
-  return completion.choices?.[0]?.message?.content ?? "";
-}
-
-// ──────────────────────── Callable Function ────────────────────────
-
-/**
- * scanProduct – looks up a barcode, caches in Firestore, returns product data.
- *
- * Input:  { barcode: string }
- * Output: ParsedProduct & { aiAnalysis: string }
- */
 export const scanProduct = onCall(
-  { region: "asia-south1", timeoutSeconds: 30, secrets: [groqApiKeySecret] },
-  async (request) => {
-    // Require authentication
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "You must be logged in.");
+  { region: "asia-south1", timeoutSeconds: 20, enforceAppCheck: true, maxInstances: 3 },
+  async (request): Promise<ProductFacts> => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to scan products.");
+    if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
+      throw new HttpsError("permission-denied", "Account deletion is in progress.");
     }
-
-    const barcode = request.data?.barcode as string | undefined;
-    if (!barcode || typeof barcode !== "string" || barcode.length < 4) {
-      throw new HttpsError("invalid-argument", "A valid barcode is required.");
+    const barcode = request.data?.barcode;
+    if (typeof barcode !== "string" || !BARCODE.test(barcode)) {
+      throw new HttpsError("invalid-argument", "Enter an 8–14 digit barcode.");
     }
-
-    // 1. Check Firestore cache
-    const cacheRef = db.collection("products").doc(barcode);
-    const cached = await cacheRef.get();
-    if (cached.exists) {
-      return cached.data();
+    const ref = db.collection("products").doc(barcode);
+    const cached = await ref.get();
+    const cachedData = cached.data();
+    const stale = cachedData?.schemaVersion === 2 &&
+      cachedData?.nutrition?.sodiumMgPer100g !== undefined
+      ? { ...cachedData, isOfflineCopy: true } as ProductFacts : null;
+    const age = Date.now() - Date.parse(cachedData?.sourceFetchedAt ?? "");
+    if (cachedData?.schemaVersion === 2 && age >= 0 && age < 7 * 86400000 &&
+        cachedData?.nutrition?.sodiumMgPer100g !== undefined) {
+      return cachedData as ProductFacts;
     }
-
-    // 2. Fetch from Open Food Facts
-    const product = await fetchFromOpenFoodFacts(barcode);
-    if (!product) {
-      throw new HttpsError("not-found", `Product not found for barcode: ${barcode}`);
-    }
-
-    // 3. AI analysis
-    let aiAnalysis = "";
     try {
-      const apiKey = groqApiKeySecret.value();
-      if (!apiKey) throw new Error("GROQ_API_KEY is not set.");
-      const groq = new Groq({ apiKey });
-      aiAnalysis = await analyzeProduct(groq, product);
-    } catch (e: any) {
-      console.warn("AI analysis failed (non-fatal):", e.message);
+      await reserveOffLookup();
+    } catch (error) {
+      if (stale) return stale;
+      throw error;
     }
-
-    // 4. Cache in Firestore (Admin SDK bypasses security rules)
-    const result = { ...product, aiAnalysis, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
-    await cacheRef.set(result, { merge: true });
-
-    return result;
-  }
+    let response: Response;
+    try {
+      response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, {
+        headers: { "User-Agent": "FoodInsightScanner/1.0 (aanandmodi09@gmail.com)" },
+        signal: AbortSignal.timeout(12000),
+      });
+    } catch {
+      if (stale) return stale;
+      throw new HttpsError("unavailable", "Product lookup is temporarily unavailable.");
+    }
+    if (response.status === 404) throw new HttpsError("not-found", "Product not found in Open Food Facts.");
+    if (!response.ok) {
+      if (stale) return stale;
+      throw new HttpsError("unavailable", "Product lookup is temporarily unavailable.");
+    }
+    let payload: { status?: number; product?: Record<string, any> };
+    try {
+      payload = await response.json() as { status?: number; product?: Record<string, any> };
+    } catch {
+      if (stale) return stale;
+      throw new HttpsError("unavailable", "Product details could not be read.");
+    }
+    if (payload.status !== 1 || !payload.product) {
+      throw new HttpsError("not-found", "Product not found in Open Food Facts.");
+    }
+    const product = normalizeOpenFoodFacts(payload.product, barcode);
+    await ref.set(product);
+    return product;
+  },
 );

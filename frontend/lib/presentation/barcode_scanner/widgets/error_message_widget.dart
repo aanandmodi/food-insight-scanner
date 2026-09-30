@@ -26,7 +26,8 @@ class ErrorMessageWidget extends StatelessWidget {
       height: double.infinity,
       color: Colors.black.withValues(alpha: 0.8),
       child: Center(
-        child: Container(
+        child: SingleChildScrollView(
+            child: Container(
           margin: EdgeInsets.symmetric(horizontal: 8.w),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -48,7 +49,9 @@ class ErrorMessageWidget extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.error
+                  color: Theme.of(context)
+                      .colorScheme
+                      .error
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(32),
                 ),
@@ -67,8 +70,8 @@ class ErrorMessageWidget extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                      fontWeight: FontWeight.w600,
+                    ),
                 textAlign: TextAlign.center,
               ),
 
@@ -78,9 +81,11 @@ class ErrorMessageWidget extends StatelessWidget {
               Text(
                 message,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface
-                      .withValues(alpha: 0.7),
-                ),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
+                    ),
                 textAlign: TextAlign.center,
               ),
 
@@ -121,9 +126,8 @@ class ErrorMessageWidget extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        )),
       ),
     );
   }
 }
-

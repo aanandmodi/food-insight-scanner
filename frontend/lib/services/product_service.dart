@@ -1,9 +1,11 @@
+import 'analytics_service.dart';
 // lib/services/product_service.dart
 
 import 'package:flutter/foundation.dart';
-import 'firestore_service.dart';
+import 'user_data_service.dart';
 import 'local_database_service.dart';
 import 'cloud_function_service.dart';
+import 'product_facts_adapter.dart';
 
 /// Outcome of persisting a scan, so the UI can tell the user what actually
 /// happened instead of silently dropping the record.
@@ -37,31 +39,38 @@ class ProductService {
   /// so a previously scanned product still opens offline.
   Future<Map<String, dynamic>?> getProductByBarcode(
     String barcode, {
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 30),
+    bool forceRefresh = false,
   }) async {
+    AnalyticsService.record(UsageEvent.scanStarted);
+    Map<String, dynamic>? cached;
+    try {
+      cached = (await UserDataService().cachedScans())
+          .where((row) => row['barcode'] == barcode).firstOrNull;
+      final fetched = DateTime.tryParse('${cached?['sourceFetchedAt']}');
+      if (!forceRefresh && cached?['schemaVersion'] == 2 && fetched != null &&
+          DateTime.now().difference(fetched) < const Duration(days: 7)) {
+        return ProductFactsAdapter.adapt(cached!);
+      }
+    } catch (_) {}
     try {
       debugPrint('Fetching product via CloudFunctionService: $barcode');
       final data =
           await CloudFunctionService().analyzeProduct(barcode).timeout(timeout);
       if (data != null) {
-        return Map<String, dynamic>.from(data);
+        AnalyticsService.record(UsageEvent.scanSucceeded);
+        return ProductFactsAdapter.adapt(data);
       }
+      AnalyticsService.record(UsageEvent.scanNotFound);
+      return null;
     } catch (e) {
+      AnalyticsService.record(UsageEvent.scanFailed);
       debugPrint('Error fetching product $barcode: $e');
-    }
-
-    // Offline / failure path — serve the last known good copy if we have one.
-    try {
-      final cached = await _localDb.getScanByBarcode(barcode);
       if (cached != null) {
-        debugPrint('Serving cached local product for $barcode');
-        return cached;
+        return {...ProductFactsAdapter.adapt(cached), 'isOfflineCopy': true};
       }
-    } catch (e) {
-      debugPrint('Local product cache miss for $barcode: $e');
+      rethrow;
     }
-
-    return null;
   }
 
   /// Saves a scanned product to local SQLite history AND Firestore.
@@ -69,59 +78,12 @@ class ProductService {
   /// The two writes are independent: a local failure must not skip the cloud
   /// write (and vice versa), and the caller is told whether anything landed.
   Future<ScanSaveResult> saveToScanHistory(Map<String, dynamic> product) async {
-    Object? firstError;
-    bool local = false;
-    bool cloud = false;
-
-    try {
-      local = await _localDb.insertScan(product) > 0;
-    } catch (e) {
-      firstError ??= e;
-      debugPrint('Local scan save failed: $e');
-    }
-
-    try {
-      cloud = await FirestoreService().saveScan(product);
-    } catch (e) {
-      firstError ??= e;
-      debugPrint('Firestore scan save failed (offline?): $e');
-    }
-
-    if (!local && !cloud) {
-      debugPrint('WARNING: scan for ${product['barcode']} was not persisted.');
-    }
-
-    return ScanSaveResult(
-      savedLocally: local,
-      savedToCloud: cloud,
-      error: firstError,
-    );
+    final cloud = await UserDataService().saveScan(product);
+    return ScanSaveResult(savedLocally: true, savedToCloud: cloud);
   }
 
-  /// Gets the scan history — local SQLite first, Firestore as a fallback.
-  Future<List<Map<String, dynamic>>> getScanHistory() async {
-    try {
-      final localHistory = await _localDb.getScanHistory();
-      if (localHistory.isNotEmpty) {
-        return localHistory;
-      }
-    } catch (e) {
-      debugPrint('Error loading local scan history: $e');
-    }
-
-    try {
-      final firestoreHistory = await FirestoreService()
-          .getScanHistory()
-          .timeout(const Duration(seconds: 6));
-      if (firestoreHistory.isNotEmpty) {
-        return firestoreHistory;
-      }
-    } catch (e) {
-      debugPrint('Firestore scan history unavailable: $e');
-    }
-
-    return [];
-  }
+  Future<List<Map<String, dynamic>>> getScanHistory() =>
+      UserDataService().getScanHistory();
 
   /// Clears local-only scan history (used on sign-out).
   Future<void> clearLocalHistory() async {
@@ -135,7 +97,7 @@ class ProductService {
   /// Deletes a scan from local-only history (used when offline/guest).
   Future<void> deleteLocalScan(String barcode) async {
     try {
-      await _localDb.deleteScanByBarcode(barcode);
+      await UserDataService().deleteScan(barcode);
     } catch (e) {
       debugPrint('Error deleting local scan: $e');
     }

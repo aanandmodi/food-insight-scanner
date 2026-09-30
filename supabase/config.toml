@@ -1,0 +1,8 @@
+[functions.ai-proxy]
+# Firebase JWTs are verified against Google's keys inside the function.
+verify_jwt = false
+
+[functions.food-insight-api]
+# Both Firebase Auth and App Check are verified in the handler. Supabase's
+# gateway JWT verification only understands Supabase Auth tokens.
+verify_jwt = false

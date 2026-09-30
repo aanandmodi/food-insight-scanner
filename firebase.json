@@ -11,6 +11,10 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "hosting": {
+    "public": "legal",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+  },
   "auth": {
     "providers": {
       "emailPassword": true,

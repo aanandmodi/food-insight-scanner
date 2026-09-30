@@ -1,257 +1,83 @@
 import 'package:flutter/material.dart';
-import 'package:sizer/sizer.dart';
+import '../../../services/food_fit_service.dart';
+import '../../../services/allergen_safety_service.dart';
 
-import '../../../core/app_export.dart';
-
+/// Deterministic product facts and compatibility, including explicit unknowns.
 class SafetyAlertsWidget extends StatelessWidget {
   final List<String> userAllergies;
   final List<String> ingredients;
   final String dietaryPreference;
   final Map<String, dynamic> nutritionData;
+  final Map<String, dynamic> productData;
+  final String healthGoal;
+  final Map<String, num> dailyContext;
 
-  const SafetyAlertsWidget({
-    super.key,
-    required this.userAllergies,
-    required this.ingredients,
-    required this.dietaryPreference,
-    required this.nutritionData,
-  });
-
-  List<Map<String, dynamic>> _generateAlerts() {
-    List<Map<String, dynamic>> alerts = [];
-
-    // Check for allergen warnings
-    for (String allergy in userAllergies) {
-      bool containsAllergen = (ingredients as List).any((dynamic ingredient) =>
-          (ingredient as String).toLowerCase().contains(allergy.toLowerCase()));
-
-      if (containsAllergen) {
-        alerts.add({
-          'type': 'danger',
-          'title': 'Allergen Warning',
-          'message': 'Contains $allergy - Avoid this product',
-          'icon': 'warning',
-        });
-      }
-    }
-
-    // Check dietary compatibility
-    if (dietaryPreference.toLowerCase() == 'vegetarian') {
-      bool containsMeat = (ingredients as List).any((dynamic ingredient) {
-        String ing = (ingredient as String).toLowerCase();
-        return ing.contains('chicken') ||
-            ing.contains('beef') ||
-            ing.contains('pork') ||
-            ing.contains('fish') ||
-            ing.contains('meat');
-      });
-
-      if (containsMeat) {
-        alerts.add({
-          'type': 'warning',
-          'title': 'Dietary Alert',
-          'message': 'Contains meat - Not suitable for vegetarians',
-          'icon': 'restaurant',
-        });
-      }
-    }
-
-    if (dietaryPreference.toLowerCase() == 'vegan') {
-      bool containsAnimalProducts =
-          (ingredients as List).any((dynamic ingredient) {
-        String ing = (ingredient as String).toLowerCase();
-        return ing.contains('milk') ||
-            ing.contains('egg') ||
-            ing.contains('honey') ||
-            ing.contains('cheese') ||
-            ing.contains('butter') ||
-            ing.contains('cream');
-      });
-
-      if (containsAnimalProducts) {
-        alerts.add({
-          'type': 'warning',
-          'title': 'Dietary Alert',
-          'message': 'Contains animal products - Not suitable for vegans',
-          'icon': 'eco',
-        });
-      }
-    }
-
-    // Check nutrition warnings
-    final calories = (nutritionData['calories'] as num?)?.toDouble() ?? 0.0;
-    final sugar = (nutritionData['sugar'] as num?)?.toDouble() ?? 0.0;
-    final sodium = (nutritionData['sodium'] as num?)?.toDouble() ?? 0.0;
-
-    if (calories > 400) {
-      alerts.add({
-        'type': 'caution',
-        'title': 'High Calorie Content',
-        'message':
-            'This product is high in calories (${calories.toInt()} kcal)',
-        'icon': 'local_fire_department',
-      });
-    }
-
-    if (sugar > 15) {
-      alerts.add({
-        'type': 'caution',
-        'title': 'High Sugar Content',
-        'message':
-            'This product is high in sugar (${sugar.toStringAsFixed(1)}g)',
-        'icon': 'cake',
-      });
-    }
-
-    if (sodium > 600) {
-      alerts.add({
-        'type': 'caution',
-        'title': 'High Sodium Content',
-        'message': 'This product is high in sodium (${sodium.toInt()}mg)',
-        'icon': 'grain',
-      });
-    }
-
-    // Add positive alerts if no issues
-    if (alerts.isEmpty) {
-      alerts.add({
-        'type': 'success',
-        'title': 'Safe for You',
-        'message':
-            'This product matches your dietary preferences and contains no known allergens',
-        'icon': 'check_circle',
-      });
-    }
-
-    return alerts;
-  }
-
-  Color _getAlertColor(BuildContext context, String type) {
-    switch (type) {
-      case 'danger':
-        return Colors.red;
-      case 'warning':
-        return Colors.orange;
-      case 'caution':
-        return Colors.amber;
-      case 'success':
-        return Theme.of(context).colorScheme.primary;
-      default:
-        return Theme.of(context).colorScheme.primary;
-    }
-  }
-
-  Widget _buildAlert(BuildContext context, Map<String, dynamic> alert) {
-    final color = _getAlertColor(context, alert['type']);
-
-    return Container(
-      width: double.infinity,
-      margin: EdgeInsets.only(bottom: 2.h),
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: color.withValues(alpha: 0.1),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(2.w),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: CustomIconWidget(
-              iconName: alert['icon'],
-              size: 24,
-              color: color,
-            ),
-          ),
-          SizedBox(width: 3.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  alert['title'],
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-                SizedBox(height: 0.5.h),
-                Text(
-                  alert['message'],
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  const SafetyAlertsWidget({super.key, required this.userAllergies,
+    required this.ingredients, required this.dietaryPreference,
+    required this.nutritionData, this.productData = const {}, this.healthGoal = '', this.dailyContext = const {}});
 
   @override
   Widget build(BuildContext context) {
-    final alerts = _generateAlerts();
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+    final theme = Theme.of(context);
+    final result = FoodFitService.evaluate({
+      'ingredients': ingredients, 'nutrition': nutritionData, ...productData,
+    }, allergies: userAllergies, dietaryPreference: dietaryPreference, healthGoal: healthGoal, dailyContext: dailyContext);
+    final critical = result.hasCriticalAllergenConflict;
+    final color = critical ? const Color(0xFF9B2C2C) : theme.colorScheme.primary;
+    final confidence = switch (result.confidence) {
+      FoodFitConfidence.high => 'High confidence',
+      FoodFitConfidence.medium => 'Medium confidence',
+      FoodFitConfidence.low => 'Low confidence',
+      FoodFitConfidence.insufficientData => 'Insufficient data',
+    };
+    return Semantics(
+      container: true,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CustomIconWidget(
-                iconName: 'security',
-                size: 24,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              SizedBox(width: 2.w),
-              Text(
-                'Safety & Compatibility',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 3.h),
-          ...alerts.map((alert) => _buildAlert(context, alert)),
-        ],
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(critical ? 'ALLERGEN CONFLICT' : 'YOUR FOOD FIT',
+            style: theme.textTheme.labelLarge?.copyWith(color: color, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          if (critical)
+            Text('Avoid this product', style: theme.textTheme.headlineSmall?.copyWith(color: color))
+          else if (result.score != null)
+            Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 12, children: [
+              Text('${result.score} / 100', style: theme.textTheme.headlineMedium?.copyWith(color: color, fontWeight: FontWeight.w700)),
+              Text(result.score! >= 75 ? 'Good fit' : result.score! >= 50 ? 'Consider portions' : 'May not fit your goals'),
+            ])
+          else
+            Text('More product data needed', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(confidence, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 16),
+          for (final message in result.conflicts)
+            _line(context, Icons.warning_amber_rounded, message, const Color(0xFF9B2C2C)),
+          for (final message in result.cautions)
+            _line(context, Icons.info_outline_rounded, message, const Color(0xFF805000)),
+          for (final message in result.positives)
+            _line(context, Icons.check_circle_outline_rounded, message, theme.colorScheme.primary),
+          for (final message in result.unknowns)
+            _line(context, Icons.help_outline_rounded, message, theme.colorScheme.onSurfaceVariant),
+          if (result.allergen.status == AllergenStatus.noDetectedConflict)
+            _line(context, Icons.fact_check_outlined, userAllergies.isEmpty ? 'No allergies recorded in your profile' : 'No detected allergen conflicts', theme.colorScheme.onSurface),
+          const Divider(height: 24),
+          Text('Based on available product information and your profile. Ingredient and allergen data may be incomplete. Always verify the package label if you have a serious allergy.',
+            style: theme.textTheme.bodySmall?.copyWith(height: 1.5)),
+        ]),
       ),
     );
   }
-}
 
+  Widget _line(BuildContext context, IconData icon, String message, Color color) =>
+    Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [Icon(icon, size: 20, color: color), const SizedBox(width: 10),
+        Expanded(child: Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, height: 1.4)))],
+    ));
+}

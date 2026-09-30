@@ -29,8 +29,16 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
     super.dispose();
   }
 
+  String? _error;
+
   void _handleSearch() {
+    if (widget.isLoading) return;
     final barcode = _barcodeController.text.trim();
+    if (!RegExp(r'^\d{8,14}$').hasMatch(barcode)) {
+      setState(() => _error = 'Enter an 8–14 digit barcode.');
+      return;
+    }
+    setState(() => _error = null);
     if (barcode.isNotEmpty) {
       widget.onSearch(barcode);
       _focusNode.unfocus();
@@ -71,9 +79,9 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
             Text(
               'Enter Barcode Manually',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
 
             SizedBox(height: 1.h),
@@ -81,8 +89,8 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
             Text(
               'Can\'t scan? Type the barcode number below',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
             ),
 
             SizedBox(height: 3.h),
@@ -103,17 +111,18 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(20),
+                  LengthLimitingTextInputFormatter(14),
                 ],
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white,
-                  letterSpacing: 1.2,
-                ),
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
                 decoration: InputDecoration(
                   hintText: 'Enter barcode number',
+                  errorText: _error,
                   hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
+                        color: Colors.white.withValues(alpha: 0.5),
+                      ),
                   prefixIcon: Padding(
                     padding: const EdgeInsets.all(12),
                     child: CustomIconWidget(
@@ -165,11 +174,13 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
                           const SizedBox(width: 12),
                           Text(
                             'Searching...',
-                            style: Theme.of(context).textTheme.labelLarge
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
                                 ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ],
                       )
@@ -184,11 +195,13 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
                           const SizedBox(width: 8),
                           Text(
                             'Search Product',
-                            style: Theme.of(context).textTheme.labelLarge
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
                                 ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ],
                       ),
@@ -202,8 +215,8 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
               child: Text(
                 'Barcode is usually found below the product',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -213,5 +226,3 @@ class _ManualInputWidgetState extends State<ManualInputWidget> {
     );
   }
 }
-
-

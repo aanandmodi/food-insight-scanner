@@ -1,153 +1,75 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_service.dart';
+import 'user_session.dart';
 
-/// Production service for uploading user images (avatars, food scans) to 100% Free Supabase Storage.
-/// No credit card or paid upgrade required.
 class SupabaseStorageService {
-  static final SupabaseStorageService _instance = SupabaseStorageService._internal();
+  static final _instance = SupabaseStorageService._();
   factory SupabaseStorageService() => _instance;
-  SupabaseStorageService._internal();
-
-  bool _isInitialized = false;
-  static const String defaultBucket = 'food-insight-uploads';
-
-  static const String defaultSupabaseUrl = 'https://tslcgavpkujkfexzmisk.supabase.co';
-  static const String defaultAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzbGNnYXZwa3Vqa2ZleHptaXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MTIzNDAsImV4cCI6MjEwMjE4ODM0MH0.I5Es-XmBiTfXHxsOUenEQpfxCXFUtTCVfr4enDULO5M';
-  static const String defaultPublishableKey = 'sb_publishable_qazTUN379u3XfEcjHxq2zA_4N1rrqNr';
-
-  /// Initialize Supabase with project URL and public key.
-  /// Call this in main() or when storage is first accessed.
-  Future<void> initialize({
-    String supabaseUrl = defaultSupabaseUrl,
-    String anonKey = defaultAnonKey,
-  }) async {
-    if (_isInitialized) return;
-    try {
-      // Check if already initialized by Supabase singleton
-      try {
-        final _ = Supabase.instance.client;
-        _isInitialized = true;
-        debugPrint('SupabaseStorageService: Already initialized.');
-        return;
-      } catch (_) {}
-
-      // ignore: deprecated_member_use
-      await Supabase.initialize(
-        url: supabaseUrl,
-        anonKey: anonKey,
-      );
-      _isInitialized = true;
-      debugPrint('SupabaseStorageService: Initialized successfully.');
-    } catch (e) {
-      debugPrint('SupabaseStorageService initialization error: $e');
+  SupabaseStorageService._();
+  static const defaultBucket = 'food-insight-private';
+  bool get isReady => UserSession.instance.uid != null;
+  Future<void> initialize() async {}
+  Future<void> ensureInitialized() async {}
+  Future<String?> _upload(
+      String userId, File file, String suffix, String bucket) async {
+    final session = UserSession.instance.capture();
+    if (session.uid != userId) {
+      throw StateError('Cannot upload to another account');
     }
+    final extension = file.path.split('.').last.toLowerCase();
+    final ext = extension == 'png' || extension == 'webp' ? extension : 'jpg';
+    final path = 'users/$userId/$suffix.$ext';
+    await SupabaseService.client.storage.from(bucket).upload(path, file,
+        fileOptions: FileOptions(
+            upsert: true,
+            contentType: ext == 'jpg' ? 'image/jpeg' : 'image/$ext'));
+    session.check();
+    // Persist the object reference, not an expiring signed URL.
+    return 'supabase://$bucket/$path';
   }
 
-  bool get isReady => _isInitialized;
-
-  /// Ensures Supabase is initialized before first use (lazy init).
-  /// Safe to call multiple times — no-ops if already initialized.
-  Future<void> ensureInitialized() async {
-    if (_isInitialized) return;
-    await initialize();
+  Future<String?> uploadProfileAvatar(
+          {required String userId,
+          required File imageFile,
+          String bucketName = defaultBucket}) =>
+      _upload(userId, imageFile, 'avatar', bucketName);
+  Future<String?> uploadScanSnapshot(
+          {required String userId,
+          required String scanId,
+          required File imageFile,
+          String bucketName = defaultBucket}) =>
+      _upload(userId, imageFile, 'scans/${Uri.encodeComponent(scanId)}',
+          bucketName);
+  static bool needsSignedUrl(String reference) =>
+      reference.startsWith('supabase://') ||
+      reference.startsWith(
+          '${SupabaseService.url}/storage/v1/object/public/food-insight-uploads/');
+  Future<String> resolveUrl(String reference) async {
+    if (!needsSignedUrl(reference)) return reference;
+    reference = reference.replaceFirst(
+        '${SupabaseService.url}/storage/v1/object/public/', 'supabase://');
+    final session = UserSession.instance.capture();
+    final uri = Uri.parse(reference);
+    final path = uri.path.substring(1);
+    if (!path.startsWith('users/${session.uid}/')) {
+      throw StateError('Cannot read another account image');
+    }
+    final url = await SupabaseService.client.storage
+        .from(uri.host)
+        .createSignedUrl(path, 3600);
+    session.check();
+    return url;
   }
 
-  SupabaseClient? get _client {
-    try {
-      return Supabase.instance.client;
-    } catch (e) {
-      debugPrint('Supabase client unavailable: $e');
-      return null;
+  Future<bool> deleteFile(
+      {required String path, String bucketName = defaultBucket}) async {
+    final session = UserSession.instance.capture();
+    if (!path.startsWith('users/${session.uid}/')) {
+      throw StateError('Cannot delete another account image');
     }
-  }
-
-  /// Uploads user profile avatar to Supabase Storage: food-insight-uploads/users/{userId}/avatar.jpg
-  Future<String?> uploadProfileAvatar({
-    required String userId,
-    required File imageFile,
-    String bucketName = defaultBucket,
-  }) async {
-    await ensureInitialized();
-    final client = _client;
-    if (client == null) {
-      debugPrint('SupabaseStorageService: Client not initialized.');
-      return null;
-    }
-
-    try {
-      final fileExtension = imageFile.path.split('.').last;
-      final path = 'users/$userId/avatar.$fileExtension';
-
-      await client.storage.from(bucketName).upload(
-            path,
-            imageFile,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              upsert: true,
-            ),
-          );
-
-      final publicUrl = client.storage.from(bucketName).getPublicUrl(path);
-      debugPrint('Supabase profile avatar uploaded successfully: $publicUrl');
-      return publicUrl;
-    } catch (e) {
-      debugPrint('Supabase avatar upload error: $e');
-      return null;
-    }
-  }
-
-  /// Uploads a meal/product scan snapshot to Supabase Storage: food-insight-uploads/users/{userId}/scans/{scanId}.jpg
-  Future<String?> uploadScanSnapshot({
-    required String userId,
-    required String scanId,
-    required File imageFile,
-    String bucketName = defaultBucket,
-  }) async {
-    await ensureInitialized();
-    final client = _client;
-    if (client == null) {
-      debugPrint('SupabaseStorageService: Client not initialized.');
-      return null;
-    }
-
-    try {
-      final fileExtension = imageFile.path.split('.').last;
-      final path = 'users/$userId/scans/$scanId.$fileExtension';
-
-      await client.storage.from(bucketName).upload(
-            path,
-            imageFile,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              upsert: true,
-            ),
-          );
-
-      final publicUrl = client.storage.from(bucketName).getPublicUrl(path);
-      debugPrint('Supabase scan snapshot uploaded successfully: $publicUrl');
-      return publicUrl;
-    } catch (e) {
-      debugPrint('Supabase scan upload error: $e');
-      return null;
-    }
-  }
-
-  /// Deletes a file from Supabase storage by path
-  Future<bool> deleteFile({
-    required String path,
-    String bucketName = defaultBucket,
-  }) async {
-    final client = _client;
-    if (client == null) return false;
-
-    try {
-      await client.storage.from(bucketName).remove([path]);
-      return true;
-    } catch (e) {
-      debugPrint('Supabase file deletion error: $e');
-      return false;
-    }
+    await SupabaseService.client.storage.from(bucketName).remove([path]);
+    session.check();
+    return true;
   }
 }

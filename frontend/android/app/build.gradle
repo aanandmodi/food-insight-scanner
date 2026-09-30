@@ -2,10 +2,17 @@ plugins {
     id "com.android.application"
     // START: FlutterFire Configuration
     id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
     // END: FlutterFire Configuration
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
+}
+
+def releaseSigning = new Properties()
+def signingFile = rootProject.file('key.properties')
+if (signingFile.exists()) {
+    signingFile.withInputStream { releaseSigning.load(it) }
 }
 
 android {
@@ -32,13 +39,30 @@ android {
         multiDexEnabled true
     }
 
+    signingConfigs {
+        release {
+            if (signingFile.exists()) {
+                storeFile rootProject.file(releaseSigning['storeFile'])
+                storePassword releaseSigning['storePassword']
+                keyAlias releaseSigning['keyAlias']
+                keyPassword releaseSigning['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.release
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.name.toLowerCase().contains('release') } && !signingFile.exists()) {
+        throw new GradleException('Release builds require android/key.properties and the existing release keystore.')
     }
 }
 

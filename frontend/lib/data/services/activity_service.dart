@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -8,135 +7,59 @@ import 'package:permission_handler/permission_handler.dart';
 class ActivityService {
   final Health _health = Health();
   StreamSubscription<StepCount>? _stepCountStream;
-  bool _isConfigured = false;
-  
-  // Expose step count stream for real-time updates from pedometer
-  final StreamController<int> _pedometerStepsController = StreamController<int>.broadcast();
-  Stream<int> get pedometerSteps => _pedometerStepsController.stream;
+  bool _configured = false;
+  final _steps = StreamController<int>.broadcast();
+  Stream<int> get pedometerSteps => _steps.stream;
 
-  ActivityService() {
-    _safeConfigure();
-  }
-
-  void _safeConfigure() {
-    try {
-      _health.configure();
-      _isConfigured = true;
-    } catch (e) {
-      debugPrint("Health configure error (non-fatal): $e");
+  Future<void> initPedometer({bool requestPermission = false}) async {
+    if (_stepCountStream != null) return;
+    final permission = Platform.isAndroid ? Permission.activityRecognition : Permission.sensors;
+    var status = await permission.status;
+    if (!status.isGranted && requestPermission) status = await permission.request();
+    if (!status.isGranted) {
+      if (requestPermission) throw StateError('Step counter permission was not granted. You can continue scanning food.');
+      return;
     }
+    _stepCountStream = Pedometer.stepCountStream.listen((event) {
+      if (!_steps.isClosed) _steps.add(event.steps);
+    }, onError: (_) {});
   }
 
-  /// Initializes the hardware pedometer (if available)
-  Future<void> initPedometer() async {
-    try {
-      bool granted = await _requestActivityRecognition();
-      if (!granted) return;
-
-      _stepCountStream = Pedometer.stepCountStream.listen((StepCount event) {
-        if (!_pedometerStepsController.isClosed) {
-          _pedometerStepsController.add(event.steps);
-        }
-      }, onError: (error) {
-        debugPrint("Pedometer stream error (non-fatal): $error");
-      });
-    } catch (e) {
-      debugPrint("Error initializing pedometer (non-fatal): $e");
+  Future<Map<String, int>> syncHealthData({bool requestPermission = false}) async {
+    if (!_configured) { await _health.configure(); _configured = true; }
+    if (Platform.isAndroid && await _health.getHealthConnectSdkStatus() != HealthConnectSdkStatus.sdkAvailable) {
+      if (requestPermission) throw StateError('Health Connect is unavailable on this device. You can use the step counter or continue scanning food.');
+      return {};
     }
-  }
-
-  /// Fetches daily activity from Health Connect (Android) or Apple Health (iOS)
-  Future<Map<String, int>> syncHealthData() async {
+    const types = [HealthDataType.STEPS, HealthDataType.ACTIVE_ENERGY_BURNED];
+    const permissions = [HealthDataAccess.READ, HealthDataAccess.READ];
+    var granted = await _health.hasPermissions(types, permissions: permissions) ?? false;
+    if (!granted && requestPermission) granted = await _health.requestAuthorization(types, permissions: permissions);
+    if (!granted) {
+      if (requestPermission) throw StateError('Health access was not granted. You can connect later from Settings.');
+      return {};
+    }
     final now = DateTime.now();
     final midnight = DateTime(now.year, now.month, now.day);
-    
-    int steps = 0;
-    int activeCalories = 0;
-
-    final types = [
-      HealthDataType.STEPS,
-      HealthDataType.ACTIVE_ENERGY_BURNED,
-    ];
-
-    try {
-      if (!_isConfigured) {
-        _safeConfigure();
-      }
-
-      bool hasPermission = false;
-      try {
-        hasPermission = await _health.hasPermissions(types) ?? false;
-        if (!hasPermission) {
-          hasPermission = await _health.requestAuthorization(types);
-        }
-      } catch (e) {
-        debugPrint('Health authorization check error (non-fatal): $e');
-        hasPermission = false;
-      }
-
-      if (hasPermission) {
-        // Fetch steps
-        try {
-          int? stepsData = await _health.getTotalStepsInInterval(midnight, now);
-          if (stepsData != null) {
-            steps = stepsData;
-          }
-        } catch (e) {
-          debugPrint('Error getting total steps: $e');
-        }
-
-        // Fetch active energy burned
-        try {
-          List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(
-            types: [HealthDataType.ACTIVE_ENERGY_BURNED], 
-            startTime: midnight, 
-            endTime: now
-          );
-          
-          for (var point in healthData) {
-            if (point.value is NumericHealthValue) {
-              activeCalories += (point.value as NumericHealthValue).numericValue.toInt();
-            }
-          }
-        } catch (e) {
-          debugPrint('Error getting active energy burned: $e');
-        }
-      }
-    } catch (e) {
-      debugPrint("Exception in syncHealthData (non-fatal): $e");
+    final result = <String, int>{};
+    final steps = await _health.getTotalStepsInInterval(midnight, now);
+    if (steps != null) result['steps'] = steps.clamp(0, 200000);
+    final data = await _health.getHealthAggregateDataFromTypes(
+      types: [HealthDataType.ACTIVE_ENERGY_BURNED], startDate: midnight, endDate: now);
+    if (data.isNotEmpty) {
+      result['activeCalories'] = data.where((point) => point.value is NumericHealthValue)
+          .fold<num>(0, (sum, point) => sum + (point.value as NumericHealthValue).numericValue)
+          .round().clamp(0, 20000);
     }
-
-    return {
-      'steps': steps,
-      'activeCalories': activeCalories,
-    };
+    return result;
   }
 
-  Future<bool> _requestActivityRecognition() async {
-    try {
-      if (Platform.isAndroid) {
-        var status = await Permission.activityRecognition.status;
-        if (!status.isGranted) {
-          status = await Permission.activityRecognition.request();
-        }
-        return status.isGranted;
-      } else if (Platform.isIOS) {
-        var status = await Permission.sensors.status;
-        if (!status.isGranted) {
-          status = await Permission.sensors.request();
-        }
-        return status.isGranted;
-      }
-    } catch (e) {
-      debugPrint('Permission request error: $e');
-    }
-    return false;
+  Future<void> disconnect() async {
+    if (!_configured) { await _health.configure(); _configured = true; }
+    await _health.revokePermissions();
+    await _stepCountStream?.cancel();
+    _stepCountStream = null;
   }
 
-  void dispose() {
-    try {
-      _stepCountStream?.cancel();
-      _pedometerStepsController.close();
-    } catch (_) {}
-  }
+  void dispose() { _stepCountStream?.cancel(); _steps.close(); }
 }

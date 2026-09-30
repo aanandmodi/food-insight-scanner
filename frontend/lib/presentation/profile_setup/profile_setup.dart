@@ -1,16 +1,15 @@
 // lib/presentation/profile_setup/profile_setup.dart
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/user_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import 'package:provider/provider.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../core/app_export.dart';
-import '../../services/firestore_service.dart';
+import '../../services/user_data_service.dart';
 import '../../theme/app_design_system.dart';
 import './widgets/allergy_selection_widget.dart';
 import './widgets/dietary_preferences_widget.dart';
@@ -65,8 +64,19 @@ class _ProfileSetupState extends State<ProfileSetup>
     'Goals & Diet',
   ];
 
-  final List<String> _genderOptions = ['Male', 'Female', 'Non-Binary', 'Prefer not to say'];
-  final List<String> _activityLevelOptions = ['sedentary', 'light', 'moderate', 'active', 'very active'];
+  final List<String> _genderOptions = [
+    'Male',
+    'Female',
+    'Non-Binary',
+    'Prefer not to say'
+  ];
+  final List<String> _activityLevelOptions = [
+    'sedentary',
+    'light',
+    'moderate',
+    'active',
+    'very active'
+  ];
 
   final List<String> _diseaseOptions = [
     'Diabetes (Type 1)',
@@ -126,15 +136,15 @@ class _ProfileSetupState extends State<ProfileSetup>
 
   Future<void> _loadExistingProfile() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await UserPreferences.getInstance();
 
       // Try Firestore first (with timeout), fall back to local
       Map<String, dynamic>? cloudProfile;
       try {
-        cloudProfile = await FirestoreService().getUserProfile().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => null,
-        );
+        cloudProfile = await UserDataService().getUserProfile().timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => null,
+            );
       } catch (e) {
         debugPrint('Firestore load failed, using local cache: $e');
       }
@@ -157,7 +167,8 @@ class _ProfileSetupState extends State<ProfileSetup>
             _weightController.text = _weightKg!.toStringAsFixed(1);
           }
           _selectedDiseases = List<String>.from(cloudProfile['diseases'] ?? []);
-          _selectedAllergies = List<String>.from(cloudProfile['allergies'] ?? []);
+          _selectedAllergies =
+              List<String>.from(cloudProfile['allergies'] ?? []);
           // `toMap()` writes `healthGoals`; older documents used `healthGoal`.
           // Reading only the old key meant the goal never pre-selected on edit.
           _selectedHealthGoal =
@@ -190,7 +201,8 @@ class _ProfileSetupState extends State<ProfileSetup>
           _selectedHealthGoal = prefs.getString('user_health_goal');
           _selectedDietaryPreferences =
               prefs.getStringList('user_dietary_preferences') ?? [];
-          _selectedActivityLevel = prefs.getString('user_activity_level') ?? 'moderate';
+          _selectedActivityLevel =
+              prefs.getString('user_activity_level') ?? 'moderate';
         });
       }
     } catch (e) {
@@ -210,6 +222,8 @@ class _ProfileSetupState extends State<ProfileSetup>
       //      provider from Firebase Auth, so we never invent a fake uid. ──
       final userProfile = UserProfile(
         name: _userName,
+        region:
+            context.read<UserProfileProvider>().profile?.region ?? 'All India',
         gender: _selectedGender,
         dateOfBirth: _dateOfBirth,
         heightCm: _heightCm,
@@ -227,9 +241,9 @@ class _ProfileSetupState extends State<ProfileSetup>
       //      Firestore, so the two can't drift apart. ──
       bool cloudSaved = false;
       if (mounted) {
-        cloudSaved = await Provider.of<UserProfileProvider>(context,
-                listen: false)
-            .saveProfile(userProfile, markCompleted: true);
+        cloudSaved =
+            await Provider.of<UserProfileProvider>(context, listen: false)
+                .saveProfile(userProfile, markCompleted: true);
       }
 
       // ── 3. Navigate to home ──
@@ -243,7 +257,7 @@ class _ProfileSetupState extends State<ProfileSetup>
           // pushReplacementNamed replaced the *dialog* route and left the
           // setup screen sitting underneath the dashboard.
           Navigator.of(context, rootNavigator: true).pop();
-          Navigator.pushReplacementNamed(context, '/home-dashboard');
+          Navigator.pushReplacementNamed(context, '/auth-gate');
           if (!cloudSaved) {
             debugPrint(
                 'Profile saved on device; it will sync when back online.');
@@ -304,9 +318,9 @@ class _ProfileSetupState extends State<ProfileSetup>
               Text(
                 'Profile Created!',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
               ),
               SizedBox(height: 1.h),
               Text(
@@ -336,8 +350,8 @@ class _ProfileSetupState extends State<ProfileSetup>
               child: Text(
                 message,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onError,
-                ),
+                      color: Theme.of(context).colorScheme.onError,
+                    ),
               ),
             ),
           ],
@@ -424,9 +438,9 @@ class _ProfileSetupState extends State<ProfileSetup>
       helpText: 'Select your date of birth',
       builder: (context, child) {
         return Theme(
-           data: Theme.of(context).copyWith(
-             colorScheme: Theme.of(context).colorScheme,
-           ),
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme,
+          ),
           child: child!,
         );
       },
@@ -587,7 +601,9 @@ class _ProfileSetupState extends State<ProfileSetup>
                 _buildStepHeader('person', 'Personal Information'),
                 SizedBox(height: 2.h),
                 Text('What should we call you?',
-                    style: Theme.of(context).textTheme.bodyLarge
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
                         ?.copyWith(fontWeight: FontWeight.w500)),
                 SizedBox(height: 1.5.h),
                 TextFormField(
@@ -624,7 +640,9 @@ class _ProfileSetupState extends State<ProfileSetup>
                 ),
                 SizedBox(height: 3.h),
                 Text('Gender',
-                    style: Theme.of(context).textTheme.bodyLarge
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
                         ?.copyWith(fontWeight: FontWeight.w500)),
                 SizedBox(height: 1.h),
                 Wrap(
@@ -641,7 +659,9 @@ class _ProfileSetupState extends State<ProfileSetup>
                           _hasUnsavedChanges = true;
                         });
                       },
-                      selectedColor: Theme.of(context).colorScheme.primary
+                      selectedColor: Theme.of(context)
+                          .colorScheme
+                          .primary
                           .withValues(alpha: 0.2),
                       checkmarkColor: Theme.of(context).colorScheme.primary,
                       labelStyle: TextStyle(
@@ -687,7 +707,9 @@ class _ProfileSetupState extends State<ProfileSetup>
             _buildStepHeader('cake', 'Date of Birth'),
             SizedBox(height: 2.h),
             Text('When were you born?',
-                style: Theme.of(context).textTheme.bodyLarge
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 2.h),
             GestureDetector(
@@ -719,10 +741,12 @@ class _ProfileSetupState extends State<ProfileSetup>
                             ? '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}'
                             : 'Tap to select your date of birth',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: _dateOfBirth != null
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                              color: _dateOfBirth != null
+                                  ? Theme.of(context).colorScheme.onSurface
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                            ),
                       ),
                     ),
                     CustomIconWidget(
@@ -753,9 +777,9 @@ class _ProfileSetupState extends State<ProfileSetup>
                     Text(
                       'Your age: $_calculatedAge years',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ],
                 ),
@@ -785,7 +809,9 @@ class _ProfileSetupState extends State<ProfileSetup>
             SizedBox(height: 2.h),
             // Height
             Text('Height (cm)',
-                style: Theme.of(context).textTheme.bodyLarge
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 1.h),
             TextFormField(
@@ -802,7 +828,8 @@ class _ProfileSetupState extends State<ProfileSetup>
                   ),
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
               ],
@@ -816,7 +843,9 @@ class _ProfileSetupState extends State<ProfileSetup>
             SizedBox(height: 3.h),
             // Weight
             Text('Weight (kg)',
-                style: Theme.of(context).textTheme.bodyLarge
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 1.h),
             TextFormField(
@@ -833,7 +862,8 @@ class _ProfileSetupState extends State<ProfileSetup>
                   ),
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
               ],
@@ -847,14 +877,17 @@ class _ProfileSetupState extends State<ProfileSetup>
             SizedBox(height: 3.h),
             // Activity Level
             Text('Activity Level',
-                style: Theme.of(context).textTheme.bodyLarge
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
                     ?.copyWith(fontWeight: FontWeight.w500)),
             SizedBox(height: 1.h),
             Wrap(
               spacing: 2.w,
               runSpacing: 1.h,
               children: _activityLevelOptions.map((level) {
-                final isSelected = _selectedActivityLevel.toLowerCase() == level.toLowerCase();
+                final isSelected =
+                    _selectedActivityLevel.toLowerCase() == level.toLowerCase();
                 return ChoiceChip(
                   label: Text(level[0].toUpperCase() + level.substring(1)),
                   selected: isSelected,
@@ -866,7 +899,9 @@ class _ProfileSetupState extends State<ProfileSetup>
                       });
                     }
                   },
-                  selectedColor: Theme.of(context).colorScheme.primary
+                  selectedColor: Theme.of(context)
+                      .colorScheme
+                      .primary
                       .withValues(alpha: 0.2),
                   checkmarkColor: Theme.of(context).colorScheme.primary,
                   labelStyle: TextStyle(
@@ -941,23 +976,22 @@ class _ProfileSetupState extends State<ProfileSetup>
             child: Text(
               bmi.toStringAsFixed(1),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: categoryColor,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: categoryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
           SizedBox(width: 3.w),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your BMI',
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text('Your BMI', style: Theme.of(context).textTheme.bodySmall),
               Text(
                 category,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: categoryColor,
-                  fontWeight: FontWeight.w600,
-                ),
+                      color: categoryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ],
           ),
@@ -982,8 +1016,8 @@ class _ProfileSetupState extends State<ProfileSetup>
             Text(
               'Select any conditions that apply to you. This helps us identify foods to avoid.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             SizedBox(height: 2.h),
             Wrap(
@@ -1009,15 +1043,16 @@ class _ProfileSetupState extends State<ProfileSetup>
                       _hasUnsavedChanges = true;
                     });
                   },
-                  selectedColor: Theme.of(context).colorScheme.error
+                  selectedColor: Theme.of(context)
+                      .colorScheme
+                      .error
                       .withValues(alpha: 0.15),
                   checkmarkColor: Theme.of(context).colorScheme.error,
                   labelStyle: TextStyle(
                     color: isSelected
                         ? Theme.of(context).colorScheme.error
                         : Theme.of(context).colorScheme.onSurface,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     fontSize: 13,
                   ),
                   shape: RoundedRectangleBorder(
@@ -1097,8 +1132,7 @@ class _ProfileSetupState extends State<ProfileSetup>
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
         border: Border(
           top: BorderSide(
-            color:
-                Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -1188,8 +1222,8 @@ class _ProfileSetupState extends State<ProfileSetup>
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+                  fontWeight: FontWeight.w600,
+                ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -1220,8 +1254,8 @@ class _ProfileSetupState extends State<ProfileSetup>
             child: Text(
               text,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ),
         ],

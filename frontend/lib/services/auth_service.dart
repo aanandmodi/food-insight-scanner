@@ -1,3 +1,7 @@
+import 'package:cloud_functions/cloud_functions.dart';
+import 'analytics_service.dart';
+import 'backend_client.dart';
+import 'package:home_widget/home_widget.dart';
 // lib/core/services/auth_service.dart
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,21 +11,35 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
-import 'firestore_service.dart';
+import 'user_data_service.dart';
 import 'local_database_service.dart';
 import 'product_service.dart';
-import '../../main.dart' show retryFirebaseInit;
+import 'firebase_bootstrap.dart';
+import 'user_session.dart';
+import 'dart:async';
 
 /// A service class to handle all Firebase Authentication logic.
 /// All methods are resilient to Firebase being unavailable.
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
-  AuthService._internal();
+  AuthService._internal() {
+    FirebaseBootstrap.ready.addListener(_attachAuth);
+    _attachAuth();
+  }
+  final _authEvents = StreamController<User?>.broadcast();
+  StreamSubscription<User?>? _authSubscription;
+  void _attachAuth() {
+    if (!FirebaseBootstrap.ready.value || _authSubscription != null) return;
+    _authSubscription = FirebaseAuth.instance
+        .authStateChanges()
+        .listen(_authEvents.add, onError: _authEvents.addError);
+  }
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: '579993459207-6rcmc0fgucpdc01f3rhvmtlc1oprlou4.apps.googleusercontent.com',
+    serverClientId:
+        '579993459207-6rcmc0fgucpdc01f3rhvmtlc1oprlou4.apps.googleusercontent.com',
   );
 
   // ──────────────────────────── Firebase Readiness ────────────────────────────
@@ -38,11 +56,11 @@ class AuthService {
   /// Re-attempt Firebase initialization. Returns true if successful.
   /// Also syncs any locally stored diet entries to Firestore on success.
   Future<bool> retryInit() async {
-    final success = await retryFirebaseInit();
+    final success = await FirebaseBootstrap.ensureReady();
     if (success) {
       // Sync local diet entries to cloud now that Firebase is available
       try {
-        await FirestoreService().syncLocalEntriesToCloud();
+        await UserDataService().syncLocalEntriesToCloud();
       } catch (e) {
         debugPrint('Failed to sync local entries after retry: $e');
       }
@@ -61,11 +79,12 @@ class AuthService {
   }
 
   /// A stream that notifies the app about changes in the user's authentication state.
-  Stream<User?> get authStateChanges {
-    final auth = _auth;
-    if (auth == null) return Stream.value(null);
-    return auth.authStateChanges();
-  }
+  Stream<User?> get authStateChanges => Stream<User?>.multi((controller) {
+        final subscription = _authEvents.stream
+            .listen(controller.add, onError: controller.addError);
+        controller.add(currentUser);
+        controller.onCancel = subscription.cancel;
+      });
 
   /// Gets the currently signed-in user, if any.
   User? get currentUser => _auth?.currentUser;
@@ -91,24 +110,15 @@ class AuthService {
 
   /// Take ownership of rows that were written before sign-in (guest usage),
   /// so nothing the user logged is lost when they create an account.
-  Future<void> _adoptLocalData(String uid) async {
-    try {
-      await LocalDatabaseService().adoptLocalRows(uid);
-    } catch (e) {
-      debugPrint('adoptLocalRows failed (non-fatal): $e');
-    }
-  }
 
   /// Creates the Firestore profile document if the user does not have one yet.
   /// Never overwrites an existing profile.
   Future<void> _ensureProfileDocument(User user, {String? displayName}) async {
     try {
-      final existingProfile = await FirestoreService()
-          .getUserProfile()
-          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+      final existingProfile = await UserDataService().getUserProfile();
       if (existingProfile != null) return;
 
-      await FirestoreService().saveUserProfile({
+      await UserDataService().saveUserProfile({
         'email': user.email ?? '',
         // Deliberately blank when unknown: a placeholder like "User" reads as a
         // real, completed profile everywhere downstream.
@@ -134,7 +144,8 @@ class AuthService {
     if (auth == null) {
       throw AuthException(
         code: 'firebase-unavailable',
-        message: 'Unable to connect to Google Services. Please check your internet connection and try restarting the app.',
+        message:
+            'Sign-in could not initialize. Close and reopen the app, then retry. If it persists, check the Firebase Android configuration.',
       );
     }
 
@@ -146,7 +157,6 @@ class AuthService {
       );
       final user = userCredential.user;
       if (user != null) {
-        await _adoptLocalData(user.uid);
         await _ensureProfileDocument(user);
       }
       debugPrint('Signed in with email: ${user?.email}');
@@ -176,7 +186,8 @@ class AuthService {
     if (auth == null) {
       throw AuthException(
         code: 'firebase-unavailable',
-        message: 'Unable to connect to Google Services. Please check your internet connection and try restarting the app.',
+        message:
+            'Sign-in could not initialize. Close and reopen the app, then retry. If it persists, check the Firebase Android configuration.',
       );
     }
 
@@ -196,7 +207,6 @@ class AuthService {
       // Initialize Firestore profile
       final user = auth.currentUser ?? userCredential.user;
       if (user != null) {
-        await _adoptLocalData(user.uid);
         await _ensureProfileDocument(user, displayName: displayName);
         // Fire-and-forget: a failed verification mail must not block signup.
         try {
@@ -222,6 +232,7 @@ class AuthService {
 
   /// Send a password reset email
   Future<void> sendPasswordResetEmail(String email) async {
+    if (!isFirebaseReady) await retryInit();
     final auth = _auth;
     if (auth == null) {
       throw AuthException(
@@ -250,7 +261,8 @@ class AuthService {
     if (auth == null) {
       throw AuthException(
         code: 'firebase-unavailable',
-        message: 'Unable to connect to Google Services. Please check your internet connection and try restarting the app.',
+        message:
+            'Sign-in could not initialize. Close and reopen the app, then retry. If it persists, check the Firebase Android configuration.',
       );
     }
 
@@ -268,6 +280,12 @@ class AuthService {
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
+      if (googleAuth.idToken == null) {
+        throw AuthException(
+            code: 'missing-google-token',
+            message:
+                'Google could not provide a sign-in token. Check the app signing configuration.');
+      }
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -279,7 +297,6 @@ class AuthService {
       // Initialize Firestore profile if it doesn't exist
       final user = userCredential.user;
       if (user != null) {
-        await _adoptLocalData(user.uid);
         await _ensureProfileDocument(user);
       }
 
@@ -301,7 +318,8 @@ class AuthService {
       debugPrint('╚══════════════════════════════════════════════════');
       throw AuthException(
         code: 'google-sign-in-failed',
-        message: 'Google Sign-In failed: ${e is PlatformException ? '${e.code} – ${e.message}' : e.toString()}',
+        message:
+            'Google Sign-In failed: ${e is PlatformException ? '${e.code} – ${e.message}' : e.toString()}',
       );
     }
   }
@@ -325,7 +343,6 @@ class AuthService {
       final UserCredential userCredential = await auth.signInAnonymously();
       final user = userCredential.user;
       if (user != null) {
-        await _adoptLocalData(user.uid);
         // Guests need a profile document too, otherwise every read falls
         // through to the local cache and their data never syncs.
         await _ensureProfileDocument(user);
@@ -367,7 +384,7 @@ class AuthService {
           await linked.reload();
         }
         try {
-          await FirestoreService().saveUserProfile({
+          await UserDataService().saveUserProfile({
             'email': linked.email ?? email.trim(),
             'isAnonymous': false,
           });
@@ -413,7 +430,7 @@ class AuthService {
       final linked = result.user;
       if (linked != null) {
         try {
-          await FirestoreService().saveUserProfile({
+          await UserDataService().saveUserProfile({
             'email': linked.email ?? '',
             'photoUrl': linked.photoURL ?? '',
             'isAnonymous': false,
@@ -466,33 +483,35 @@ class AuthService {
   /// Signs the current user out and clears ALL local cached data.
   /// This is an atomic operation — Firebase signout + Google signout + local purge.
   Future<void> signOut() async {
-    // Capture the uid *before* signing out — afterwards the local database can
-    // no longer tell which rows belonged to this user.
-    final departingUid = currentUser?.uid;
+    UserSession.instance.invalidate();
+    // UID-scoped caches and unsynced records survive logout for this owner.
+    await _auth?.signOut();
     try {
-      // 1. Sign out of Google first (prevents reuse of cached credentials)
-      try {
-        await _googleSignIn.signOut();
-      } catch (e) {
-        debugPrint('Google sign-out error (non-fatal): $e');
+      await _googleSignIn.signOut();
+    } catch (_) {}
+    try {
+      for (final key in [
+        'calories_consumed',
+        'carbs_consumed',
+        'protein_consumed',
+        'fat_consumed',
+        'steps',
+        'active_calories',
+        'calories_goal', 'carbs_goal', 'protein_goal', 'fat_goal',
+      ]) {
+        await HomeWidget.saveWidgetData<int>(key, 0);
       }
-
-      // 2. Sign out of Firebase
-      try {
-        await _auth?.signOut();
-      } catch (e) {
-        debugPrint('Firebase sign-out error (non-fatal): $e');
+      await HomeWidget.saveWidgetData<double>('distance_km', 0);
+      await HomeWidget.saveWidgetData<String>('hourly_burn_data', '');
+      for (final name in [
+        'MacroWidgetProvider',
+        'SmallWidgetProvider',
+        'LargeWidgetProvider',
+        'CalorieGraphWidgetProvider'
+      ]) {
+        await HomeWidget.updateWidget(name: name);
       }
-
-      // 3. Clear all local user data
-      await _clearLocalData(uid: departingUid);
-
-      debugPrint('User signed out successfully — all local data cleared.');
-    } catch (e) {
-      debugPrint('Error during sign out: $e');
-      // Even if something failed, still clear local data
-      await _clearLocalData(uid: departingUid);
-    }
+    } catch (_) {}
   }
 
   /// Delete the current user account and purge all data.
@@ -515,14 +534,10 @@ class AuthService {
       await _reauthenticateIfPossible(user, password);
       final deletedUid = user.uid;
 
-      // Delete Firestore profile + subcollections before losing the token.
-      try {
-        await FirestoreService().deleteUserProfile();
-      } catch (e) {
-        debugPrint('Firestore profile delete error (non-fatal): $e');
-      }
-
-      await user.delete();
+      // Invalidate work before deletion; backend retries cleanup after Auth deletion.
+      UserSession.instance.invalidate();
+      await user.getIdToken(true);
+      await BackendClient.call('requestAccountDeletion', {});
 
       try {
         await _googleSignIn.signOut();
@@ -530,7 +545,9 @@ class AuthService {
         debugPrint('Google sign-out error (non-fatal): $e');
       }
 
+      try { await AnalyticsService.setEnabled(false); } catch (_) {}
       await _clearLocalData(uid: deletedUid);
+      await signOut();
 
       debugPrint('Account deleted successfully.');
     } on FirebaseAuthException catch (e) {
@@ -547,50 +564,37 @@ class AuthService {
   }
 
   Future<void> _reauthenticateIfPossible(User user, String? password) async {
-    final providers = user.providerData.map((p) => p.providerId).toList();
-
-    try {
-      if (providers.contains('password') &&
-          password != null &&
-          password.isNotEmpty &&
-          (user.email ?? '').isNotEmpty) {
-        final cred = EmailAuthProvider.credential(
-          email: user.email!,
-          password: password,
-        );
-        await user.reauthenticateWithCredential(cred);
-        return;
+    if (user.isAnonymous) return;
+    final providers = user.providerData.map((provider) => provider.providerId).toSet();
+    if (providers.contains('password')) {
+      if (password == null || password.isEmpty || user.email == null) {
+        throw AuthException(code: 'password-required', message: 'Enter your password to confirm account deletion.');
       }
-
-      if (providers.contains('google.com')) {
-        final googleUser =
-            await _googleSignIn.signInSilently() ?? await _googleSignIn.signIn();
-        if (googleUser != null) {
-          final googleAuth = await googleUser.authentication;
-          await user.reauthenticateWithCredential(
-            GoogleAuthProvider.credential(
-              accessToken: googleAuth.accessToken,
-              idToken: googleAuth.idToken,
-            ),
-          );
-        }
-      }
-      // Anonymous users need no reauthentication.
-    } on FirebaseAuthException catch (e) {
-      // Surface bad-password immediately rather than failing later on delete().
-      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        throw AuthException.fromFirebase(e);
-      }
-      debugPrint('Reauthentication skipped: ${e.code}');
-    } catch (e) {
-      debugPrint('Reauthentication skipped: $e');
+      await user.reauthenticateWithCredential(EmailAuthProvider.credential(email: user.email!, password: password));
+      return;
     }
+    if (providers.contains('google.com')) {
+      await _googleSignIn.signOut();
+      final account = await _googleSignIn.signIn();
+      if (account == null) throw AuthException(code: 'cancelled', message: 'Account deletion cancelled.');
+      final token = await account.authentication;
+      await user.reauthenticateWithCredential(GoogleAuthProvider.credential(accessToken: token.accessToken, idToken: token.idToken));
+      return;
+    }
+    throw AuthException(code: 'requires-recent-login', message: 'Sign in again before deleting your account.');
   }
 
   /// Clears all locally cached user data to prevent leakage between accounts.
   Future<void> _clearLocalData({String? uid}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (uid != null) {
+        await UserDataService().clearLocalOwner(uid);
+        for (final key in prefs.getKeys().where((key) => key.startsWith('user:$uid:')).toList()) {
+          await prefs.remove(key);
+        }
+      }
+      await prefs.remove('groq_api_key');
       // Every key any screen writes about the user must be listed here, or the
       // next account inherits the previous one's values.
       const userKeys = <String>[
@@ -641,6 +645,9 @@ class AuthService {
     if (error is AuthException) {
       return error.message;
     }
+    if (error is FirebaseFunctionsException) {
+      return error.code == 'failed-precondition' ? 'Sign in again before deleting your account.' : 'Account cleanup could not finish. Please retry deletion.';
+    }
     if (error is FirebaseAuthException) {
       return AuthException.fromFirebase(error).message;
     }
@@ -664,15 +671,15 @@ class AuthException implements Exception {
     final message = switch (e.code) {
       'user-not-found' => 'No account found with this email address.',
       'wrong-password' => 'Incorrect password. Please try again.',
-      'invalid-credential' => 'Invalid email or password. Please check and try again.',
+      'invalid-credential' =>
+        'Invalid email or password. Please check and try again.',
       'email-already-in-use' => 'An account already exists with this email.',
       'invalid-email' => 'Please enter a valid email address.',
       'weak-password' => 'Password is too weak. Use at least 6 characters.',
       'too-many-requests' => 'Too many attempts. Please try again later.',
       'user-disabled' => 'This account has been disabled.',
       'operation-not-allowed' => 'This sign-in method is not enabled.',
-      'requires-recent-login' =>
-        'Please sign in again to perform this action.',
+      'requires-recent-login' => 'Please sign in again to perform this action.',
       'network-request-failed' =>
         'Network error. Please check your internet connection.',
       'account-exists-with-different-credential' =>

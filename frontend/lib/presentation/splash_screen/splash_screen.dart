@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../../core/app_export.dart';
 import '../../theme/app_design_system.dart';
 import '../../data/providers/user_profile_provider.dart';
-import '../../services/auth_service.dart';
 import '../../main.dart' show retryFirebaseInit;
 
 class SplashScreen extends StatefulWidget {
@@ -51,33 +50,20 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) {
         // Yield to the event loop so the initial build can complete
         await Future.delayed(Duration.zero);
-        final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+        if (!mounted) return;
+        final profileProvider =
+            Provider.of<UserProfileProvider>(context, listen: false);
         await profileProvider.fetchProfile();
       }
-      
+
       _updateProgress('Ready!');
-      await Future.delayed(const Duration(milliseconds: 600)); // Minimum splash duration
-      
+      await Future.delayed(
+          const Duration(milliseconds: 600)); // Minimum splash duration
+
       if (!mounted) return;
       final navigator = Navigator.of(context);
 
-      // ── Auth Gate: Check if user is authenticated FIRST ──
-      final isAuthenticated = AuthService().isAuthenticated;
-
-      if (!isAuthenticated) {
-        // Not logged in → must go to login screen
-        navigator.pushReplacementNamed(AppRoutes.login);
-      } else {
-        // Logged in → check profile completeness
-        final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-        final profileComplete = profileProvider.profile?.profileCompleted ?? false;
-
-        if (!profileComplete) {
-          navigator.pushReplacementNamed(AppRoutes.profileSetup);
-        } else {
-          navigator.pushReplacementNamed(AppRoutes.homeDashboard);
-        }
-      }
+      navigator.pushReplacementNamed(AppRoutes.authGate);
     } catch (e) {
       debugPrint('Initialization error: $e');
       if (mounted) {
@@ -87,9 +73,9 @@ class _SplashScreenState extends State<SplashScreen> {
         });
         // Still attempt to navigate after a delay
         Future.delayed(const Duration(seconds: 2), () {
-           if (mounted) {
-              Navigator.of(context).pushReplacementNamed(AppRoutes.login);
-           }
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+          }
         });
       }
     }
@@ -126,11 +112,23 @@ class _SplashScreenState extends State<SplashScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Spacer(flex: 3),
-                _buildLogo().animate().scaleXY(begin: 0.8, end: 1.0, duration: 800.ms, curve: Curves.easeOutBack).fadeIn(duration: 800.ms),
+                _buildLogo()
+                    .animate()
+                    .scaleXY(
+                        begin: 0.8,
+                        end: 1.0,
+                        duration: 800.ms,
+                        curve: Curves.easeOutBack)
+                    .fadeIn(duration: 800.ms),
                 SizedBox(height: 4.h),
-                _buildTitle().animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
+                _buildTitle()
+                    .animate()
+                    .fadeIn(delay: 400.ms, duration: 600.ms)
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
                 SizedBox(height: 1.h),
-                _buildTagline().animate().fadeIn(delay: 600.ms, duration: 600.ms),
+                _buildTagline()
+                    .animate()
+                    .fadeIn(delay: 600.ms, duration: 600.ms),
                 const Spacer(flex: 2),
                 _buildLoadingState().animate().fadeIn(delay: 800.ms),
                 SizedBox(height: 5.h),
@@ -147,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> {
     return Container(
       width: 140,
       height: 140,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
         boxShadow: FoodInsightShadows.floating,
@@ -156,16 +154,21 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Container(
           width: 90,
           height: 90,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: FoodInsightColors.scannerGreenLight,
             shape: BoxShape.circle,
           ),
-          child: Icon(
+          child: const Icon(
             Icons.center_focus_strong_rounded,
             size: 40,
             color: FoodInsightColors.scannerGreen,
-          ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-           .scaleXY(begin: 1.0, end: 1.05, duration: 1.seconds, curve: Curves.easeInOut),
+          )
+              .animate(onPlay: (controller) => controller.repeat(reverse: true))
+              .scaleXY(
+                  begin: 1.0,
+                  end: 1.05,
+                  duration: 1.seconds,
+                  curve: Curves.easeInOut),
         ),
       ),
     );
@@ -196,11 +199,13 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_hasError) {
       return Column(
         children: [
-          Icon(Icons.error_outline, color: FoodInsightColors.healthRed, size: 32),
+          const Icon(Icons.error_outline,
+              color: FoodInsightColors.healthRed, size: 32),
           SizedBox(height: 1.5.h),
           Text(
             _loadingText,
-            style: FoodInsightTypography.body(color: FoodInsightColors.healthRed),
+            style:
+                FoodInsightTypography.body(color: FoodInsightColors.healthRed),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 2.h),
@@ -209,9 +214,12 @@ class _SplashScreenState extends State<SplashScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: FoodInsightColors.deepCharcoal,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
+              shape:
+                  RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
             ),
-            child: Text('Retry', style: FoodInsightTypography.body(color: Colors.white, weight: FontWeight.w700)),
+            child: Text('Retry',
+                style: FoodInsightTypography.body(
+                    color: Colors.white, weight: FontWeight.w700)),
           ),
         ],
       );
@@ -219,11 +227,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
     return Column(
       children: [
-        SizedBox(
+        const SizedBox(
           width: 40,
           height: 40,
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(FoodInsightColors.scannerGreen),
+            valueColor:
+                AlwaysStoppedAnimation<Color>(FoodInsightColors.scannerGreen),
             strokeWidth: 3,
             backgroundColor: FoodInsightColors.scannerGreenLight,
           ),

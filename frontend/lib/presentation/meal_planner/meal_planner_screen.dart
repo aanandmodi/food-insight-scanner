@@ -1,16 +1,14 @@
 // lib/presentation/meal_planner/meal_planner_screen.dart
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/user_session.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../theme/app_design_system.dart';
 import '../../services/cloud_function_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/local_database_service.dart';
+import '../../services/user_data_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 
 class MealPlannerScreen extends StatefulWidget {
@@ -34,14 +32,13 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
   Future<void> _loadSavedPlan() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedJson = prefs.getString('saved_meal_plan');
-      if (savedJson == null || !mounted) return;
-
-      final decoded = jsonDecode(savedJson);
-      if (decoded is! Map) return;
-
-      final stamp = prefs.getString('saved_meal_plan_at');
+      final session = UserSession.instance.capture();
+      final decoded = await UserDataService().getMealPlan();
+      if (decoded == null || !mounted || !session.isActive) return;
+      final profile = await UserDataService().getUserProfile();
+      CloudFunctionService.validatePlanSafety(decoded, profile);
+      if (!mounted || !session.isActive) return;
+      final stamp = decoded['generatedAt']?.toString();
       setState(() {
         _mealPlan = decoded.map((k, v) => MapEntry(k.toString(), v));
         _generatedAt = stamp == null ? null : DateTime.tryParse(stamp);
@@ -63,19 +60,20 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
     List<Map<String, dynamic>> entries = const [];
     try {
-      entries = await FirestoreService().getDietLog(dateString);
+      entries = await UserDataService().getDietLog(dateString);
     } catch (e) {
       debugPrint('Cloud diet log unavailable for planner: $e');
     }
     if (entries.isEmpty) {
       try {
-        entries = await LocalDatabaseService().getDietLogByDate(dateString);
+        entries = await UserDataService().getDietLog(dateString);
       } catch (e) {
         debugPrint('Local diet log unavailable for planner: $e');
       }
     }
 
-    double num0(Object? v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+    double num0(Object? v) =>
+        v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 
     double calories = 0, protein = 0, carbs = 0, fat = 0;
     for (final e in entries) {
@@ -102,10 +100,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
       _error = '';
     });
 
+    final session = UserSession.instance.capture();
     try {
       final profile = context.read<UserProfileProvider>().profile;
       final summary = await _todaysIntake();
 
+      session.check();
       final plan = await CloudFunctionService().generateDietPlan(
         dailySummary: summary,
         userProfile: profile?.toMap(),
@@ -119,10 +119,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
       }
 
       final generatedAt = DateTime.now();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_meal_plan', jsonEncode(plan));
-      await prefs.setString(
-          'saved_meal_plan_at', generatedAt.toIso8601String());
+      session.check();
+      await UserDataService().saveMealPlan(
+          {...plan, 'generatedAt': generatedAt.toIso8601String()}, session);
 
       if (!mounted) return;
       setState(() {
@@ -236,7 +235,10 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: FoodInsightAnimations.fast).slideY(begin: -0.2);
+    )
+        .animate()
+        .fadeIn(duration: FoodInsightAnimations.fast)
+        .slideY(begin: -0.2);
   }
 
   Widget _buildLoadingState() {
@@ -286,8 +288,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
               onPressed: _generateNewPlan,
               style: ElevatedButton.styleFrom(
                 backgroundColor: FoodInsightColors.scannerGreen,
-                padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                 shape: RoundedRectangleBorder(
                     borderRadius: FoodInsightRadius.mdAll),
                 elevation: 0,
@@ -364,8 +365,10 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
               final raw = e.value;
               if (raw is! Map) return const SizedBox.shrink();
               final meal = raw.map((k, v) => MapEntry(k.toString(), v));
-              return _buildMealCard(meal).animate().fadeIn(
-                  delay: Duration(milliseconds: 300 + (idx * 100))).slideY();
+              return _buildMealCard(meal)
+                  .animate()
+                  .fadeIn(delay: Duration(milliseconds: 300 + (idx * 100)))
+                  .slideY();
             }),
           SizedBox(height: 12.h),
         ],
@@ -416,8 +419,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
                 decoration: BoxDecoration(
                   color: FoodInsightColors.scannerGreenLight,
                   borderRadius: FoodInsightRadius.smAll,

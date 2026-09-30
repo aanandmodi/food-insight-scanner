@@ -1,18 +1,21 @@
+import '../../services/product_portion_service.dart';
+import '../../services/feature_flag_service.dart';
 // lib/presentation/product_details/product_details.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/user_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import 'package:provider/provider.dart';
-import '../../services/firestore_service.dart';
+import '../../services/user_data_service.dart';
 import '../../services/cloud_function_service.dart';
 import '../../services/product_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 import './widgets/action_bar_widget.dart';
-import './widgets/alternatives_widget.dart';
+import '../../services/product_facts_adapter.dart';
+import '../../services/food_fit_service.dart';
 import './widgets/ingredients_widget.dart';
 import './widgets/nutrition_bars_widget.dart';
 import './widgets/product_image_widget.dart';
@@ -60,7 +63,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     if (args is Map<String, dynamic>) {
       // Direct product data (from barcode scanner)
       setState(() {
-        productData = args;
+        productData = ProductFactsAdapter.adapt(args);
       });
     } else if (args is String && args.isNotEmpty) {
       // Barcode string (from scan history) — need to fetch product data
@@ -72,7 +75,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     // Previously both ran concurrently and the AI was prompted with empty
     // allergies/goals on almost every open.
     _loadUserProfile().then((_) {
-      if (mounted) _loadAlternatives();
+      if (mounted) _loadDailyContext();
     });
   }
 
@@ -87,18 +90,20 @@ class _ProductDetailsState extends State<ProductDetails> {
       final data = await ProductService().getProductByBarcode(barcode);
       if (data != null && mounted) {
         setState(() {
-          productData = data;
+          productData = ProductFactsAdapter.adapt(data);
           _isLoadingProduct = false;
         });
         await _loadUserProfile();
-        if (mounted) _loadAlternatives();
+        if (mounted) _loadDailyContext();
       } else if (mounted) {
         setState(() {
           _isLoadingProduct = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not load product details.', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            content: Text('Could not load product details.',
+                style: FoodInsightTypography.caption(
+                    size: 14, weight: FontWeight.w700, color: Colors.white)),
             backgroundColor: FoodInsightColors.healthRed,
           ),
         );
@@ -130,7 +135,7 @@ class _ProductDetailsState extends State<ProductDetails> {
         return;
       }
 
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await UserPreferences.getInstance();
       if (!mounted) return;
       setState(() {
         userAllergies = prefs.getStringList('user_allergies') ?? [];
@@ -143,42 +148,45 @@ class _ProductDetailsState extends State<ProductDetails> {
     }
   }
 
-  // AI Alternatives State
-  final List<Map<String, dynamic>> _alternatives = [];
-  bool _isLoadingAlternatives = false;
+  Map<String, num> _dailyContext = {};
+  Map<String, dynamic>? _explanation;
+  bool _explaining = false;
 
-  Future<void> _loadAlternatives() async {
-    if (productData.isEmpty || _isLoadingAlternatives || _alternatives.isNotEmpty) return;
-
-    setState(() {
-      _isLoadingAlternatives = true;
-    });
-
+  Future<void> _loadDailyContext() async {
+    final date = DateTime.now().toIso8601String().split('T')[0];
     try {
-      final profileMap = <String, dynamic>{
-        'allergies': userAllergies,
-        'dietaryPreference': dietaryPreference,
-        'healthGoal': healthGoal,
-      };
+      final rows = await UserDataService().cachedDiet(date);
+      if (!mounted) return;
+      setState(() => _dailyContext = {
+            'sugarGConsumed': rows.fold<num>(
+                0, (sum, row) => sum + (row['sugar'] as num? ?? 0)),
+            'sodiumMgConsumed': rows.fold<num>(
+                0, (sum, row) => sum + (row['sodiumMg'] as num? ?? 0)),
+          });
+    } catch (_) {/* No daily context is preferable to invented totals. */}
+  }
 
-      final results = await CloudFunctionService().getAlternatives(
-        productData: productData,
-        userProfile: profileMap,
-      );
-
+  Future<void> _explainProduct() async {
+    if (_explaining || _explanation != null) return;
+    setState(() => _explaining = true);
+    try {
+      final fit = FoodFitService.evaluate(productData,
+          allergies: userAllergies,
+          dietaryPreference: dietaryPreference,
+          healthGoal: healthGoal,
+          dailyContext: _dailyContext);
+      final result = await CloudFunctionService().explainProduct(
+          productData: productData,
+          fitResult: fit.toMap(),
+          userProfile: context.read<UserProfileProvider>().profile?.toMap());
+      if (mounted) setState(() => _explanation = result);
+    } catch (error) {
       if (mounted) {
-        setState(() {
-          _alternatives.addAll(results);
-        });
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
       }
-    } catch (e) {
-      debugPrint('Error loading alternatives: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingAlternatives = false;
-        });
-      }
+      if (mounted) setState(() => _explaining = false);
     }
   }
 
@@ -203,27 +211,16 @@ class _ProductDetailsState extends State<ProductDetails> {
     final barcode = (productData['barcode'] ?? '').toString();
     if (barcode.isEmpty) return;
 
-    final fresh = await ProductService().getProductByBarcode(barcode);
+    final fresh =
+        await ProductService().getProductByBarcode(barcode, forceRefresh: true);
     if (!mounted || fresh == null) return;
 
     setState(() {
-      productData = fresh;
-      _alternatives.clear();
+      productData = ProductFactsAdapter.adapt(fresh);
+      _explanation = null;
     });
     // Re-derive suggestions against the refreshed nutrition data.
-    _loadAlternatives();
-  }
-
-  /// Cached rows and Firestore documents hand back maps with varying generic
-  /// types; a hard `as Map<String, dynamic>?` cast threw and blanked the whole
-  /// AI section. This normalises instead.
-  Map<String, dynamic>? _asStringMap(Object? value) {
-    if (value == null) return null;
-    if (value is Map<String, dynamic>) return value;
-    if (value is Map) {
-      return value.map((k, v) => MapEntry(k.toString(), v));
-    }
-    return null;
+    _loadDailyContext();
   }
 
   /// Sensible default meal slot based on the time of day — everything used to
@@ -236,48 +233,86 @@ class _ProductDetailsState extends State<ProductDetails> {
     return 'Snack';
   }
 
+  bool _isLogging = false;
   Future<void> _onAddToDietLog() async {
+    if (_isLogging) return;
+    setState(() => _isLogging = true);
+    final controller = TextEditingController(text: '100');
+    final grams = await showDialog<double>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+              title: const Text('How much did you eat?'),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text(
+                    'Nutrition is calculated from the amount in grams. Check the package for its serving weight.'),
+                TextField(
+                    controller: controller,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                        labelText: 'Portion (grams)', helperText: '1–2,000 g')),
+              ]),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () {
+                      final value = double.tryParse(controller.text.trim());
+                      if (value != null && value >= 1 && value <= 2000) {
+                        Navigator.pop(dialogContext, value);
+                      }
+                    },
+                    child: const Text('Add meal'))
+              ],
+            ));
+    controller.dispose();
+    if (!mounted) return;
+    if (grams == null) {
+      setState(() => _isLogging = false);
+      return;
+    }
     HapticFeedback.mediumImpact();
     try {
       final now = DateTime.now();
-      final dateString = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      final dateString =
+          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
       final entryData = {
         'name': productData['name'] ?? 'Unknown',
         'brand': productData['brand'] ?? 'Unknown',
-        'calories': (productData['nutrition']?['calories'] as num?)?.toInt() ?? 0,
-        'protein': (productData['nutrition']?['protein'] as num?)?.toDouble() ?? 0.0,
-        'sugar': (productData['nutrition']?['sugar'] as num?)?.toDouble() ?? 0.0,
-        'fat': (productData['nutrition']?['fat'] as num?)?.toDouble() ?? 0.0,
-        'carbs': (productData['nutrition']?['carbs'] as num?)?.toDouble() ?? 0.0,
-        // The normalized product map uses `servingSize`; the old `serving_size`
-        // key was always null, so every logged item said "1 serving".
-        'serving': productData['servingSize'] ??
-            productData['serving_size'] ??
-            '1 serving',
+        ...ProductPortionService.nutrients(productData, grams),
         'mealType': _mealTypeForNow(now),
         'date': dateString,
-        'time': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+        'time':
+            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       };
 
       // Single write path: saveDietEntry writes SQLite *and* Firestore and
       // notifies the rest of the app. Calling insertDietEntry here as well used
       // to create the same meal twice in the local log.
-      await FirestoreService().saveDietEntry(entryData);
+      await UserDataService().saveDietEntry(entryData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
+                const Icon(Icons.check_circle_outline_rounded,
+                    color: Colors.white),
                 SizedBox(width: 2.w),
-                Expanded(child: Text('${productData['name']} logged to your diet!', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white))),
+                Expanded(
+                    child: Text('${productData['name']} logged to your diet!',
+                        style: FoodInsightTypography.caption(
+                            size: 14,
+                            weight: FontWeight.w700,
+                            color: Colors.white))),
               ],
             ),
             behavior: SnackBarBehavior.floating,
             backgroundColor: FoodInsightColors.scannerGreen,
-            shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
+            shape:
+                RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
           ),
         );
         Navigator.pop(context);
@@ -287,17 +322,25 @@ class _ProductDetailsState extends State<ProductDetails> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to add to diet log. Please try again.', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            content: Text(
+                e is FormatException
+                    ? e.message
+                    : 'Could not save this meal. Please retry.',
+                style: FoodInsightTypography.caption(
+                    size: 14, weight: FontWeight.w700, color: Colors.white)),
             backgroundColor: FoodInsightColors.healthRed,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLogging = false);
     }
   }
 
   void _navigateToAIChat() async {
+    if (!context.read<FeatureFlagService>().aiChatEnabled) return;
     final profile = context.read<UserProfileProvider>().profile;
-    
+
     if (mounted) {
       Navigator.pushNamed(
         context,
@@ -323,12 +366,14 @@ class _ProductDetailsState extends State<ProductDetails> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+              const CircularProgressIndicator(
+                  color: FoodInsightColors.scannerGreen),
               if (_isLoadingProduct) ...[
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   'Loading product details...',
-                  style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray),
+                  style: FoodInsightTypography.body(
+                      size: 14, color: FoodInsightColors.midGray),
                 ),
               ],
             ],
@@ -372,27 +417,35 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ),
                 decoration: BoxDecoration(
                   color: _isScrolled ? Colors.white : Colors.transparent,
-                  boxShadow: _isScrolled ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))] : null,
+                  boxShadow: _isScrolled
+                      ? [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5))
+                        ]
+                      : null,
                 ),
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(2.w),
-                        decoration: BoxDecoration(
-                          color: FoodInsightColors.warmWhite,
-                          borderRadius: FoodInsightRadius.smAll,
-                          border: Border.all(
-                            color: FoodInsightColors.outlineGray,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(2.w),
+                          decoration: BoxDecoration(
+                            color: FoodInsightColors.warmWhite,
+                            borderRadius: FoodInsightRadius.smAll,
+                            border: Border.all(
+                              color: FoodInsightColors.outlineGray,
+                            ),
                           ),
+                          child: const Icon(Icons.arrow_back_rounded,
+                              color: FoodInsightColors.deepCharcoal),
                         ),
-                        child: Icon(Icons.arrow_back_rounded, color: FoodInsightColors.deepCharcoal),
                       ),
-                    ),
                     SizedBox(width: 4.w),
                     Expanded(
                       child: AnimatedOpacity(
@@ -400,7 +453,10 @@ class _ProductDetailsState extends State<ProductDetails> {
                         duration: const Duration(milliseconds: 200),
                         child: Text(
                           productName,
-                          style: FoodInsightTypography.heading(size: 18, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal),
+                          style: FoodInsightTypography.heading(
+                              size: 18,
+                              weight: FontWeight.w800,
+                              color: FoodInsightColors.deepCharcoal),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -413,7 +469,8 @@ class _ProductDetailsState extends State<ProductDetails> {
                             horizontal: 3.w, vertical: 0.5.h),
                         margin: EdgeInsets.only(right: 2.w),
                         decoration: BoxDecoration(
-                          color: _nutriscoreColor(nutriscore).withValues(alpha: 0.1),
+                          color: _nutriscoreColor(nutriscore)
+                              .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -439,7 +496,8 @@ class _ProductDetailsState extends State<ProductDetails> {
                             color: FoodInsightColors.outlineGray,
                           ),
                         ),
-                        child: Icon(Icons.restaurant_rounded, color: FoodInsightColors.scannerGreen),
+                        child: const Icon(Icons.restaurant_rounded,
+                            color: FoodInsightColors.scannerGreen),
                       ),
                     ),
                   ],
@@ -461,7 +519,8 @@ class _ProductDetailsState extends State<ProductDetails> {
                         SizedBox(height: 2.h),
                         // Product image
                         Hero(
-                          tag: 'scan_${productData['id'] ?? productData['barcode'] ?? ''}',
+                          tag:
+                              'scan_${productData['id'] ?? productData['barcode'] ?? ''}',
                           child: ProductImageWidget(
                             imageUrl: imageUrl,
                             productName: productName,
@@ -482,58 +541,45 @@ class _ProductDetailsState extends State<ProductDetails> {
                             .fadeIn(duration: 500.ms, delay: 100.ms)
                             .slideY(begin: 0.03, end: 0),
                         SizedBox(height: 3.h),
-                        // Nutrition bars
-                        if (nutrition.isNotEmpty)
-                          NutritionBarsWidget(
-                            nutritionData: nutrition,
-                          )
-                              .animate()
-                              .fadeIn(duration: 500.ms, delay: 200.ms)
-                              .slideY(begin: 0.03, end: 0),
-                        SizedBox(height: 3.h),
-                        // Safety alerts
                         SafetyAlertsWidget(
                           userAllergies: userAllergies,
                           ingredients: ingredients,
                           dietaryPreference: dietaryPreference,
                           nutritionData: nutrition,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 300.ms)
-                            .slideY(begin: 0.03, end: 0),
+                          productData: productData,
+                          healthGoal: healthGoal,
+                          dailyContext: _dailyContext,
+                        ),
+                        SizedBox(height: 3.h),
+                        NutritionBarsWidget(nutritionData: nutrition),
                         SizedBox(height: 3.h),
                         // Ingredients
                         IngredientsWidget(
                           ingredients: ingredients,
                           userAllergies: userAllergies,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 400.ms),
+                        ).animate().fadeIn(duration: 500.ms, delay: 400.ms),
                         SizedBox(height: 3.h),
-                        // AI Analysis & Micro-nutrients
-                        AiAnalysisWidget(
-                          aiAnalysis: _asStringMap(productData['aiAnalysis']),
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 450.ms)
-                            .slideY(begin: 0.03, end: 0),
-                        SizedBox(height: 3.h),
-                        // AI insights alternatives
-                        if (_isLoadingAlternatives)
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: 2.h),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: FoodInsightColors.scannerGreen,
-                              ),
-                            ),
-                          )
-                        else
-                          AlternativesWidget(
-                            alternatives: _alternatives,
-                          )
-                              .animate()
-                              .fadeIn(duration: 500.ms, delay: 500.ms),
+                        if (context.watch<FeatureFlagService>().aiEnabled &&
+                            _explanation != null)
+                          AiAnalysisWidget(aiAnalysis: _explanation)
+                        else if (context.watch<FeatureFlagService>().aiEnabled)
+                          OutlinedButton.icon(
+                            onPressed: _explaining ? null : _explainProduct,
+                            icon: const Icon(Icons.auto_awesome_outlined),
+                            label: Text(_explaining
+                                ? 'Preparing explanation…'
+                                : 'Explain my Food Fit'),
+                          ),
+                        const SizedBox(height: 16),
+                        if (productData['isOfflineCopy'] == true)
+                          const Text(
+                              "You're offline — showing saved information."),
+                        Text(
+                            'Source: Open Food Facts${productData['sourceFetchedAt'] == null ? '' : '\nRetrieved ${productData['sourceFetchedAt'].toString().split('T').first}'}',
+                            style: Theme.of(context).textTheme.bodySmall),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'General nutrition information. Food Insight is not a substitute for professional medical advice.'),
                         SizedBox(height: 12.h),
                       ],
                     ),
@@ -549,7 +595,7 @@ class _ProductDetailsState extends State<ProductDetails> {
             right: 0,
             child: ActionBarWidget(
               productData: productData,
-              onAddToDietLog: _onAddToDietLog,
+              onAddToDietLog: _isLogging ? null : _onAddToDietLog,
             ),
           ),
         ],

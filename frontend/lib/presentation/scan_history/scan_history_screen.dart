@@ -6,7 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/product_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/user_data_service.dart';
 import '../../theme/app_design_system.dart';
 
 class ScanHistoryScreen extends StatefulWidget {
@@ -17,7 +17,7 @@ class ScanHistoryScreen extends StatefulWidget {
 }
 
 class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
-  final FirestoreService _firestore = FirestoreService();
+  final UserDataService _firestore = UserDataService();
   final ProductService _productService = ProductService();
 
   Future<void> _deleteScan(Map<String, dynamic> scan) async {
@@ -36,7 +36,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Scan removed from history'),
           backgroundColor: FoodInsightColors.scannerGreen,
         ),
@@ -62,7 +62,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         centerTitle: true,
         backgroundColor: FoodInsightColors.warmWhite,
         elevation: 0,
-        iconTheme: IconThemeData(color: FoodInsightColors.deepCharcoal),
+        iconTheme: const IconThemeData(color: FoodInsightColors.deepCharcoal),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -72,7 +72,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
           stream: _firestore.scanHistoryStream(limit: 50),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
+              return const Center(
                 child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
               );
             }
@@ -86,7 +86,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
               future: _productService.getScanHistory(),
               builder: (context, localSnapshot) {
                 if (localSnapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
+                  return const Center(
                     child: CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
                   );
                 }
@@ -129,7 +129,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         children: [
           Container(
             padding: EdgeInsets.all(5.w),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: FoodInsightColors.scannerGreenLight,
               shape: BoxShape.circle,
             ),
@@ -159,7 +159,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
           ).animate().fadeIn(delay: 500.ms),
           SizedBox(height: 4.h),
           ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.barcodeScanner),
             icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
             label: Text('Scan a Product', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
             style: ElevatedButton.styleFrom(
@@ -177,8 +177,8 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     final name = scan['name'] ?? 'Unknown Product';
     final brand = scan['brand'] ?? 'Unknown Brand';
     final barcode = scan['barcode'] ?? '';
-    final score = scan['score'] ?? '0';
-    final imageUrl = scan['imageUrl'];
+    final score = scan['nutriscore']?.toString() ?? '0';
+    final imageUrl = scan['image'] ?? scan['imageUrl'];
 
     return Dismissible(
       key: Key(scan['id']?.toString() ?? barcode),

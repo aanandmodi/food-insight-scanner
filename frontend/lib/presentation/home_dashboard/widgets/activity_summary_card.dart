@@ -1,3 +1,4 @@
+import '../../../widgets/health_connection_prompt.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -37,11 +38,14 @@ class ActivitySummaryCard extends StatelessWidget {
 
         final calories = provider.activeCalories;
         final calorieGoal = provider.dailyCalorieGoal;
-        final caloriePct = calorieGoal > 0 ? (calories / calorieGoal).clamp(0.0, 1.0) : 0.0;
+        final caloriePct =
+            calorieGoal > 0 ? (calories / calorieGoal).clamp(0.0, 1.0) : 0.0;
 
         final distanceKm = provider.distanceKm;
         final distanceGoal = provider.dailyDistanceGoal;
-        final distancePct = distanceGoal > 0 ? (distanceKm / distanceGoal).clamp(0.0, 1.0) : 0.0;
+        final distancePct = distanceGoal > 0
+            ? (distanceKm / distanceGoal).clamp(0.0, 1.0)
+            : 0.0;
 
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -50,6 +54,13 @@ class ActivitySummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                TextButton.icon(onPressed: () => showHealthConnectionPrompt(context),
+                  icon: const Icon(Icons.health_and_safety_outlined),
+                  label: Text(provider.source == ActivityDataSource.none ? 'Connect activity data' : 'Manage activity connection')),
+                Text(provider.source == ActivityDataSource.healthConnect ? 'Health Connect • distance estimated' :
+                  provider.source == ActivityDataSource.pedometerEstimate ? 'Step counter • calories and distance estimated' : 'No activity source connected',
+                  style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 12),
                 // ── Header Row: Title & Badge ──
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -70,16 +81,19 @@ class ActivitySummaryCard extends StatelessWidget {
                           style: FoodInsightTypography.smallCaps(
                             size: 11,
                             weight: FontWeight.w900,
-                            color: FoodInsightColors.deepCharcoal.withValues(alpha: 0.8),
+                            color: FoodInsightColors.deepCharcoal
+                                .withValues(alpha: 0.8),
                             letterSpacing: 1.2,
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: FoodInsightColors.scannerGreen.withValues(alpha: 0.08),
+                        color: FoodInsightColors.scannerGreen
+                            .withValues(alpha: 0.08),
                         borderRadius: FoodInsightRadius.pillAll,
                       ),
                       child: Text(
@@ -255,7 +269,8 @@ class _StepRingState extends State<_StepRing>
                       offset: const Offset(0, 4),
                     ),
                     BoxShadow(
-                      color: FoodInsightColors.scannerGreen.withValues(alpha: 0.05),
+                      color: FoodInsightColors.scannerGreen
+                          .withValues(alpha: 0.05),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
@@ -273,7 +288,8 @@ class _StepRingState extends State<_StepRing>
                       Color(0xFF34D399),
                     ],
                   ),
-                  trackColor: FoodInsightColors.scannerGreen.withValues(alpha: 0.08),
+                  trackColor:
+                      FoodInsightColors.scannerGreen.withValues(alpha: 0.08),
                   strokeWidth: strokeWidth,
                 ),
               ),
@@ -343,9 +359,8 @@ class _ActivityProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String valueText = unit.isEmpty
-        ? '$currentStr/$goalStr'
-        : '$currentStr/$goalStr $unit';
+    final String valueText =
+        unit.isEmpty ? '$currentStr/$goalStr' : '$currentStr/$goalStr $unit';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,4 +487,3 @@ class _GradientRingPainter extends CustomPainter {
   bool shouldRepaint(_GradientRingPainter old) =>
       old.progress != progress || old.trackColor != trackColor;
 }
-

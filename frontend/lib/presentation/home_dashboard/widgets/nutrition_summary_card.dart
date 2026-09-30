@@ -19,28 +19,23 @@ class NutritionSummaryCard extends StatelessWidget {
     final calories = (nutritionData['calories'] as num?)?.toInt() ?? 0;
     final caloriesGoal =
         (nutritionData['caloriesGoal'] as num?)?.toInt() ?? 2000;
-    final sugar = (nutritionData['sugar'] as num?)?.toInt() ?? 0;
     final protein = (nutritionData['protein'] as num?)?.toInt() ?? 0;
-    final proteinGoal =
-        (nutritionData['proteinGoal'] as num?)?.toInt() ?? 150;
+    final proteinGoal = (nutritionData['proteinGoal'] as num?)?.toInt() ?? 150;
 
     final caloriesPct =
         caloriesGoal > 0 ? (calories / caloriesGoal).clamp(0.0, 1.0) : 0.0;
     final proteinPct =
         proteinGoal > 0 ? (protein / proteinGoal).clamp(0.0, 1.0) : 0.0;
 
-    // Derive carbs & fat from logged intake or remaining calories
-    final fat = (nutritionData['fat'] as num?)?.round() ??
-        (math.max(0, calories - (protein * 4) - (sugar * 4)) / 9).round();
+    // Sum recorded nutrients only; calories cannot determine missing macros.
+    final fat = (nutritionData['fat'] as num?)?.round() ?? 0;
     final fatGoal = (nutritionData['fatGoal'] as num?)?.toInt() ?? 65;
     final fatPct = fatGoal > 0 ? (fat / fatGoal).clamp(0.0, 1.0) : 0.0;
 
-    final carbs = (nutritionData['carbs'] as num?)?.round() ?? sugar;
+    final carbs = (nutritionData['carbs'] as num?)?.round() ?? 0;
     final carbsGoal = (nutritionData['carbsGoal'] as num?)?.toInt() ??
         (caloriesGoal > 0 ? (caloriesGoal * 0.5 / 4).round() : 250);
-    final carbsPct =
-        carbsGoal > 0 ? (carbs / carbsGoal).clamp(0.0, 1.0) : 0.0;
-
+    final carbsPct = carbsGoal > 0 ? (carbs / carbsGoal).clamp(0.0, 1.0) : 0.0;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -69,7 +64,8 @@ class NutritionSummaryCard extends StatelessWidget {
                       style: FoodInsightTypography.smallCaps(
                         size: 11,
                         weight: FontWeight.w900,
-                        color: FoodInsightColors.deepCharcoal.withValues(alpha: 0.8),
+                        color: FoodInsightColors.deepCharcoal
+                            .withValues(alpha: 0.8),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -93,6 +89,8 @@ class NutritionSummaryCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            const Text('Recorded nutrients only; unknown values are excluded.'),
             const SizedBox(height: 20),
 
             // ── Main Content: Left Ring, Right Progress Details ──

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../services/supabase_storage_service.dart';
 
 class CustomImageWidget extends StatelessWidget {
   final String? imageUrl;
@@ -22,9 +23,26 @@ class CustomImageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (SupabaseStorageService.needsSignedUrl(imageUrl ?? '')) {
+      return FutureBuilder<String>(
+          future: SupabaseStorageService().resolveUrl(imageUrl!),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return SizedBox(
+                  width: width,
+                  height: height,
+                  child: errorWidget ?? const Icon(Icons.person));
+            }
+            return CustomImageWidget(
+                imageUrl: snapshot.data,
+                width: width,
+                height: height,
+                fit: fit,
+                errorWidget: errorWidget);
+          });
+    }
     return CachedNetworkImage(
-      imageUrl: imageUrl ??
-          'https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop',
+      imageUrl: imageUrl ?? '',
       width: width,
       height: height,
       fit: fit,

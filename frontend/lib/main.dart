@@ -1,8 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'firebase_options.dart';
+import 'services/firebase_bootstrap.dart';
+import 'services/user_session.dart';
+import 'services/crash_reporting_service.dart';
+import 'services/analytics_service.dart';
+import 'services/feature_flag_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
@@ -16,63 +19,37 @@ import 'package:provider/provider.dart';
 import 'data/providers/user_profile_provider.dart';
 import 'data/providers/activity_provider.dart';
 
-String? firebaseInitError;
-
-/// Attempt to initialize Firebase. Can be called again from the login screen.
-Future<bool> retryFirebaseInit() async {
-  try {
-    if (Firebase.apps.isNotEmpty) {
-      // Dart thinks Firebase is initialized, but the native side may be dead
-      // after a previous timeout. Probe it to confirm.
-      try {
-        // Probe the native side — this throws if the platform channel is dead
-        FirebaseAuth.instance.currentUser;
-        firebaseInitError = null;
-        return true;
-      } catch (_) {
-        // Native side is dead despite Dart thinking it's initialized.
-        // Fall through to re-initialize below.
-        debugPrint('Firebase native side unresponsive, re-initializing...');
-      }
-    }
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 12));
-    firebaseInitError = null;
-    debugPrint('Firebase initialized successfully.');
-    return true;
-  } catch (e) {
-    firebaseInitError = e.toString();
-    debugPrint('Firebase initialization failed: $e');
-    return false;
-  }
-}
+Future<bool> retryFirebaseInit() => FirebaseBootstrap.ensureReady();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kReleaseMode) debugPrint = (String? message, {int? wrapWidth}) {};
 
   // Catch synchronous and rendering errors without closing app
   FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    debugPrint('FlutterError (guarded): ${details.exceptionAsString()}');
+    if (!kReleaseMode) FlutterError.presentError(details);
+    CrashReportingService.record(details.exception, details.stack, fatal: true);
   };
 
   // Catch asynchronous and platform channel errors without closing app
   PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('PlatformDispatcher uncaught error (guarded): $error\n$stack');
+    CrashReportingService.record(error, stack, fatal: true);
     return true; // Prevents app termination
   };
 
-  // Don't block app startup indefinitely on Firebase init.
-  // If Firebase init hangs/fails on a device, we still render UI and allow retry.
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 12));
-    firebaseInitError = null;
-  } catch (e) {
-    firebaseInitError = e.toString();
-    debugPrint('Firebase init failed/timeout at startup: $e');
+  UserSession.instance;
+  if (await FirebaseBootstrap.ensureReady()) {
+    try {
+      await CrashReportingService.initialize();
+      await AnalyticsService.initialize();
+    } catch (_) {}
+  }
+  final preferences = await SharedPreferences.getInstance();
+  for (final key in preferences
+      .getKeys()
+      .where((key) => key.endsWith('groq_api_key'))
+      .toList()) {
+    await preferences.remove(key);
   }
 
   try {
@@ -113,23 +90,24 @@ Future<void> main() async {
         providers: [
           ChangeNotifierProvider(create: (_) => UserProfileProvider()),
           ChangeNotifierProvider(create: (_) => ActivityProvider()),
+          ChangeNotifierProvider(create: (_) => FeatureFlagService()),
         ],
         child: const MyApp(),
       ),
     );
   } catch (error, stackTrace) {
-    debugPrint("Startup Error: $error");
+    CrashReportingService.record(error, stackTrace, fatal: true);
     runApp(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
           body: Center(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(20.0),
                 child: Text(
-                  "Startup Error:\n$error\n\n$stackTrace",
+                  "Food Insight could not start. Close the app and try again.",
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
+                  style: TextStyle(color: Colors.red),
                 ),
               ),
             ),
@@ -152,16 +130,6 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,
-        // Using a builder to set the text scale factor to 1.0, which prevents
-        // the app's font size from changing with the system's font size settings.
-        builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: const TextScaler.linear(1.0),
-            ),
-            child: child!,
-          );
-        },
         debugShowCheckedModeBanner: false,
 
         // The initial route is now the splash screen.

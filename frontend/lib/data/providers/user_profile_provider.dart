@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/user_preferences.dart';
 
 import '../../core/utils/data_refresh_bus.dart';
 import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/local_database_service.dart';
+import '../../services/user_data_service.dart';
+import '../../services/user_session.dart';
 
 /// Owns the signed-in user's profile and keeps it bound to the Firebase uid.
 ///
@@ -66,6 +66,7 @@ class UserProfileProvider extends ChangeNotifier {
     _boundUid = user?.uid;
 
     if (user == null) {
+      _request++;
       _profile = null;
       _errorMessage = null;
       _isLoading = false;
@@ -73,19 +74,23 @@ class UserProfileProvider extends ChangeNotifier {
       return;
     }
 
-    // Claim anything the user logged before signing in.
-    try {
-      await LocalDatabaseService().adoptLocalRows(user.uid);
-    } catch (e) {
-      debugPrint('adoptLocalRows failed: $e');
-    }
-
+    _profile = null;
+    _isLoading = true;
+    _safeNotify();
     await fetchProfile();
   }
 
   /// Loads the profile for the current user: Firestore first, SharedPreferences
-  /// as an offline fallback (both handled by [FirestoreService.getUserProfile]).
+  /// as an offline fallback (both handled by [UserDataService.getUserProfile]).
+  int _request = 0;
   Future<void> fetchProfile() async {
+    final request = ++_request;
+    if (AuthService().currentUser == null) {
+      clearProfile();
+      return;
+    }
+    final session = UserSession.instance.capture();
+    _boundUid = session.uid;
     _isLoading = true;
     _errorMessage = null;
     _safeNotify();
@@ -93,7 +98,8 @@ class UserProfileProvider extends ChangeNotifier {
     final authUser = AuthService().currentUser;
 
     try {
-      final data = await FirestoreService().getUserProfile();
+      final data = await UserDataService().getUserProfile();
+      if (!session.isActive || request != _request) return;
 
       if (data == null) {
         // No profile anywhere — a genuinely new user. Onboarding will create it.
@@ -105,7 +111,7 @@ class UserProfileProvider extends ChangeNotifier {
         loaded = loaded.copyWith(
           uid: authUser?.uid ?? loaded.uid,
           email: authUser?.email ?? loaded.email,
-          photoUrl: authUser?.photoURL ?? loaded.photoUrl,
+          photoUrl: loaded.photoUrl ?? authUser?.photoURL,
         );
 
         // A profile with no name is not usable — treat it as "not set up yet".
@@ -117,11 +123,14 @@ class UserProfileProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
+      if (!session.isActive || request != _request) return;
       debugPrint('Error loading user profile: $e');
       _errorMessage = e.toString();
     } finally {
-      _isLoading = false;
-      _safeNotify();
+      if (session.isActive && request == _request) {
+        _isLoading = false;
+        _safeNotify();
+      }
     }
   }
 
@@ -133,6 +142,10 @@ class UserProfileProvider extends ChangeNotifier {
   /// cloud sync, which silently completed profiles that were never filled in.
   Future<bool> saveProfile(UserProfile newProfile,
       {bool? markCompleted}) async {
+    final session = UserSession.instance.capture();
+    if (newProfile.uid != null && newProfile.uid != session.uid) {
+      throw SessionChangedException();
+    }
     _isLoading = true;
     _safeNotify();
 
@@ -140,32 +153,41 @@ class UserProfileProvider extends ChangeNotifier {
     final resolved = newProfile.copyWith(
       uid: authUser?.uid ?? newProfile.uid,
       email: authUser?.email ?? newProfile.email,
-      photoUrl: authUser?.photoURL ?? newProfile.photoUrl,
+      photoUrl: newProfile.photoUrl ?? authUser?.photoURL,
       profileCompleted: markCompleted ?? newProfile.profileCompleted,
     );
 
     bool cloudOk = false;
     try {
+      session.check();
       await _writeToPrefs(resolved);
-      cloudOk = await FirestoreService().saveUserProfile(resolved.toMap());
+      session.check();
+      cloudOk = await UserDataService().saveUserProfile(resolved.toMap());
+      session.check();
       if (!cloudOk) {
-        debugPrint('Profile saved locally; cloud write will retry on next sync');
+        debugPrint(
+            'Profile saved locally; cloud write will retry on next sync');
       }
       _profile = resolved;
       _errorMessage = null;
       DataRefreshBus.profileChanged();
     } catch (e) {
+      if (!session.isActive) rethrow;
       debugPrint('Error saving profile: $e');
       _errorMessage = e.toString();
+      rethrow;
     } finally {
-      _isLoading = false;
-      _safeNotify();
+      if (session.isActive) {
+        _isLoading = false;
+        _safeNotify();
+      }
     }
     return cloudOk;
   }
 
   Future<void> _writeToPrefs(UserProfile p) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await UserPreferences.getInstance();
+    if (prefs.uid != p.uid) throw SessionChangedException();
     await prefs.setString('user_name', p.name);
     if (p.email != null) await prefs.setString('user_email', p.email!);
     if (p.photoUrl != null) {
@@ -179,8 +201,7 @@ class UserProfileProvider extends ChangeNotifier {
     if (p.weightKg != null) await prefs.setDouble('user_weight', p.weightKg!);
     await prefs.setStringList('user_diseases', p.diseases);
     await prefs.setStringList('user_allergies', p.allergies);
-    await prefs.setStringList(
-        'user_dietary_preferences', p.dietaryPreferences);
+    await prefs.setStringList('user_dietary_preferences', p.dietaryPreferences);
     await prefs.setString('user_health_goal', p.healthGoals);
     await prefs.setInt('user_age', p.age);
     await prefs.setString('user_activity_level', p.activityLevel);
@@ -190,6 +211,7 @@ class UserProfileProvider extends ChangeNotifier {
 
   /// Clear in-memory profile (called on sign-out).
   void clearProfile() {
+    _request++;
     _profile = null;
     _errorMessage = null;
     _boundUid = null;

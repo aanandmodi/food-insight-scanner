@@ -45,7 +45,8 @@ class DietLogPreview extends StatelessWidget {
                       style: FoodInsightTypography.smallCaps(
                         size: 11,
                         weight: FontWeight.w900,
-                        color: FoodInsightColors.deepCharcoal.withValues(alpha: 0.8),
+                        color: FoodInsightColors.deepCharcoal
+                            .withValues(alpha: 0.8),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -90,10 +91,14 @@ class DietLogPreview extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 450.ms, delay: 250.ms).slideY(begin: 0.05, end: 0);
+    )
+        .animate()
+        .fadeIn(duration: 450.ms, delay: 250.ms)
+        .slideY(begin: 0.05, end: 0);
   }
 
-  Widget _buildLogEntry(BuildContext context, Map<String, dynamic> entry, int index) {
+  Widget _buildLogEntry(
+      BuildContext context, Map<String, dynamic> entry, int index) {
     final name = entry['name'] as String? ?? 'Unknown Food';
     final calories = (entry['calories'] as num?)?.toInt() ?? 0;
     final timeStr = entry['time'] as String? ?? '';

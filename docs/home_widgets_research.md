@@ -1,5 +1,9 @@
 # Home Screen Widgets Research (Flutter)
 
+> Historical research, not a description of the current widgets. See
+> [PRODUCT.md](PRODUCT.md) and [PLAY_STORE_BETA_CHECKLIST.md](PLAY_STORE_BETA_CHECKLIST.md)
+> for implemented scope and device QA.
+
 Implementing Home Screen Widgets in Flutter allows users to view data from the app directly on their Android or iOS home screens without opening the app. For the "Food Insight Scanner", this would be perfect for displaying:
 1. Daily Macro Progress (Calories, Protein, Fat, Carbs)
 2. Next Planned Meal

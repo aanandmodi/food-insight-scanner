@@ -15,7 +15,8 @@ const String kLocalUid = '__local__';
 /// Every row is scoped to a `user_id` so two accounts on the same device can
 /// never see each other's data, even if a sign-out purge is interrupted.
 class LocalDatabaseService {
-  static final LocalDatabaseService _instance = LocalDatabaseService._internal();
+  static final LocalDatabaseService _instance =
+      LocalDatabaseService._internal();
   factory LocalDatabaseService() => _instance;
   LocalDatabaseService._internal();
 
@@ -33,8 +34,6 @@ class LocalDatabaseService {
 
   /// Rows readable by the current session: the signed-in user's rows plus any
   /// rows captured before sign-in that have not been adopted yet.
-  List<String> get _readableUids =>
-      _uid == kLocalUid ? [kLocalUid] : [_uid, kLocalUid];
 
   /// Initialise the database. Call once from `main()`.
   Future<void> initialize() async {
@@ -114,7 +113,8 @@ class LocalDatabaseService {
       )
     ''');
 
-    await db.execute('CREATE INDEX idx_diet_log_date ON diet_log(user_id, date)');
+    await db
+        .execute('CREATE INDEX idx_diet_log_date ON diet_log(user_id, date)');
     await db.execute(
         'CREATE INDEX idx_scan_history_barcode ON scan_history(user_id, barcode)');
     await db.execute(
@@ -145,7 +145,8 @@ class LocalDatabaseService {
           await db.execute(
               "ALTER TABLE $table ADD COLUMN user_id TEXT NOT NULL DEFAULT '$kLocalUid'");
         } catch (e) {
-          debugPrint('Migration v3: $table user_id column already present ($e)');
+          debugPrint(
+              'Migration v3: $table user_id column already present ($e)');
         }
       }
       await db.execute(
@@ -213,29 +214,14 @@ class LocalDatabaseService {
   /// Reassign guest/offline rows to a real uid after sign-in so nothing the
   /// user logged before authenticating is orphaned.
   Future<void> adoptLocalRows(String uid) async {
-    if (uid.isEmpty || uid == kLocalUid) return;
-    final db = await _database;
-    if (db == null) return;
-
-    for (final table in ['diet_log', 'scan_history', 'shopping_list']) {
-      try {
-        final n = await db.update(
-          table,
-          {'user_id': uid},
-          where: 'user_id = ?',
-          whereArgs: [kLocalUid],
-        );
-        if (n > 0) debugPrint('Adopted $n pre-sign-in row(s) in $table for $uid');
-      } catch (e) {
-        debugPrint('Error adopting rows in $table: $e');
-      }
-    }
+    // Legacy __local__ rows have no verifiable owner and stay quarantined.
   }
 
   // ──────────────────────────── Diet Log ────────────────────────────
 
   /// Insert a diet entry. Returns the row id, or -1 on failure.
   Future<int> insertDietEntry(Map<String, dynamic> entry) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return -1;
 
@@ -244,7 +230,7 @@ class LocalDatabaseService {
 
     try {
       return await db.insert('diet_log', {
-        'user_id': _uid,
+        'user_id': owner,
         'local_id': localId,
         'firestore_id': _bind(entry['firestoreId']),
         'name': entry['name'] as String? ?? 'Unknown',
@@ -271,10 +257,11 @@ class LocalDatabaseService {
   /// the current user. Used to keep the cloud→local mirror idempotent.
   Future<bool> dietEntryExists(String id) async {
     if (id.isEmpty) return false;
+    final owner = _uid;
     final db = await _database;
     if (db == null) return false;
 
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     final rows = await db.query(
       'diet_log',
       columns: ['id'],
@@ -288,24 +275,26 @@ class LocalDatabaseService {
 
   /// Update the Firestore ID and sync status after cloud save.
   Future<void> markDietEntrySynced(String localId, String firestoreId) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
     await db.update(
       'diet_log',
       {'firestore_id': firestoreId, 'sync_status': 'synced'},
-      where: 'local_id = ?',
-      whereArgs: [localId],
+      where: 'local_id = ? AND user_id = ?',
+      whereArgs: [localId, owner],
     );
   }
 
   /// Get diet entries for a specific date (YYYY-MM-DD).
   Future<List<Map<String, dynamic>>> getDietLogByDate(String dateString) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return [];
 
     try {
-      final uids = _readableUids;
+      final uids = owner == kLocalUid ? <String>[] : [owner];
       final rows = await db.query(
         'diet_log',
         where:
@@ -324,11 +313,12 @@ class LocalDatabaseService {
   /// Total calories per day over the last [days] days, for the trend chart.
   /// Returns a map of `yyyy-MM-dd` → total kcal.
   Future<Map<String, int>> getDailyCalorieTotals({int days = 7}) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return {};
 
     try {
-      final uids = _readableUids;
+      final uids = owner == kLocalUid ? <String>[] : [owner];
       final rows = await db.rawQuery(
         'SELECT date, SUM(calories) AS total FROM diet_log '
         'WHERE user_id IN (${List.filled(uids.length, '?').join(',')}) '
@@ -348,10 +338,11 @@ class LocalDatabaseService {
   /// Delete a diet entry by its local_id or firestore_id.
   Future<void> deleteDietEntry(String entryId) async {
     if (entryId.trim().isEmpty) return;
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     final deleted = await db.delete(
       'diet_log',
       where:
@@ -361,12 +352,24 @@ class LocalDatabaseService {
     debugPrint('Deleted $deleted diet entry row(s) for id=$entryId');
   }
 
+  Future<List<Map<String, dynamic>>> getAllDietEntries() async {
+    final owner = _uid;
+    if (owner == kLocalUid) return [];
+    final db = await _database;
+    if (db == null) return [];
+    return (await db
+            .query('diet_log', where: 'user_id = ?', whereArgs: [owner]))
+        .map(_rowToDietEntry)
+        .toList();
+  }
+
   /// Get all unsynced diet entries (for cloud sync on reconnect).
   Future<List<Map<String, dynamic>>> getUnsyncedDietEntries() async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return [];
 
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     final rows = await db.query(
       'diet_log',
       where:
@@ -397,10 +400,11 @@ class LocalDatabaseService {
   // ──────────────────────────── Shopping List ────────────────────────────
 
   Future<List<Map<String, dynamic>>> getShoppingList() async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return [];
 
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     final rows = await db.query(
       'shopping_list',
       where: 'user_id IN (${List.filled(uids.length, '?').join(',')})',
@@ -420,12 +424,13 @@ class LocalDatabaseService {
   }
 
   Future<void> addShoppingItem(Map<String, dynamic> item) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
     final localId = 'shop_${DateTime.now().microsecondsSinceEpoch}';
     await db.insert('shopping_list', {
-      'user_id': _uid,
+      'user_id': owner,
       'local_id': localId,
       'name': item['name'] as String? ?? 'Item',
       'brand': _bind(item['brand']) ?? '',
@@ -436,33 +441,36 @@ class LocalDatabaseService {
   }
 
   Future<void> toggleShoppingItem(String localId, bool checked) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
     await db.update(
       'shopping_list',
       {'checked': checked ? 1 : 0},
-      where: 'local_id = ?',
-      whereArgs: [localId],
+      where: 'local_id = ? AND user_id = ?',
+      whereArgs: [localId, owner],
     );
   }
 
   Future<void> deleteShoppingItem(String localId) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
     await db.delete(
       'shopping_list',
-      where: 'local_id = ?',
-      whereArgs: [localId],
+      where: 'local_id = ? AND user_id = ?',
+      whereArgs: [localId, owner],
     );
   }
 
   Future<void> clearCheckedShoppingItems() async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     await db.delete(
       'shopping_list',
       where:
@@ -478,6 +486,7 @@ class LocalDatabaseService {
   ///
   /// Returns the row id, or -1 on failure.
   Future<int> insertScan(Map<String, dynamic> product) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return -1;
 
@@ -488,12 +497,12 @@ class LocalDatabaseService {
         await db.delete(
           'scan_history',
           where: 'barcode = ? AND user_id = ?',
-          whereArgs: [barcode, _uid],
+          whereArgs: [barcode, owner],
         );
       }
 
       return await db.insert('scan_history', {
-        'user_id': _uid,
+        'user_id': owner,
         'barcode': barcode,
         'name': _bind(product['name']),
         'brand': _bind(product['brand']),
@@ -510,7 +519,8 @@ class LocalDatabaseService {
         'ai_analysis': product['aiAnalysis'] == null
             ? null
             : _encodeSafe(product['aiAnalysis']),
-        'scanned_at': DateTime.now().toIso8601String(),
+        'scanned_at': product['scannedAt']?.toString() ??
+            DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error inserting scan for barcode=$barcode: $e');
@@ -520,11 +530,12 @@ class LocalDatabaseService {
 
   /// Get scan history, most recent first.
   Future<List<Map<String, dynamic>>> getScanHistory({int limit = 50}) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return [];
 
     try {
-      final uids = _readableUids;
+      final uids = owner == kLocalUid ? <String>[] : [owner];
       final rows = await db.query(
         'scan_history',
         where: 'user_id IN (${List.filled(uids.length, '?').join(',')})',
@@ -543,11 +554,12 @@ class LocalDatabaseService {
   /// Look up a single cached product by barcode (offline product details).
   Future<Map<String, dynamic>?> getScanByBarcode(String barcode) async {
     if (barcode.trim().isEmpty) return null;
+    final owner = _uid;
     final db = await _database;
     if (db == null) return null;
 
     try {
-      final uids = _readableUids;
+      final uids = owner == kLocalUid ? <String>[] : [owner];
       final rows = await db.query(
         'scan_history',
         where:
@@ -566,9 +578,10 @@ class LocalDatabaseService {
 
   /// Clear the current user's local scan history.
   Future<void> clearScans() async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     await db.delete(
       'scan_history',
       where: 'user_id IN (${List.filled(uids.length, '?').join(',')})',
@@ -580,10 +593,11 @@ class LocalDatabaseService {
   /// No-op if barcode is empty.
   Future<void> deleteScanByBarcode(String barcode) async {
     if (barcode.trim().isEmpty) return;
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     final deleted = await db.delete(
       'scan_history',
       where:
@@ -600,11 +614,12 @@ class LocalDatabaseService {
   /// [_uid] has fallen back to [kLocalUid] and the departing user's rows would
   /// otherwise be left behind on the device.
   Future<void> clearAllLocalData({String? forUid}) async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
 
     final uids = <String>{
-      ..._readableUids,
+      if (owner != kLocalUid) owner,
       if (forUid != null && forUid.isNotEmpty) forUid,
     }.toList();
     final placeholders = List.filled(uids.length, '?').join(',');
@@ -618,9 +633,10 @@ class LocalDatabaseService {
 
   /// Clear the current user's diet log entries.
   Future<void> clearDietLog() async {
+    final owner = _uid;
     final db = await _database;
     if (db == null) return;
-    final uids = _readableUids;
+    final uids = owner == kLocalUid ? <String>[] : [owner];
     await db.delete(
       'diet_log',
       where: 'user_id IN (${List.filled(uids.length, '?').join(',')})',
@@ -635,11 +651,12 @@ class LocalDatabaseService {
     Map<String, dynamic>? aiAnalysis;
 
     try {
-      nutrition =
-          jsonDecode(row['nutrition_json'] as String? ?? '{}') as Map<String, dynamic>;
+      nutrition = jsonDecode(row['nutrition_json'] as String? ?? '{}')
+          as Map<String, dynamic>;
     } catch (_) {}
     try {
-      ingredients = jsonDecode(row['ingredients_json'] as String? ?? '[]') as List;
+      ingredients =
+          jsonDecode(row['ingredients_json'] as String? ?? '[]') as List;
     } catch (_) {}
     try {
       allergens = jsonDecode(row['allergens_json'] as String? ?? '[]') as List;

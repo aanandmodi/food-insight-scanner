@@ -48,16 +48,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     }
   }
 
-  void _handleVoiceTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Voice input is coming soon!'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -100,6 +90,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                       child: TextField(
                         controller: widget.textController,
                         enabled: !widget.isLoading,
+                        maxLength: 2000,
                         maxLines: 4,
                         minLines: 1,
                         textCapitalization: TextCapitalization.sentences,
@@ -117,15 +108,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                       ),
                     ),
                   ),
-                  if (!_hasText)
-                    IconButton(
-                      icon: Icon(
-                        Icons.mic_rounded,
-                        color: FoodInsightColors.midGray,
-                        size: 6.w,
-                      ),
-                      onPressed: _handleVoiceTap,
-                    ),
                   if (_hasText)
                     Container(
                       margin: EdgeInsets.all(1.w),
@@ -155,6 +137,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                                 color: Colors.white,
                                 size: 5.w,
                               ),
+                        tooltip: 'Send message',
                         onPressed: widget.isLoading ? null : _sendMessage,
                       ),
                     ),

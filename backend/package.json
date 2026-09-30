@@ -3,21 +3,25 @@
   "version": "1.0.0",
   "description": "Firebase Cloud Functions backend",
   "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node --test test/*.test.cjs",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "build:edge": "node build-edge.mjs"
   },
   "dependencies": {
-    "firebase-admin": "^12.0.0",
-    "firebase-functions": "^4.7.0",
-    "groq-sdk": "^0.3.0",
-    "node-fetch": "^3.3.2"
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
   },
   "devDependencies": {
+    "esbuild": "^0.25.11",
     "typescript": "^5.0.0"
   },
   "private": true

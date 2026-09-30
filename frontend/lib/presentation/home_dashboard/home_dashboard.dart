@@ -1,16 +1,16 @@
-import 'dart:ui';
+import '../../services/food_fit_service.dart';
+import '../../services/feature_flag_service.dart';
+import 'dart:async';
+import '../../services/user_session.dart';
+import '../../core/utils/data_refresh_bus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:sizer/sizer.dart';
 import 'package:provider/provider.dart';
 import 'package:home_widget/home_widget.dart';
 
-
-import '../../services/product_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/local_database_service.dart';
+import '../../services/user_data_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
@@ -36,6 +36,10 @@ class HomeDashboard extends StatefulWidget {
 
 class _HomeDashboardState extends State<HomeDashboard>
     with TickerProviderStateMixin, WidgetsBindingObserver {
+  StreamSubscription<List<Map<String, dynamic>>>? _scanSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _dietSubscription;
+  String? _subscribedDate;
+  int _loadRevision = 0;
   int _currentIndex = 0;
   late AnimationController _refreshController;
   bool _isRefreshing = false;
@@ -55,9 +59,6 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   final List<Map<String, dynamic>> _dietLogEntries = [];
 
-  final ImagePicker _imagePicker = ImagePicker();
-  XFile? _selectedImage;
-
   @override
   void initState() {
     super.initState();
@@ -66,12 +67,29 @@ class _HomeDashboardState extends State<HomeDashboard>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    _subscribe();
+    DataRefreshBus.profileRevision.addListener(_loadUserData);
     _loadUserData();
+  }
+
+  void _subscribe() {
+    _scanSubscription ??= UserDataService().scanHistoryStream().listen(
+        (_) => _loadUserData(),
+        onError: (Object e) => debugPrint('$e'));
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    if (_subscribedDate == today) return;
+    _subscribedDate = today;
+    _dietSubscription?.cancel();
+    _dietSubscription = UserDataService().dietLogStream(today).listen(
+        (_) => _loadUserData(),
+        onError: (Object e) => debugPrint('$e'));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _subscribe();
+      _loadUserData();
       setState(() {
         _unlockAnimationKey++;
       });
@@ -80,26 +98,32 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   @override
   void dispose() {
+    _scanSubscription?.cancel();
+    _dietSubscription?.cancel();
+    DataRefreshBus.profileRevision.removeListener(_loadUserData);
     WidgetsBinding.instance.removeObserver(this);
     _refreshController.dispose();
     super.dispose();
   }
 
   Future<void> _loadUserData() async {
+    final revision = ++_loadRevision;
+    if (UserSession.instance.uid == null) return;
+    final session = UserSession.instance.capture();
     try {
-      final scanHistory = await ProductService().getScanHistory();
+      final scanHistory = await UserDataService().cachedScans();
 
       // Load Diet Log for today from merged Firestore + local SQLite
       final dateString =
           "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
       List<Map<String, dynamic>> entries = [];
       try {
-        entries = await FirestoreService().getDietLog(dateString);
+        entries = await UserDataService().cachedDiet(dateString);
       } catch (e) {
         debugPrint('Error pulling home diet log: $e');
         // Fallback to local-only if Firestore merge fails
         try {
-          entries = await LocalDatabaseService().getDietLogByDate(dateString);
+          entries = await UserDataService().cachedDiet(dateString);
         } catch (e2) {
           debugPrint('Error pulling home diet log from local db: $e2');
         }
@@ -119,7 +143,7 @@ class _HomeDashboardState extends State<HomeDashboard>
         totalFat += (entry['fat'] as num?)?.toDouble() ?? 0;
       }
 
-      if (!mounted) return;
+      if (!mounted || !session.isActive || revision != _loadRevision) return;
       final profile = context.read<UserProfileProvider>().profile;
 
       // Calculate dynamic targets based on user profile setup
@@ -155,9 +179,10 @@ class _HomeDashboardState extends State<HomeDashboard>
 
         _dietLogEntries.clear();
         _dietLogEntries.addAll(entries);
-        
+
         // Sync Data to Android Widget
-        _syncWidgetData(totalCals, calGoal, totalProtein.round(), proteinGoal, carbsGoal, fatGoal);
+        _syncWidgetData(totalCals, calGoal, totalProtein.round(), proteinGoal,
+            carbsGoal, fatGoal);
 
         // Transform scan history into recent scans format
         _recentScans = scanHistory.take(10).map((scan) {
@@ -167,7 +192,8 @@ class _HomeDashboardState extends State<HomeDashboard>
             'image': scan['image'] ?? '',
             'safetyStatus': _determineSafety(scan, profile),
             'scannedAt': scan['scannedAt'] != null
-                ? DateTime.tryParse(scan['scannedAt']) ?? DateTime.now()
+                ? DateTime.tryParse(scan['scannedAt'].toString()) ??
+                    DateTime.now()
                 : DateTime.now(),
           };
         }).toList();
@@ -177,38 +203,50 @@ class _HomeDashboardState extends State<HomeDashboard>
     }
   }
 
-  Future<void> _syncWidgetData(int calConsumed, int calGoal, int proteinConsumed, int proteinGoal, int carbsGoal, int fatGoal) async {
+  Future<void> _syncWidgetData(int calConsumed, int calGoal,
+      int proteinConsumed, int proteinGoal, int carbsGoal, int fatGoal) async {
+    final session = UserSession.instance.capture();
     try {
+      session.check();
+      session.check();
       await HomeWidget.saveWidgetData<int>('calories_consumed', calConsumed);
+      session.check();
       await HomeWidget.saveWidgetData<int>('calories_goal', calGoal);
-      await HomeWidget.saveWidgetData<int>('carbs_consumed', (_nutritionData['carbs'] as num?)?.toInt() ?? 0);
+      session.check();
+      await HomeWidget.saveWidgetData<int>(
+          'carbs_consumed', (_nutritionData['carbs'] as num?)?.toInt() ?? 0);
+      session.check();
       await HomeWidget.saveWidgetData<int>('carbs_goal', carbsGoal);
+      session.check();
       await HomeWidget.saveWidgetData<int>('protein_consumed', proteinConsumed);
+      session.check();
       await HomeWidget.saveWidgetData<int>('protein_goal', proteinGoal);
-      await HomeWidget.saveWidgetData<int>('fat_consumed', (_nutritionData['fat'] as num?)?.toInt() ?? 0);
+      session.check();
+      await HomeWidget.saveWidgetData<int>(
+          'fat_consumed', (_nutritionData['fat'] as num?)?.toInt() ?? 0);
+      session.check();
       await HomeWidget.saveWidgetData<int>('fat_goal', fatGoal);
-      await HomeWidget.updateWidget(name: 'MacroWidgetProvider');
+      session.check();
+      for (final name in [
+        'MacroWidgetProvider',
+        'SmallWidgetProvider',
+        'LargeWidgetProvider'
+      ]) {
+        await HomeWidget.updateWidget(name: name);
+      }
     } catch (e) {
       debugPrint('Failed to sync widget data: $e');
     }
   }
 
   String _determineSafety(Map<String, dynamic> scan, UserProfile? profile) {
-    final allergens = (scan['allergens'] as List?)?.cast<String>() ?? [];
-    final userAllergies = profile?.allergies ?? [];
-    for (final allergen in allergens) {
-      for (final userAllergen in userAllergies) {
-        if (allergen.toLowerCase().contains(userAllergen.toLowerCase())) {
-          return 'danger';
-        }
-      }
-    }
-    final nutrition = scan['nutrition'] as Map<String, dynamic>?;
-    if (nutrition != null) {
-      final sugar = (nutrition['sugar'] as num?)?.toDouble() ?? 0;
-      if (sugar > 20) return 'warning';
-    }
-    return 'safe';
+    final fit = FoodFitService.evaluate(scan,
+        allergies: profile?.allergies ?? [],
+        dietaryPreference: profile?.dietaryPreferences.join(', ') ?? '',
+        healthGoal: profile?.healthGoals ?? '');
+    if (fit.hasCriticalAllergenConflict) return 'danger';
+    if (fit.conflicts.isNotEmpty || fit.cautions.isNotEmpty) return 'warning';
+    return 'unknown';
   }
 
   Future<void> _handleRefresh() async {
@@ -220,8 +258,14 @@ class _HomeDashboardState extends State<HomeDashboard>
 
     _refreshController.forward();
 
+    await Future.wait([
+      UserDataService().getScanHistory(),
+      UserDataService()
+          .getDietLog(DateTime.now().toIso8601String().split('T')[0]),
+    ]);
     await _loadUserData();
 
+    if (!mounted) return;
     _refreshController.reverse();
 
     setState(() {
@@ -231,6 +275,12 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   /// Bottom nav tap handler.
   Future<void> _onBottomNavTap(int index) async {
+    if (index == 2 && !context.read<FeatureFlagService>().aiChatEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('AI chat is currently unavailable.'),
+      ));
+      return;
+    }
     HapticFeedback.lightImpact();
     setState(() {
       _currentIndex = index;
@@ -240,39 +290,14 @@ class _HomeDashboardState extends State<HomeDashboard>
     }
   }
 
-  /// Open the gallery picker and navigate to AI Chat with image context
   Future<void> _handleUploadImage() async {
-    try {
-      final XFile? pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-
-      if (pickedFile == null) return;
-
-      if (!mounted) return;
-
-      setState(() {
-        _selectedImage = pickedFile;
-        _currentIndex = 2;
-      });
-    } catch (e) {
-      debugPrint('Image picker error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: $e'),
-            backgroundColor: FoodInsightColors.healthRed,
-          ),
-        );
-      }
-    }
+    await Navigator.pushNamed(context, AppRoutes.dietLog);
+    if (mounted) _loadUserData();
   }
 
   /// Navigate to AI Chat via IndexedStack
   void _navigateToAIChat() {
+    if (!context.read<FeatureFlagService>().aiChatEnabled) return;
     setState(() {
       _currentIndex = 2;
     });
@@ -301,14 +326,10 @@ class _HomeDashboardState extends State<HomeDashboard>
         customGoal: profile.customProteinGoal,
       );
       _nutritionData['sugarGoal'] = UserUtils.calculateSugarGoal(calGoal);
-      _nutritionData['carbsGoal'] = UserUtils.calculateCarbsGoal(
-        calGoal, 
-        customGoal: profile.customCarbsGoal
-      );
-      _nutritionData['fatGoal'] = UserUtils.calculateFatGoal(
-        calGoal,
-        customGoal: profile.customFatGoal
-      );
+      _nutritionData['carbsGoal'] = UserUtils.calculateCarbsGoal(calGoal,
+          customGoal: profile.customCarbsGoal);
+      _nutritionData['fatGoal'] = UserUtils.calculateFatGoal(calGoal,
+          customGoal: profile.customFatGoal);
     }
 
     return Container(
@@ -379,6 +400,8 @@ class _HomeDashboardState extends State<HomeDashboard>
                       },
                       onUploadImage: _handleUploadImage,
                       onChatWithAI: _navigateToAIChat,
+                      aiChatEnabled:
+                          context.watch<FeatureFlagService>().aiChatEnabled,
                       onShoppingList: () {
                         Navigator.pushNamed(context, '/shopping-list');
                       },
@@ -429,22 +452,25 @@ class _HomeDashboardState extends State<HomeDashboard>
                             duration: 500.ms,
                             curve: Curves.easeOutCubic),
                     SizedBox(height: 2.h),
-                    MealPlanPreviewWidget(
-                      onViewPlan: () {
-                        Navigator.pushNamed(context, AppRoutes.mealPlanner);
-                      },
-                    )
-                        .animate()
-                        .fadeIn(
-                            duration: 500.ms,
-                            delay: 500.ms,
-                            curve: Curves.easeOutCubic)
-                        .slideY(
-                            begin: 0.1,
-                            end: 0,
-                            duration: 500.ms,
-                            curve: Curves.easeOutCubic),
-                    SizedBox(height: 20.h), // Ensures content scrolls fully above bottom nav and FAB
+                    if (context.watch<FeatureFlagService>().mealPlannerEnabled)
+                      MealPlanPreviewWidget(
+                        onViewPlan: () {
+                          Navigator.pushNamed(context, AppRoutes.mealPlanner);
+                        },
+                      )
+                          .animate()
+                          .fadeIn(
+                              duration: 500.ms,
+                              delay: 500.ms,
+                              curve: Curves.easeOutCubic)
+                          .slideY(
+                              begin: 0.1,
+                              end: 0,
+                              duration: 500.ms,
+                              curve: Curves.easeOutCubic),
+                    SizedBox(
+                        height: 20
+                            .h), // Ensures content scrolls fully above bottom nav and FAB
                   ],
                 ),
               ),
@@ -508,7 +534,10 @@ class _HomeDashboardState extends State<HomeDashboard>
                   child: _buildHomeContent(),
                 ),
                 BarcodeScanner(isActive: _currentIndex == 1),
-                AiChatAssistant(initialImage: _selectedImage),
+                context.watch<FeatureFlagService>().aiChatEnabled
+                    ? const AiChatAssistant()
+                    : const Center(
+                        child: Text('AI chat is currently unavailable.')),
                 const ProfileScreen(),
               ],
             ),
@@ -580,7 +609,9 @@ class _HomeDashboardState extends State<HomeDashboard>
         margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.95), // Highly opaque to prevent visual mess without blur
+            color: Colors.white.withValues(
+                alpha:
+                    0.95), // Highly opaque to prevent visual mess without blur
             borderRadius: FoodInsightRadius.xxlAll,
             boxShadow: [
               BoxShadow(
@@ -607,30 +638,30 @@ class _HomeDashboardState extends State<HomeDashboard>
                 type: BottomNavigationBarType.fixed,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                    selectedItemColor: FoodInsightColors.scannerGreen,
-                    unselectedItemColor: FoodInsightColors.midGray,
-                    selectedLabelStyle: FoodInsightTypography.caption(
-                      size: 10,
-                      weight: FontWeight.w700,
-                      color: FoodInsightColors.scannerGreen,
-                    ),
-                    unselectedLabelStyle: FoodInsightTypography.caption(
-                      size: 10,
-                      weight: FontWeight.w500,
-                      color: FoodInsightColors.midGray,
-                    ),
-                    items: [
-                      _buildNavItem(Icons.home_rounded, 'Home', 0),
-                      _buildNavItem(Icons.qr_code_scanner_rounded, 'Scan', 1),
-                      _buildNavItem(Icons.auto_awesome_rounded, 'AI Chat', 2),
-                      _buildNavItem(Icons.person_rounded, 'Profile', 3),
-                    ],
-                  ),
+                selectedItemColor: FoodInsightColors.scannerGreen,
+                unselectedItemColor: FoodInsightColors.midGray,
+                selectedLabelStyle: FoodInsightTypography.caption(
+                  size: 10,
+                  weight: FontWeight.w700,
+                  color: FoodInsightColors.scannerGreen,
                 ),
+                unselectedLabelStyle: FoodInsightTypography.caption(
+                  size: 10,
+                  weight: FontWeight.w500,
+                  color: FoodInsightColors.midGray,
+                ),
+                items: [
+                  _buildNavItem(Icons.home_rounded, 'Home', 0),
+                  _buildNavItem(Icons.qr_code_scanner_rounded, 'Scan', 1),
+                  _buildNavItem(Icons.auto_awesome_rounded, 'AI Chat', 2),
+                  _buildNavItem(Icons.person_rounded, 'Profile', 3),
+                ],
               ),
             ),
           ),
-        );
+        ),
+      ),
+    );
   }
 
   BottomNavigationBarItem _buildNavItem(
@@ -649,8 +680,18 @@ class _HomeDashboardState extends State<HomeDashboard>
   String _formatCurrentDate() {
     final now = DateTime.now();
     final months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return "${months[now.month - 1]} ${now.day}, ${now.year}";
   }

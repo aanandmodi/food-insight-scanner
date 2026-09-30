@@ -1,183 +1,29 @@
-# System Architecture & Design Specification
+# Architecture
 
-## 1. High-Level Architecture Overview
-The Food Insight Scanner application is built using a monorepo architecture divided into two primary subsystems:
-- `frontend/` — Cross-platform mobile application written in Flutter (Dart), targeting Android and iOS. It delivers a rich UI with skeuomorphic design elements, offline persistence, and real-time state management.
-- `backend/` — (Deprecated) Originally used Firebase Cloud Functions. Now the application uses direct client-side HTTP calls to the Groq API and Open Food Facts from the Flutter client to bypass the Firebase Blaze pay-as-you-go restriction.
+## Runtime flow
 
-```mermaid
-graph TD
-    subgraph Frontend ["Frontend (Flutter App)"]
-        UI["Presentation Layer (Screens & Widgets)"]
-        State["State Management (Provider)"]
-        Services["Service Layer (Auth, Cloud Fn, Local DB, Product)"]
-        LocalDB[("SQLite Local DB")]
-    end
-
-
-    subgraph External ["External Services"]
-        FirebaseAuth["Firebase Auth"]
-        Firestore[("Cloud Firestore")]
-        GroqAPI["Groq AI API (llama-3.3-70b-versatile)"]
-        OFF["Open Food Facts API"]
-    end
-
-    UI --> State
-    State --> Services
-    Services --> LocalDB
-    Services --> FirebaseAuth
-    Services --> Firestore
-    Services --> OFF
-    Services -->|Direct HTTP Call| GroqAPI
+```text
+Flutter barcode camera → Firebase Auth + App Check → Supabase Edge → shared scanProduct handler
+  → Firestore products/{barcode} cache (7 days) → Open Food Facts API
+  → canonical per-100g product facts → local SQLite cache and product UI
+  → deterministic AllergenSafetyService + FoodFitService
+  → optional aiTask explanation via Groq
 ```
 
----
+Flutter performs rendering, barcode detection, profile input, SQLite caching, and device integrations. Shared TypeScript backend handlers validate input, protect server secrets, normalize shared product facts, limit AI usage and coordinate account deletion. Firebase Auth is the account authority. App Check is enabled in Flutter and enforced on callables. Firestore rules deny client writes to canonical products and quotas. Current account records are primarily in Supabase with Firebase UID-scoped RLS and a local SQLite outbox; some legacy Firestore user paths remain for migration/compatibility. This split is deliberate until a verified migration exists.
 
-## 2. Frontend Architecture (Flutter)
-The mobile application adheres to a clean, layered architecture separating UI presentation, application state, data models, domain logic, and data storage.
+## Ownership and lifecycle
 
-### Directory Structure & Module Responsibilities
-```
-lib/
-├── main.dart                    # App entry, Firebase init, Provider setup
-├── core/                        # App exports, auth_gate.dart, utilities
-│   ├── app_export.dart          # Barrel exports (AppTheme, AppRoutes, widgets)
-│   ├── auth_gate.dart           # Auth state router (login vs profile setup vs home)
-│   └── utils/
-│       ├── connectivity_helper.dart  # Offline network status listener
-│       └── user_utils.dart          # TDEE/macro calculators
-├── data/
-│   └── providers/               # Provider state management
-│       └── user_profile_provider.dart # UserProfile state notifier & targets
-├── models/                      # Strongly-typed data models
-│   ├── diet_entry.dart          # Meal tracking entry model
-│   ├── product_model.dart       # Food product analysis & nutrition model
-│   ├── scan_history_item.dart   # Scanned barcode history model
-│   └── user_profile.dart        # UserProfile data model & health metrics
-├── presentation/                # Feature screens
-│   ├── splash_screen/           # Animated splash with Firebase init
-│   ├── auth/login_screen/       # Google, Email, Guest auth
-│   ├── profile_setup/           # Onboarding wizard
-│   ├── home_dashboard/          # Main dashboard with 5 widget cards
-│   │   └── widgets/             # GreetingHeader, NutritionSummaryCard, etc.
-│   ├── barcode_scanner/         # Camera barcode scanning
-│   ├── product_details/         # Product analysis display
-│   ├── ai_chat_assistant/       # AI chat interface
-│   ├── diet_log/                # Daily meal tracking
-│   ├── scan_history/            # Previous scans list
-│   ├── profile/                 # User profile view
-│   ├── settings/                # App settings, sign out, delete account
-│   └── shopping_list/           # Grocery list
-├── routes/
-│   └── app_routes.dart          # Named route definitions
-├── services/                    # Business logic / data layer
-│   ├── auth_service.dart        # Firebase Auth wrapper
-│   ├── cloud_function_service.dart  # Cloud Functions HTTP caller
-│   ├── firestore_service.dart   # Firestore CRUD operations
-│   ├── local_database_service.dart  # SQLite offline storage
-│   └── product_service.dart     # Open Food Facts API + scan history
-├── theme/
-│   ├── app_theme.dart           # ThemeData configuration
-│   └── app_design_system.dart   # Design tokens (colors, typography, shadows, radii)
-└── widgets/                     # Shared reusable widgets
-    ├── custom_image_widget.dart
-    ├── custom_icon_widget.dart
-    ├── glow_button.dart
-    └── skeuomorphic/skeu_card.dart
-```
+`UserSession` captures a UID and generation before async work. `UserDataService` writes UID-scoped local records and syncs to Supabase using the same IDs. Supabase checks Firebase JWT claims in RLS. Sign-out clears widget values and invalidates pending work; local records stay scoped to their owner for later offline use. In-app deletion calls `requestAccountDeletion` after recent authentication. It cleans Supabase tables and images, Firestore paths, Firebase Storage, then Firebase Auth. An Auth deletion trigger retries cleanup if an account is deleted outside the app.
 
----
+## Data trust boundaries
 
-## 3. Backend Architecture (Client-Side HTTP API)
-The Firebase Cloud Functions backend microservices layer (`backend/src/`) was completely removed to bypass the Firebase Blaze pay-as-you-go restriction. 
+Open Food Facts is external community data. `productNormalizer.ts` converts sodium grams to milligrams and leaves missing nutrients null. `ProductFactsAdapter` handles old cache shapes cautiously; old ambiguous sodium is unknown. Allergen and Food Fit outcomes are deterministic and do not use LLM verdicts. AI input is length-bounded and delimited as untrusted data; output is validated server-side and again parsed in Flutter. AI does not write diet entries without a user confirmation.
 
-Instead of relying on `FirebaseFunctions.instance`, the app now implements direct client-side HTTP integrations.
+## Operations
 
-### Direct Integrations
-- **Groq API**: Direct client-side HTTP calls in `lib/services/cloud_function_service.dart` using the REST API to access the `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` models.
-- **Open Food Facts**: Direct REST calls for barcode and product search capabilities.
+The app requires deployed Supabase migrations/RLS, Firebase rules and Supabase Edge backend, App Check providers, Groq secret, correct release signing, and legal Hosting pages. Feature flags live in Firestore `config/featureFlags`; the server checks `aiEnabled` and optional `aiChatEnabled`, `mealPlannerEnabled`, and `aiDailyLimits`. Disabled or unimplemented product features are hidden. See [security](SECURITY.md), [data model](DATA_MODEL.md), and [release](RELEASE.md).
 
----
+## Free deployment transport
 
-## 4. Data Flow Architecture
-The following sequence diagram outlines how data flows between the Flutter frontend, local storage, Firebase services, Cloud Functions, and the external Groq AI API.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Mobile User
-    participant Flutter as Flutter App (Frontend)
-    participant LocalDB as SQLite (sqflite)
-    participant Auth as Firebase Auth
-    participant Firestore as Cloud Firestore
-    participant CloudFn as Cloud Functions (Node/TS)
-    participant Groq as Groq AI API
-
-    %% Authentication Flow
-    User->>Flutter: Open App / Initiate Action
-    Flutter->>Auth: Verify / Authenticate User Token
-    Auth-->>Flutter: Auth Token & UID
-
-    %% Local Cache Reading
-    Flutter->>LocalDB: Fetch Cached Scan History & Profile
-    LocalDB-->>Flutter: Return Local Data (Offline Ready)
-
-    %% Remote Operations & Cloud Functions
-    User->>Flutter: Scan Barcode / Send Chat / Log Meal
-    alt External API Calls
-        Flutter->>Groq: Direct HTTP Request (llama-3.3-70b-versatile)
-        Groq-->>Flutter: AI Response / Analysis Payload
-    else Direct Database Operations
-        Flutter->>Firestore: Sync User Profile & Meal Logs
-        Firestore-->>Flutter: Firestore Change Stream
-    end
-
-    %% Local Cache Write
-    Flutter->>LocalDB: Persist Latest Product / Log Item
-```
-
----
-
-## 5. Auth Flow & Routing Logic
-Authentication state routing is centrally managed by `AuthGate`, evaluating user authentication status and profile completeness on startup or state transitions.
-
-```mermaid
-flowchart TD
-    Start([App Launch]) --> Splash["SplashScreen: Firebase Init & Setup"]
-    Splash --> AuthGate{"AuthGate Router"}
-
-    AuthGate -->|No Active User| Login["LoginScreen"]
-    Login -->|Google / Email / Guest| AuthSuccess["Authenticated"]
-    AuthSuccess --> AuthGate
-
-    AuthGate -->|Authenticated User| CheckProfile{"Firestore Profile Exists?"}
-    CheckProfile -->|No Profile Data| ProfileSetup["ProfileSetup: Onboarding Wizard"]
-    ProfileSetup -->|Submit Goals & Physical Metrics| SaveProfile["Save User Profile to Firestore"]
-    SaveProfile --> AuthGate
-
-    CheckProfile -->|Profile Configured| Home["HomeDashboard: Main Application"]
-```
-
----
-
-## 6. State Management Architecture
-State management is implemented using the **Provider** pattern to manage reactive state clean of UI boilerplate:
-
-- **`UserProfileProvider`**:
-  - Encapsulates user profile metrics, health goals, and calculated targets (TDEE, daily macros).
-  - Listens for changes and updates UI sub-trees reactively.
-  - Interacts with `FirestoreService` and `LocalDatabaseService` for bidirectional synchronization.
-
----
-
-## 7. Offline Resilience Strategy
-The application prioritizes offline availability and resilience against network fluctuations:
-
-1. **Local SQLite Persistence (`sqflite`)**:
-   - Stores scan history, cached product details, and meal logs locally on the device.
-   - Allows users to view previous scans and product information without an active internet connection.
-
-2. **Network Timeout & Graceful Degradation**:
-   - Network interactions with Firebase Cloud Functions and external APIs implement strict timeouts.
-   - When offline or during server downtime, the app falls back to cached SQLite entries and notifies the user gracefully.
-   - Network status changes are continuously monitored by `ConnectivityHelper`.
+The default client calls `food-insight-api` with a refreshed Firebase bearer token and an App Check token. Its adapter checks revocation and the exact app ID, bounds streamed input, and invokes the same compiled handlers as Firebase Functions. There is no automatic insecure fallback. `BACKEND_TRANSPORT=firebase` is an explicit alternative only when a billing-backed Functions deployment is separately authorized. See [free setup](FREE_TIER_SETUP.md).

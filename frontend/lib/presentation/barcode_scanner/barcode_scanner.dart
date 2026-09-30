@@ -1,3 +1,5 @@
+import '../../services/user_session.dart';
+import '../../services/cloud_function_service.dart';
 // lib/presentation/barcode_scanner/barcode_scanner.dart
 
 import 'package:flutter/foundation.dart';
@@ -228,8 +230,10 @@ class _BarcodeScannerState extends State<BarcodeScanner>
 
   /// Shared lookup → save → navigate path for both scanning and manual entry.
   Future<void> _openProduct(String barcode) async {
+    final session = UserSession.instance.capture();
+    try {
     final product = await _productService.getProductByBarcode(barcode);
-    if (!mounted) return;
+    if (!mounted || !widget.isActive || !session.isActive) return;
 
     if (product == null) {
       setState(() {
@@ -261,6 +265,14 @@ class _BarcodeScannerState extends State<BarcodeScanner>
       arguments: product,
     );
     if (mounted) _resetScanner();
+    } catch (error) {
+      if (!mounted || !session.isActive) return;
+      setState(() {
+        _isLoading = false;
+        _errorTitle = 'Product lookup unavailable';
+        _errorMessage = error is AiRequestException ? error.message : 'Check your internet connection and retry. Saved products remain available in history.';
+      });
+    }
   }
 
   void _resetScanner() {

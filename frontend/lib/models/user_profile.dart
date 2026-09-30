@@ -3,6 +3,8 @@
 class UserProfile {
   final String? uid;
   final String name;
+  final String country;
+  final String region;
   final String? email;
   final String? photoUrl;
   final String gender;
@@ -16,7 +18,7 @@ class UserProfile {
   final int age;
   final String activityLevel;
   final bool profileCompleted;
-  
+
   // Dynamic AI Macro Adjustments
   final double? customCaloriesGoal;
   final double? customProteinGoal;
@@ -27,6 +29,8 @@ class UserProfile {
   UserProfile({
     this.uid,
     required this.name,
+    this.country = 'India',
+    this.region = 'All India',
     this.email,
     this.photoUrl,
     this.gender = '',
@@ -63,9 +67,11 @@ class UserProfile {
 
     return UserProfile(
       uid: map['uid'] as String?,
-      name: (map['name'] as String?) ?? '',
+      country: map['country'] as String? ?? 'India',
+      region: map['region'] as String? ?? 'All India',
+      name: (map['name'] ?? map['displayName']) as String? ?? '',
       email: map['email'] as String?,
-      photoUrl: map['photoUrl'] as String?,
+      photoUrl: (map['photoUrl'] ?? map['photoURL']) as String?,
       gender: (map['gender'] as String?) ?? '',
       dateOfBirth: dob,
       heightCm: (map['heightCm'] as num?)?.toDouble(),
@@ -90,6 +96,8 @@ class UserProfile {
     return {
       if (uid != null) 'uid': uid,
       'name': name,
+      'country': country,
+      'region': region,
       if (email != null) 'email': email,
       if (photoUrl != null) 'photoUrl': photoUrl,
       'gender': gender,
@@ -107,7 +115,8 @@ class UserProfile {
       if (customProteinGoal != null) 'customProteinGoal': customProteinGoal,
       if (customCarbsGoal != null) 'customCarbsGoal': customCarbsGoal,
       if (customFatGoal != null) 'customFatGoal': customFatGoal,
-      if (lastAiRecalibration != null) 'lastAiRecalibration': lastAiRecalibration?.toIso8601String(),
+      if (lastAiRecalibration != null)
+        'lastAiRecalibration': lastAiRecalibration?.toIso8601String(),
     };
   }
 
@@ -115,6 +124,8 @@ class UserProfile {
   UserProfile copyWith({
     String? uid,
     String? name,
+    String? country,
+    String? region,
     String? email,
     String? gender,
     DateTime? dateOfBirth,
@@ -137,6 +148,8 @@ class UserProfile {
     return UserProfile(
       uid: uid ?? this.uid,
       name: name ?? this.name,
+      country: country ?? this.country,
+      region: region ?? this.region,
       email: email ?? this.email,
       gender: gender ?? this.gender,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,

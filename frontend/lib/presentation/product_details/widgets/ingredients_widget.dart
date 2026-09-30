@@ -1,3 +1,4 @@
+import '../../../services/allergen_safety_service.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -34,12 +35,8 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
         .toList();
   }
 
-  bool _isAllergen(String ingredient) {
-    return (widget.userAllergies as List).any((dynamic allergy) =>
-        (ingredient)
-            .toLowerCase()
-            .contains((allergy as String).toLowerCase()));
-  }
+  bool _isAllergen(String ingredient) => AllergenSafetyService.evaluate(
+      {'ingredients': [ingredient]}, widget.userAllergies).status == AllergenStatus.confirmedConflict;
 
   Widget _buildIngredientChip(String ingredient) {
     final isAllergen = _isAllergen(ingredient);
@@ -98,8 +95,7 @@ class _IngredientsWidgetState extends State<IngredientsWidget> {
                     ? FontWeight.w600
                     : FontWeight.w400,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: null,
             ),
           ),
         ],

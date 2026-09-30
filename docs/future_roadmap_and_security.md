@@ -1,5 +1,11 @@
 # Food Insight Scanner - Future Roadmap & Public Launch Blueprint
 
+> Historical ideas only; this is not an implementation or beta feature list.
+> Current behavior is documented in [PRODUCT.md](PRODUCT.md) and
+> [ARCHITECTURE.md](ARCHITECTURE.md). Several ideas below are intentionally
+> outside the beta scope, including proactive notifications and inferred
+> micronutrient deficiencies.
+
 This document outlines a strategic roadmap for taking the **Food Insight Scanner** from a local, offline prototype to a fully-fledged, production-ready, highly secure application ready for public launch.
 
 ---

@@ -115,3 +115,17 @@ secrets.json
 
 # ── Local Claude Code settings ──
 .claude/settings.local.json
+
+# Signed distribution artifacts and diagnostic downloads
+releases/
+cloud-projects.json
+cloud-functions.json
+
+# Private QA captures, deployment credentials and SDK metadata
+ss/
+.firebase/
+supabase/.temp/
+*.bundle
+*.service-account.json
+# Commit the application dependency lock for reproducible CI.
+!frontend/pubspec.lock

@@ -36,25 +36,50 @@ class AuthGate extends StatelessWidget {
 
         return Consumer<UserProfileProvider>(
           builder: (context, provider, child) {
-            if (provider.isLoading) {
-              return const _GateSplash(label: 'Loading your profile…');
-            }
-
-            // Load failed and we have nothing cached — don't pretend the user
-            // is new, let them retry.
-            if (provider.hasError && provider.profile == null) {
-              return _GateError(onRetry: provider.fetchProfile);
-            }
-
-            if (provider.isProfileComplete) {
-              return const HomeDashboard();
-            }
-
-            return const ProfileSetup();
+            return AuthGateContent(
+              uid: snapshot.data!.uid,
+              boundUid: provider.boundUid,
+              loading: provider.isLoading,
+              hasProfile: provider.profile != null,
+              hasError: provider.hasError,
+              complete: provider.isProfileComplete,
+              onRetry: provider.fetchProfile,
+              dashboard: () => HomeDashboard(key: ValueKey(snapshot.data!.uid)),
+              onboarding: () => ProfileSetup(key: ValueKey(snapshot.data!.uid)),
+            );
           },
         );
       },
     );
+  }
+}
+
+/// Profile routing is separate from SDK subscriptions so account-switch and
+/// failure states can be exercised without a real sign-in or device plugin.
+class AuthGateContent extends StatelessWidget {
+  const AuthGateContent(
+      {super.key,
+      required this.uid,
+      required this.boundUid,
+      required this.loading,
+      required this.hasProfile,
+      required this.hasError,
+      required this.complete,
+      required this.onRetry,
+      required this.dashboard,
+      required this.onboarding});
+  final String uid;
+  final String? boundUid;
+  final bool loading, hasProfile, hasError, complete;
+  final Future<void> Function() onRetry;
+  final Widget Function() dashboard, onboarding;
+  @override
+  Widget build(BuildContext context) {
+    if (boundUid != uid || (loading && !hasProfile)) {
+      return const _GateSplash(label: 'Loading your profile…');
+    }
+    if (hasError && !hasProfile) return _GateError(onRetry: onRetry);
+    return complete ? dashboard() : onboarding();
   }
 }
 
@@ -87,9 +112,7 @@ class _GateSplash extends StatelessWidget {
                 color: Colors.white,
                 size: 34,
               ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(
+            ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
                   duration: FoodInsightAnimations.verySlow,
                   begin: const Offset(1, 1),
                   end: const Offset(1.06, 1.06),
@@ -160,7 +183,7 @@ class _GateError extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Check your connection and try again. Your data is safe.',
+                  'Check your connection and try again. Your saved profile has not been replaced.',
                   textAlign: TextAlign.center,
                   style: FoodInsightTypography.body(
                     color: FoodInsightColors.midGray,
@@ -200,10 +223,8 @@ class _GateError extends StatelessWidget {
               ],
             ),
           ),
-        )
-            .animate()
-            .fadeIn(duration: FoodInsightAnimations.medium)
-            .slideY(begin: 0.06, end: 0, curve: FoodInsightAnimations.decelerate),
+        ).animate().fadeIn(duration: FoodInsightAnimations.medium).slideY(
+            begin: 0.06, end: 0, curve: FoodInsightAnimations.decelerate),
       ),
     );
   }

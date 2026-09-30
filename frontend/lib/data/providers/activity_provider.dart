@@ -1,183 +1,166 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:home_widget/home_widget.dart';
 import '../services/activity_service.dart';
+import '../../services/user_session.dart';
+import '../../services/user_data_service.dart';
+
+enum ActivityDataSource { none, healthConnect, pedometerEstimate }
 
 class ActivityProvider extends ChangeNotifier {
-  final ActivityService _activityService = ActivityService();
-
+  final _activityService = ActivityService();
+  ActivityDataSource source = ActivityDataSource.none;
   int _steps = 0;
   int _activeCalories = 0;
-  double _distanceKm = 0.0;
+  double _distanceKm = 0;
   bool _isLoading = false;
-
-  int _dailyStepGoal = 10000;
-  int _dailyCalorieGoal = 400;
-  double _dailyDistanceGoal = 7.5;
-
-  bool _hasHealthConnectSteps = false;
-  bool _hasHealthConnectCalories = false;
-
-  int? _initialBootSteps;
-  int _initialBaseSteps = 0;
-
+  bool _disposed = false;
+  int? _lastSensor;
+  String _date = '';
+  DateTime? _lastSave;
+  StreamSubscription<int>? _subscription;
   int get steps => _steps;
   int get activeCalories => _activeCalories;
   double get distanceKm => _distanceKm;
   bool get isLoading => _isLoading;
-
-  int get dailyStepGoal => _dailyStepGoal;
-  int get dailyCalorieGoal => _dailyCalorieGoal;
-  double get dailyDistanceGoal => _dailyDistanceGoal;
-
-  StreamSubscription<int>? _pedometerSubscription;
+  int get dailyStepGoal => 10000;
+  int get dailyCalorieGoal => 400;
+  double get dailyDistanceGoal => 7.5;
 
   ActivityProvider() {
-    // Run initialization asynchronously after widget construction
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initActivity();
-    });
+    UserSession.instance.addListener(_accountChanged);
+    scheduleMicrotask(_accountChanged);
+  }
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 
-  Future<void> _initActivity() async {
+  Future<void> _accountChanged() async {
+    source = ActivityDataSource.none;
+    _steps = 0;
+    _activeCalories = 0;
+    _distanceKm = 0;
+    _lastSensor = null;
+    _lastSave = null;
+    _date = DateTime.now().toIso8601String().split('T')[0];
+    _notify();
+    if (UserSession.instance.uid == null) return;
+    final session = UserSession.instance.capture();
+    _isLoading = true;
     try {
-      _isLoading = true;
-      notifyListeners();
-
-      // 1. Sync with Health Connect / Apple Health for OS aggregated daily data
-      final healthData = await _activityService.syncHealthData();
-
-      if (healthData['steps'] != null && healthData['steps']! > 0) {
-        _steps = healthData['steps']!;
-        _hasHealthConnectSteps = true;
+      final saved = await UserDataService().getActivity(_date);
+      if (!session.isActive || _disposed) return;
+      source = ActivityDataSource.values.firstWhere((value) => value.name == saved?['source'], orElse: () => ActivityDataSource.none);
+      _steps = (saved?['steps'] as num?)?.toInt() ?? 0;
+      _activeCalories = (saved?['activeCalories'] as num?)?.toInt() ?? 0;
+      _distanceKm = (saved?['distanceKm'] as num?)?.toDouble() ?? 0;
+      if (_subscription == null) {
+        if (source == ActivityDataSource.pedometerEstimate) await _activityService.initPedometer();
+        if (!session.isActive || _disposed) return;
+        _subscription = _activityService.pedometerSteps.listen(_onSteps);
       }
-
-      if (healthData['activeCalories'] != null && healthData['activeCalories']! > 0) {
-        _activeCalories = healthData['activeCalories']!;
-        _hasHealthConnectCalories = true;
-      } else {
-        _activeCalories = (_steps * 0.042).round();
-      }
-
-      _distanceKm = _steps * 0.000762;
-
-      _isLoading = false;
-      notifyListeners();
-      _syncToHomeWidget();
-
-      // 2. Start hardware pedometer stream for real-time live updates
-      await _activityService.initPedometer();
-      _pedometerSubscription = _activityService.pedometerSteps.listen((cumulativeBootSteps) async {
-        _handlePedometerEvent(cumulativeBootSteps);
-      });
+      await _widget(session);
     } catch (e) {
-      debugPrint('ActivityProvider initialization error (non-fatal): $e');
-      _isLoading = false;
-      notifyListeners();
+      debugPrint('Activity load: $e');
+    } finally {
+      if (session.isActive) {
+        _isLoading = false;
+        _notify();
+      }
     }
   }
 
-  Future<void> _handlePedometerEvent(int cumulativeBootSteps) async {
-    try {
-      if (_initialBootSteps == null) {
-        _initialBootSteps = cumulativeBootSteps;
-        _initialBaseSteps = _steps;
-      }
-
-      int deltaFromAppOpen = cumulativeBootSteps - _initialBootSteps!;
-      if (deltaFromAppOpen < 0) {
-        // Handle phone reboot while app running
-        _initialBootSteps = cumulativeBootSteps;
-        _initialBaseSteps = _steps;
-        deltaFromAppOpen = 0;
-      }
-
-      if (_hasHealthConnectSteps) {
-        _steps = _initialBaseSteps + deltaFromAppOpen;
-      } else {
-        // Fallback: use SharedPreferences to calculate steps from midnight baseline
-        final prefs = await SharedPreferences.getInstance();
-        final todayStr = DateTime.now().toIso8601String().split('T')[0];
-        final savedDate = prefs.getString('pedometer_today_date');
-        int? startSteps = prefs.getInt('pedometer_today_start_steps');
-
-        if (savedDate != todayStr || startSteps == null || startSteps > cumulativeBootSteps) {
-          startSteps = cumulativeBootSteps;
-          await prefs.setString('pedometer_today_date', todayStr);
-          await prefs.setInt('pedometer_today_start_steps', startSteps);
-        }
-
-        final todayPedometerSteps = math.max(0, cumulativeBootSteps - startSteps);
-        _steps = math.max(_initialBaseSteps + deltaFromAppOpen, todayPedometerSteps);
-      }
-
-      if (!_hasHealthConnectCalories) {
-        _activeCalories = (_steps * 0.042).round();
-      }
-      _distanceKm = _steps * 0.000762;
-
-      notifyListeners();
-      _syncToHomeWidget();
-    } catch (e) {
-      debugPrint('Error handling pedometer event: $e');
+  void _onSteps(int sensor) {
+    if (_disposed || UserSession.instance.uid == null) return;
+    if (source != ActivityDataSource.pedometerEstimate) return;
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    if (_date != today) {
+      _accountChanged();
+      return;
+    }
+    final delta = _lastSensor == null ? 0 : sensor - _lastSensor!;
+    _lastSensor = sensor;
+    if (delta <= 0) return;
+    if (source == ActivityDataSource.healthConnect) return;
+    source = ActivityDataSource.pedometerEstimate;
+    _steps += delta;
+    _activeCalories = (_steps * 0.042).round();
+    _distanceKm = _steps * 0.000762;
+    _notify();
+    final session = UserSession.instance.capture();
+    _widget(session);
+    if (_lastSave == null ||
+        DateTime.now().difference(_lastSave!) > const Duration(minutes: 1)) {
+      _lastSave = DateTime.now();
+      _save(session);
     }
   }
 
-  Future<void> refresh() async {
+  Future<void> _save(SessionToken session) async {
     try {
-      final healthData = await _activityService.syncHealthData();
-      bool changed = false;
-      if (healthData['steps'] != null && healthData['steps']! > _steps) {
-        _steps = healthData['steps']!;
-        _hasHealthConnectSteps = true;
-        changed = true;
-      }
-      if (healthData['activeCalories'] != null && healthData['activeCalories']! > _activeCalories) {
-        _activeCalories = healthData['activeCalories']!;
-        _hasHealthConnectCalories = true;
-        changed = true;
-      }
-      if (!_hasHealthConnectCalories) {
-        final newCal = (_steps * 0.042).round();
-        if (newCal != _activeCalories) {
-          _activeCalories = newCal;
-          changed = true;
-        }
-      }
-      final newDist = _steps * 0.000762;
-      if ((newDist - _distanceKm).abs() > 0.05) {
-        _distanceKm = newDist;
-        changed = true;
-      }
-
-      if (changed) {
-        notifyListeners();
-        _syncToHomeWidget();
-      }
+      await UserDataService().saveActivity({
+        'steps': _steps,
+        'activeCalories': _activeCalories,
+        'source': source.name,
+        'distanceKm': _distanceKm
+      }, session);
     } catch (e) {
-      debugPrint('Error refreshing activity data: $e');
+      debugPrint('Activity sync: $e');
     }
   }
 
-  Future<void> _syncToHomeWidget() async {
+  // Health Connect import only follows an explicit refresh by the user.
+  Future<void> disconnect() async {
+    final session = UserSession.instance.capture();
+    await _activityService.disconnect();
+    session.check();
+    source = ActivityDataSource.none;
+    _lastSensor = null;
+    _notify();
+    await _save(session);
+  }
+
+  Future<void> refresh({bool requestPermission = false}) async {
+    final session = UserSession.instance.capture();
+    final data = await _activityService.syncHealthData(requestPermission: requestPermission);
+    if (!session.isActive || _disposed) return;
+    if (data.isEmpty) return;
+    source = ActivityDataSource.healthConnect;
+    _steps = data['steps'] ?? _steps;
+    _activeCalories = data['activeCalories'] ?? 0;
+    _distanceKm = _steps * 0.000762;
+    _notify();
+    await _save(session);
+    await _widget(session);
+  }
+
+  Future<void> connectPedometer() async {
+    final session = UserSession.instance.capture();
+    await _activityService.initPedometer(requestPermission: true);
+    session.check();
+    source = ActivityDataSource.pedometerEstimate;
+    _notify();
+    await _save(session);
+  }
+
+  Future<void> _widget(SessionToken session) async {
     try {
+      session.check();
       await HomeWidget.saveWidgetData<int>('steps', _steps);
-      await HomeWidget.saveWidgetData<int>('steps_goal', _dailyStepGoal);
+      session.check();
       await HomeWidget.saveWidgetData<int>('active_calories', _activeCalories);
-      await HomeWidget.saveWidgetData<int>('active_calories_goal', _dailyCalorieGoal);
+      session.check();
       await HomeWidget.saveWidgetData<double>('distance_km', _distanceKm);
+      session.check();
       await HomeWidget.updateWidget(name: 'CalorieGraphWidgetProvider');
-    } catch (e) {
-      debugPrint('Failed to sync graph widget data: $e');
-    }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _pedometerSubscription?.cancel();
+    _disposed = true;
+    UserSession.instance.removeListener(_accountChanged);
+    _subscription?.cancel();
     _activityService.dispose();
     super.dispose();
   }

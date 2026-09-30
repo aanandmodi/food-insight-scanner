@@ -1,3 +1,5 @@
+import '../../widgets/custom_image_widget.dart';
+import '../../services/user_data_service.dart';
 // lib/presentation/profile/profile_screen.dart
 
 import 'package:flutter/material.dart';
@@ -8,7 +10,6 @@ import 'package:provider/provider.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../models/user_profile.dart';
 import '../../theme/app_design_system.dart';
-import '../../services/local_database_service.dart';
 import '../../services/cloud_function_service.dart';
 import '../../services/auth_service.dart';
 
@@ -36,24 +37,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.white,
         title: Text(
           'Log Out',
-          style: FoodInsightTypography.heading(size: 18, weight: FontWeight.w800, color: FoodInsightColors.deepCharcoal),
+          style: FoodInsightTypography.heading(
+              size: 18,
+              weight: FontWeight.w800,
+              color: FoodInsightColors.deepCharcoal),
         ),
         content: Text(
           'Are you sure you want to log out of your account?',
-          style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray),
+          style: FoodInsightTypography.body(
+              size: 14, color: FoodInsightColors.midGray),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: FoodInsightColors.midGray)),
+            child: Text('Cancel',
+                style: FoodInsightTypography.caption(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: FoodInsightColors.midGray)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: FoodInsightColors.scannerGreen,
-              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
+              shape:
+                  RoundedRectangleBorder(borderRadius: FoodInsightRadius.smAll),
             ),
-            child: Text('Log Out', style: FoodInsightTypography.caption(size: 14, weight: FontWeight.w700, color: Colors.white)),
+            child: Text('Log Out',
+                style: FoodInsightTypography.caption(
+                    size: 14, weight: FontWeight.w700, color: Colors.white)),
           ),
         ],
       ),
@@ -64,11 +76,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await AuthService().signOut();
         if (mounted) {
           context.read<UserProfileProvider>().clearProfile();
-          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+          Navigator.pushNamedAndRemoveUntil(
+              context, '/login', (route) => false);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Error logging out: $e')));
         }
       }
     }
@@ -130,24 +144,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.edit_rounded, color: FoodInsightColors.scannerGreen),
+            icon: const Icon(Icons.edit_rounded,
+                color: FoodInsightColors.scannerGreen),
             onPressed: () {
               Navigator.pushNamed(context, '/profile-setup')
                   .then((_) => _loadProfile());
             },
           ),
           IconButton(
-            icon: Icon(Icons.settings_rounded, color: FoodInsightColors.midGray),
+            icon: const Icon(Icons.settings_rounded,
+                color: FoodInsightColors.midGray),
             onPressed: () => Navigator.pushNamed(context, '/settings'),
           ),
           IconButton(
-            icon: Icon(Icons.logout_rounded, color: FoodInsightColors.healthRed),
+            icon: const Icon(Icons.logout_rounded,
+                color: FoodInsightColors.healthRed),
             onPressed: _handleLogout,
           ),
         ],
       ),
       body: isLoading
-          ? Center(
+          ? const Center(
               child: CircularProgressIndicator(
                 color: FoodInsightColors.scannerGreen,
               ),
@@ -175,7 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.account_circle_rounded,
                                 color: FoodInsightColors.scannerGreen,
                                 size: 24,
@@ -190,14 +207,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       style: FoodInsightTypography.body(
                                         size: 14,
                                         weight: FontWeight.w700,
-                                        color: FoodInsightColors.scannerGreenDark,
+                                        color:
+                                            FoodInsightColors.scannerGreenDark,
                                       ),
                                     ),
                                     Text(
                                       'All data is saved locally on your device.',
                                       style: FoodInsightTypography.caption(
                                         size: 12,
-                                        color: FoodInsightColors.scannerGreenDark,
+                                        color:
+                                            FoodInsightColors.scannerGreenDark,
                                       ),
                                     ),
                                   ],
@@ -221,7 +240,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: FoodInsightColors.scannerGreen.withValues(alpha: 0.2),
+                                    color: FoodInsightColors.scannerGreen
+                                        .withValues(alpha: 0.2),
                                     blurRadius: 20,
                                     spreadRadius: 2,
                                   ),
@@ -229,10 +249,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               child: CircleAvatar(
                                 radius: 12.w,
-                                backgroundColor: FoodInsightColors.scannerGreenLight,
-                                backgroundImage: profile?.photoUrl != null
-                                    ? NetworkImage(profile!.photoUrl!)
-                                    : null,
+                                backgroundColor:
+                                    FoodInsightColors.scannerGreenLight,
                                 child: profile?.photoUrl == null
                                     ? Text(
                                         (profile?.email?.isNotEmpty ?? false)
@@ -246,7 +264,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           color: FoodInsightColors.scannerGreen,
                                         ),
                                       )
-                                    : null,
+                                    : ClipOval(
+                                        child: CustomImageWidget(
+                                            imageUrl: profile?.photoUrl,
+                                            width: 24.w,
+                                            height: 24.w)),
                               ),
                             ),
                             SizedBox(height: 1.5.h),
@@ -282,7 +304,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             if (age != null)
                               Expanded(
-                                child: _buildStatChip(context, 'Age', '$age yrs'),
+                                child:
+                                    _buildStatChip(context, 'Age', '$age yrs'),
                               ),
                             if (profile.gender.isNotEmpty)
                               Expanded(
@@ -300,7 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             .slideY(begin: 0.05, end: 0),
 
                       SizedBox(height: 3.h),
-                      
+
                       // Quick Links Row
                       Row(
                         children: [
@@ -310,7 +333,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: 'Shopping List',
                               icon: Icons.shopping_cart_rounded,
                               color: FoodInsightColors.warningAmber,
-                              onTap: () => Navigator.pushNamed(context, '/shopping-list'),
+                              onTap: () => Navigator.pushNamed(
+                                  context, '/shopping-list'),
                             ),
                           ),
                           SizedBox(width: 3.w),
@@ -320,7 +344,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: 'Scan History',
                               icon: Icons.history_rounded,
                               color: FoodInsightColors.infoBlue,
-                              onTap: () => Navigator.pushNamed(context, '/scan-history'),
+                              onTap: () =>
+                                  Navigator.pushNamed(context, '/scan-history'),
                             ),
                           ),
                         ],
@@ -342,8 +367,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // Detailed Info
                       ...[
-                        _buildInfoSection(context, 'Date of Birth',
-                            _formatDate(profile?.dateOfBirth), Icons.cake_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Date of Birth',
+                            _formatDate(profile?.dateOfBirth),
+                            Icons.cake_rounded),
                         _buildInfoSection(
                             context,
                             'Height',
@@ -358,8 +386,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ? '${profile!.weightKg!.toStringAsFixed(1)} kg'
                                 : 'Not set',
                             Icons.monitor_weight_rounded),
-                        _buildInfoSection(context, 'Health Goal',
-                            profile?.healthGoals ?? 'Not set', Icons.flag_rounded),
+                        _buildInfoSection(
+                            context,
+                            'Health Goal',
+                            profile?.healthGoals ?? 'Not set',
+                            Icons.flag_rounded),
                         _buildInfoSection(
                             context,
                             'Activity Level',
@@ -368,14 +399,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildInfoSection(
                             context,
                             'Medical Conditions',
-                            profile?.diseases.join(', ') ??
-                                'None',
+                            profile?.diseases.join(', ') ?? 'None',
                             Icons.medical_services_rounded),
                         _buildInfoSection(
                             context,
                             'Allergies',
-                            profile?.allergies.join(', ') ??
-                                'None',
+                            profile?.allergies.join(', ') ?? 'None',
                             Icons.warning_amber_rounded),
                         _buildInfoSection(
                             context,
@@ -384,15 +413,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ? profile!.dietaryPreferences.join(', ')
                                 : 'None',
                             Icons.restaurant_rounded),
-                      ]
-                          .asMap()
-                          .entries
-                          .map((e) => e.value
-                              .animate()
-                              .fadeIn(
-                                  duration: 400.ms,
-                                  delay: Duration(milliseconds: 200 + e.key * 60))
-                              .slideY(begin: 0.03, end: 0)),
+                      ].asMap().entries.map((e) => e.value
+                          .animate()
+                          .fadeIn(
+                              duration: 400.ms,
+                              delay: Duration(milliseconds: 200 + e.key * 60))
+                          .slideY(begin: 0.03, end: 0)),
 
                       SizedBox(height: 10.h),
                     ],
@@ -437,7 +463,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildActionCard(BuildContext context, {required String title, required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildActionCard(BuildContext context,
+      {required String title,
+      required IconData icon,
+      required Color color,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -533,8 +563,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [FoodInsightColors.scannerGreen, const Color(0xFF1B5E20)],
+        gradient: const LinearGradient(
+          colors: [FoodInsightColors.scannerGreen, Color(0xFF1B5E20)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -546,7 +576,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
+              const Icon(Icons.auto_awesome_rounded,
+                  color: Colors.white, size: 24),
               SizedBox(width: 2.w),
               Text(
                 'AI Macro Recalibration',
@@ -606,7 +637,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _handleAiRecalibration(BuildContext context, UserProfile profile) async {
+  Future<void> _handleAiRecalibration(
+      BuildContext context, UserProfile profile) async {
     // Show loading indicator
     showDialog(
       context: context,
@@ -621,9 +653,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: FoodInsightColors.scannerGreen),
+              const CircularProgressIndicator(
+                  color: FoodInsightColors.scannerGreen),
               SizedBox(height: 2.h),
-              Text('Analyzing your habits...', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.deepCharcoal)),
+              Text('Analyzing your habits...',
+                  style: FoodInsightTypography.body(
+                      size: 14, color: FoodInsightColors.deepCharcoal)),
             ],
           ),
         ),
@@ -633,12 +668,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       // Fetch last 3 days of logs
       List<Map<String, dynamic>> recentLogs = [];
-      final db = LocalDatabaseService();
+      final db = UserDataService();
       final now = DateTime.now();
       for (int i = 0; i < 3; i++) {
         final date = now.subtract(Duration(days: i));
-        final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-        final dayLogs = await db.getDietLogByDate(dateString);
+        final dateString =
+            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        final dayLogs = await db.getDietLog(dateString);
         recentLogs.addAll(dayLogs);
       }
 
@@ -647,39 +683,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
         recentDietLogs: recentLogs,
       );
 
+      if (!context.mounted) return;
       Navigator.pop(context); // Close loading
 
       if (newMacros.containsKey('error')) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AI Analysis failed: ${newMacros['error']}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('AI Analysis failed: ${newMacros['error']}')));
         return;
       }
 
       // Show Result Dialog
       _showRecalibrationResult(context, profile, newMacros);
-
-    } catch (e) {
+    } catch (_) {
+      if (!context.mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('AI analysis is unavailable. Please try again later.')));
     }
   }
 
-  void _showRecalibrationResult(BuildContext context, UserProfile profile, Map<String, dynamic> newMacros) {
+  void _showRecalibrationResult(BuildContext context, UserProfile profile,
+      Map<String, dynamic> newMacros) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.lgAll),
         title: Row(
           children: [
-            Icon(Icons.auto_awesome_rounded, color: FoodInsightColors.scannerGreen),
+            const Icon(Icons.auto_awesome_rounded,
+                color: FoodInsightColors.scannerGreen),
             SizedBox(width: 2.w),
-            Text('AI Recommendations', style: FoodInsightTypography.heading(size: 18, color: FoodInsightColors.deepCharcoal)),
+            Text('AI Recommendations',
+                style: FoodInsightTypography.heading(
+                    size: 18, color: FoodInsightColors.deepCharcoal)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(newMacros['explanation'] ?? 'Here are your optimized goals.', style: FoodInsightTypography.body(size: 14, color: FoodInsightColors.midGray)),
+            Text(newMacros['explanation'] ?? 'Here are your optimized goals.',
+                style: FoodInsightTypography.body(
+                    size: 14, color: FoodInsightColors.midGray)),
             SizedBox(height: 2.h),
             _buildMacroRow('Calories', '${newMacros['calories']} kcal'),
             _buildMacroRow('Protein', '${newMacros['protein']} g'),
@@ -690,7 +736,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: FoodInsightColors.midGray)),
+            child: const Text('Cancel',
+                style: TextStyle(color: FoodInsightColors.midGray)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -702,16 +749,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 customFatGoal: (newMacros['fat'] as num?)?.toDouble(),
                 lastAiRecalibration: DateTime.now(),
               );
-              await context.read<UserProfileProvider>().saveProfile(updatedProfile);
+              await context
+                  .read<UserProfileProvider>()
+                  .saveProfile(updatedProfile);
+              if (!context.mounted || !mounted) return;
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Macros updated successfully!')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Macros updated successfully!')));
               _loadProfile();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: FoodInsightColors.scannerGreen,
-              shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
+              shape:
+                  RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
             ),
-            child: Text('Apply Goals', style: TextStyle(color: Colors.white)),
+            child: const Text('Apply Goals',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -724,8 +777,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: FoodInsightTypography.body(size: 15, weight: FontWeight.w600, color: FoodInsightColors.deepCharcoal)),
-          Text(value, style: FoodInsightTypography.body(size: 15, weight: FontWeight.w800, color: FoodInsightColors.scannerGreen)),
+          Text(label,
+              style: FoodInsightTypography.body(
+                  size: 15,
+                  weight: FontWeight.w600,
+                  color: FoodInsightColors.deepCharcoal)),
+          Text(value,
+              style: FoodInsightTypography.body(
+                  size: 15,
+                  weight: FontWeight.w800,
+                  color: FoodInsightColors.scannerGreen)),
         ],
       ),
     );
