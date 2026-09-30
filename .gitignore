@@ -1,12 +1,9 @@
 # ============================================================
-# 🔒 SECRETS & API KEYS — NEVER commit these
+# 🔒 SECRETS & API KEYS
 # ============================================================
 env.json
 assets/env.json
 lib/firebase_options.dart
-**/google-services.json
-**/GoogleService-Info.plist
-.firebaserc
 
 # ============================================================
 # 🛠️ Flutter / Dart Build Artifacts
@@ -43,7 +40,6 @@ pubspec.lock
 **/android/.gradle/
 **/android/app/.cxx/
 **/android/local.properties
-**/android/key.properties
 
 # ============================================================
 # 🔧 Backend / Node.js
@@ -60,6 +56,7 @@ backend/lib/
 .idea/
 .vscode/
 .cursor/
+.kilo/
 *.swp
 *.swo
 *~
@@ -90,18 +87,10 @@ app.*.map.json
 .gemini/
 analyze_output.txt
 analyze.log
-stitch_nutriscan_ai/
 
 
 # API Keys and Secrets
 *.hprof
-
-# ── Release signing (NEVER commit) ──
-key.properties
-**/key.properties
-*.jks
-*.keystore
-frontend/android/keystore/
 
 # ── Local secrets ──
 .env
@@ -122,7 +111,6 @@ cloud-projects.json
 cloud-functions.json
 
 # Private QA captures, deployment credentials and SDK metadata
-ss/
 .firebase/
 supabase/.temp/
 *.bundle

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BioScan - Diet Log</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#e2e2e7",
+                    "on-error": "#ffffff",
+                    "background": "#f9f9fe",
+                    "surface-variant": "#e2e2e7",
+                    "on-surface": "#1a1c1f",
+                    "secondary-container": "#64fd7d",
+                    "tertiary": "#0058bc",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e8e8ed",
+                    "on-surface-variant": "#5d3f40",
+                    "on-secondary-fixed": "#002106",
+                    "on-primary-fixed-variant": "#920027",
+                    "primary-fixed": "#ffdada",
+                    "primary": "#ba0034",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#fffbff",
+                    "outline": "#916e6f",
+                    "secondary-fixed-dim": "#47e266",
+                    "surface-dim": "#d9dade",
+                    "error": "#ba1a1a",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2e3034",
+                    "surface": "#f9f9fe",
+                    "secondary": "#006e26",
+                    "surface-tint": "#be0036",
+                    "primary-container": "#e51245",
+                    "surface-container": "#ededf2",
+                    "on-error-container": "#93000a",
+                    "on-background": "#1a1c1f",
+                    "on-primary-fixed": "#40000c",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "on-tertiary-fixed-variant": "#004493",
+                    "tertiary-fixed": "#d8e2ff",
+                    "on-tertiary-container": "#fefcff",
+                    "inverse-primary": "#ffb3b5",
+                    "tertiary-container": "#0070eb",
+                    "on-tertiary-fixed": "#001a41",
+                    "on-secondary-container": "#007328",
+                    "outline-variant": "#e6bcbd",
+                    "primary-fixed-dim": "#ffb3b5",
+                    "secondary-fixed": "#6cff82",
+                    "on-secondary-fixed-variant": "#00531a",
+                    "inverse-on-surface": "#f0f0f5",
+                    "surface-bright": "#f9f9fe",
+                    "surface-container-low": "#f3f3f8"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {},
+            "fontFamily": {
+                    "headline": [
+                            "Inter"
+                    ],
+                    "body": [
+                            "Inter"
+                    ],
+                    "label": [
+                            "Inter"
+                    ]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9f9fe;
+        }
+        
+        .ambient-shadow {
+            box-shadow: 0 10px 30px -10px rgba(26, 28, 31, 0.08);
+        }
+        
+        .tactile-card {
+            box-shadow: 
+                0 30px 40px -15px rgba(26, 28, 31, 0.1),
+                inset 2px 2px 4px 0px rgba(255, 255, 255, 1),
+                inset -2px -2px 4px 0px rgba(26, 28, 31, 0.05);
+        }
+        
+        .tactile-button-primary {
+            background: linear-gradient(135deg, #ba0034 0%, #e51245 100%);
+            box-shadow: 
+                0 15px 25px -5px rgba(186, 0, 52, 0.3),
+                inset 1px 1px 2px rgba(255, 255, 255, 0.4),
+                inset -1px -1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .donut-shadow {
+            filter: drop-shadow(0px 10px 15px rgba(186, 0, 52, 0.2));
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(230, 188, 189, 0.15);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="text-on-background min-h-screen pb-28 pt-20">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 backdrop-blur-md bg-white/90 dark:bg-slate-950/90 text-[#FF2D55] dark:text-[#FF2D55] font-['Inter'] font-bold tracking-tight shadow-[inset_0_-1px_0_rgba(230,188,189,0.15)] shadow-[0_10px_30px_-10px_rgba(26,28,31,0.08)]">
+<button class="flex items-center justify-center p-2 rounded-full hover:opacity-80 transition-opacity active:scale-95 duration-200 text-slate-400">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+<div class="text-xl font-black text-slate-900 dark:text-slate-50 tracking-tighter">BioScan</div>
+<button class="flex items-center justify-center p-2 rounded-full hover:opacity-80 transition-opacity active:scale-95 duration-200 text-slate-400">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+</header>
+<main class="px-6 max-w-md mx-auto space-y-8">
+<!-- Date Selector -->
+<section class="flex justify-between items-center bg-surface-container-lowest rounded-full py-2 px-4 ambient-shadow mt-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Today</span>
+<span class="text-sm font-bold tracking-tight">Oct 24</span>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</section>
+<!-- Calories Visualization -->
+<section class="bg-surface-container-lowest rounded-lg p-8 tactile-card flex flex-col items-center relative overflow-hidden">
+<h2 class="text-lg font-bold text-on-surface tracking-tight self-start w-full mb-6">Daily Intake</h2>
+<div class="relative w-56 h-56 flex items-center justify-center">
+<div class="absolute inset-0 rounded-full" style="box-shadow: inset 6px 6px 12px rgba(26, 28, 31, 0.05), inset -6px -6px 12px rgba(255, 255, 255, 1);"></div>
+<!-- Skeuomorphic Donut Chart (Simulated with SVG) -->
+<svg class="absolute inset-0 w-full h-full transform -rotate-90 drop-shadow-[0_10px_15px_rgba(186,0,52,0.3)]" viewbox="0 0 120 120">
+<!-- Background Ring -->
+<circle cx="60" cy="60" fill="transparent" r="46" stroke="#f3f3f8" stroke-linecap="round" stroke-width="14"></circle>
+<!-- Progress Ring -->
+<circle cx="60" cy="60" fill="transparent" filter="url(#inset-shadow)" r="46" stroke="url(#primaryGradient)" stroke-dasharray="289" stroke-dashoffset="70" stroke-linecap="round" stroke-width="14"></circle>
+<defs>
+<lineargradient id="primaryGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#ba0034"></stop>
+<stop offset="100%" stop-color="#e51245"></stop>
+</lineargradient>
+<filter id="inset-shadow">
+<feoffset dx="1" dy="1"></feoffset>
+<fegaussianblur result="offset-blur" stddeviation="2"></fegaussianblur>
+<fecomposite in="SourceGraphic" in2="offset-blur" operator="out" result="inverse"></fecomposite>
+<feflood flood-color="black" flood-opacity="0.3" result="color"></feflood>
+<fecomposite in="color" in2="inverse" operator="in" result="shadow"></fecomposite>
+<fecomposite in="shadow" in2="SourceGraphic" operator="over"></fecomposite>
+</filter>
+</defs>
+</svg>
+<!-- Center Content -->
+<div class="relative w-32 h-32 rounded-full flex flex-col items-center justify-center text-center bg-surface-container-lowest" style="box-shadow: 4px 4px 10px rgba(26, 28, 31, 0.05), -4px -4px 10px rgba(255, 255, 255, 0.8);">
+<span class="text-4xl font-black tracking-tighter text-on-surface bg-clip-text text-transparent bg-gradient-to-br from-slate-800 to-slate-600">1,840</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/70 mt-1">Kcal</span>
+</div>
+</div>
+<!-- Macros Layout -->
+<div class="w-full space-y-5 mt-8 pt-6 border-t border-surface-container-highest/50">
+<div class="flex flex-col">
+<div class="flex justify-between items-end mb-2">
+<span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Carbs</span>
+<span class="text-sm font-black text-on-surface">140<span class="text-xs font-semibold text-on-surface-variant ml-0.5">g</span></span>
+</div>
+<div class="w-full h-2.5 bg-surface-container-highest/60 rounded-full overflow-hidden shadow-inner">
+<div class="h-full bg-gradient-to-r from-tertiary to-[#448aff] rounded-full relative" style="width: 60%">
+<div class="absolute inset-0 bg-white/20 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]"></div>
+</div>
+</div>
+</div>
+<div class="flex flex-col">
+<div class="flex justify-between items-end mb-2">
+<span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Protein</span>
+<span class="text-sm font-black text-on-surface">120<span class="text-xs font-semibold text-on-surface-variant ml-0.5">g</span></span>
+</div>
+<div class="w-full h-2.5 bg-surface-container-highest/60 rounded-full overflow-hidden shadow-inner">
+<div class="h-full bg-gradient-to-r from-secondary to-[#00b03d] rounded-full relative" style="width: 85%">
+<div class="absolute inset-0 bg-white/20 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]"></div>
+</div>
+</div>
+</div>
+<div class="flex flex-col">
+<div class="flex justify-between items-end mb-2">
+<span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Fat</span>
+<span class="text-sm font-black text-on-surface">45<span class="text-xs font-semibold text-on-surface-variant ml-0.5">g</span></span>
+</div>
+<div class="w-full h-2.5 bg-surface-container-highest/60 rounded-full overflow-hidden shadow-inner">
+<div class="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full relative" style="width: 40%">
+<div class="absolute inset-0 bg-white/20 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- AI Meal Plan Card -->
+<section class="bg-surface-container-lowest rounded-lg p-6 tactile-card relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="text-base font-bold text-on-surface">AI Suggestion</h3>
+</div>
+<span class="text-xs font-medium text-secondary bg-secondary-container/30 px-2 py-1 rounded-full">Optimal</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6">
+                To reach your protein goal without exceeding fat limits, consider a grilled chicken salad with light vinaigrette for dinner.
+            </p>
+<button class="w-full tactile-button-primary text-on-primary font-bold py-3 px-6 rounded-full flex items-center justify-center space-x-2 transition-transform active:scale-95">
+<span>View Full Plan</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</section>
+<!-- Logged Meals List -->
+<section class="space-y-4">
+<h3 class="text-sm font-bold tracking-tight text-on-surface px-2">Today's Log</h3>
+<!-- Meal Item -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center space-x-4 ambient-shadow">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Avocado toast" class="w-full h-full object-cover" data-alt="close up of artisan avocado toast with poached egg on rustic sourdough bread, morning window lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9SktXZUv0lbch1I58p8airH-XgjFwDWP9PJVHTl680F8dF7P4K6plrRvCA92fcDbeyksf2FBJbY78uNkqjwBkpPjcddLx_E_UK8CFCvxzgPkNP2DJh6IVJTfpDi6zVj18nMUqiB4dq8Mnuc8YsXMzo75a0YTg_8WqGF1-Y_eFyNeUwwj1jANwA695u7KCxFSocH0JY7xr6_ei5zl_7pOCs4y4p4j_klrFQkEZJDPrc3lLjHn01A7_VQPnvPXPpuPvYkmhwTPcOwA"/>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface text-sm">Avocado Toast</h4>
+<p class="text-xs text-on-surface-variant">Breakfast • 9:30 AM</p>
+</div>
+<div class="text-right">
+<span class="block font-bold text-primary">340</span>
+<span class="text-[10px] uppercase tracking-wider text-on-surface-variant">kcal</span>
+</div>
+</div>
+<!-- Meal Item -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center space-x-4 ambient-shadow">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Healthy bowl" class="w-full h-full object-cover" data-alt="vibrant colorful buddha bowl with quinoa, roasted sweet potatoes, and kale, top down view, bright studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuArz5jTG5Fvkcsd3ddcENewj81SBeZGNvn4hyhgNIq6sNdcYdLbPvxXa-J5zgGqDK7n6R0hzpC4oKyyouvbivtMc6a--owyCfmMkZNUcPkuOaYTTVFFFDfiZeLN9sS3wICxj-eNllr2O9nOlvuFq0RpzUR39qO6e5y_K69hXXeM_aZTG57lysxStVs9fDF3q6ZCbpfXrF64X5ef7Na9Ac6aUipHoJDSxKSZvpyay1MVjn2Lg0L8CMT5JGJ3MetP_Jb9ezeL7AdkmPk"/>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface text-sm">Quinoa Power Bowl</h4>
+<p class="text-xs text-on-surface-variant">Lunch • 1:15 PM</p>
+</div>
+<div class="text-right">
+<span class="block font-bold text-primary">520</span>
+<span class="text-[10px] uppercase tracking-wider text-on-surface-variant">kcal</span>
+</div>
+</div>
+<!-- Add Button -->
+<button class="w-full mt-2 py-4 border-2 border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center space-x-2 text-on-surface-variant hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-xl">add_circle</span>
+<span class="font-medium text-sm">Log New Meal</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-4 backdrop-blur-3xl bg-white/70 dark:bg-slate-900/70 border-t border-white/20 dark:border-slate-800/20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] rounded-t-[2.5rem]">
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-[#FF2D55] transition-colors">
+<span class="material-symbols-outlined mb-1 text-2xl" data-icon="home">home</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-[#FF2D55] transition-colors">
+<span class="material-symbols-outlined mb-1 text-2xl" data-icon="qr_code_scanner">qr_code_scanner</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest">Scan</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-gradient-to-br from-[#ba0034] to-[#e51245] text-white rounded-full px-5 py-2 shadow-[0_4px_15px_rgba(186,0,52,0.3)] scale-90 duration-300 ease-out">
+<span class="material-symbols-outlined mb-1 text-2xl" data-icon="restaurant" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest text-[#FF2D55]">Nutrition</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-[#FF2D55] transition-colors">
+<span class="material-symbols-outlined mb-1 text-2xl" data-icon="person">person</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-widest">Profile</span>
+</button>
+</nav>
+</body></html>
