@@ -219,7 +219,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
     final session = UserSession.instance.capture();
     final id = UserDataService.newId();
     final date = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final aiEnabled = context.read<FeatureFlagService>().aiEnabled;
+    final aiEnabled = context.read<FeatureFlagService>().aiMealParserEnabled;
     final saved = await showDialog<bool>(
         context: context,
         barrierDismissible: false,

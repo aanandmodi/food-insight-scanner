@@ -19,7 +19,11 @@ Deno.serve(createHandler({
   },
   attest: async token => {
     const decoded = await getAppCheck(app).verifyToken(token);
-    if (decoded.appId !== '1:579993459207:android:10cf6387d86c313697e8a2') throw new Error('Wrong app');
+    const allowed = ['1:579993459207:android:10cf6387d86c313697e8a2'];
+    // Optional, explicit QA registration; valid App Check remains mandatory.
+    const qaAppId = Deno.env.get('QA_FIREBASE_APP_ID');
+    if (qaAppId) allowed.push(qaAppId);
+    if (!allowed.includes(decoded.appId)) throw new Error('Wrong app');
     return { appId: decoded.appId };
   },
   // The shared handlers read only data/auth/app, populated above by this bridge.

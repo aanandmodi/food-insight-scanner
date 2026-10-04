@@ -160,6 +160,30 @@ class FoodFitService {
     if (healthGoal.toLowerCase().contains('protein') && protein == null) {
       unknowns.add('Protein goal fit cannot be assessed');
     }
+    final remainingProtein = dailyContext['proteinRemaining'];
+    if (remainingProtein != null &&
+        remainingProtein > 0 &&
+        protein != null &&
+        protein >= 10) {
+      positives.add(
+          'Protein per 100g contributes toward your ${remainingProtein.round()} g remaining logged target; adjust for your portion');
+    }
+    final remainingCalories = dailyContext['caloriesRemaining'];
+    if (remainingCalories != null &&
+        calories != null &&
+        calories > remainingCalories) {
+      cautions.add(
+          '100g provides more energy than your remaining logged calorie target; check your portion');
+    }
+    for (final entry
+        in {'carbs': 'carbohydratesGPer100g', 'fat': 'fatGPer100g'}.entries) {
+      final remaining = dailyContext['${entry.key}Remaining'];
+      final amount = value(entry.value, entry.key);
+      if (remaining != null && amount != null && amount > remaining) {
+        cautions.add(
+            '100g exceeds your remaining logged ${entry.key} target; portion size matters');
+      }
+    }
     if (conflicts.isNotEmpty) score = score.clamp(0, 25);
     if (allergen.traces.isNotEmpty) score = score.clamp(0, 45);
     final critical = allergen.status == AllergenStatus.confirmedConflict;

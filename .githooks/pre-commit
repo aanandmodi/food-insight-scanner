@@ -1,0 +1,2 @@
+#!/bin/sh
+python tools/check_signing_secrets.py || exit 1

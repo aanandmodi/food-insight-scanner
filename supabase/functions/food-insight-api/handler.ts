@@ -33,7 +33,7 @@ export function createHandler(deps: Dependencies) {
       let body;
       try { body = JSON.parse(new TextDecoder().decode(bytes)); }
       catch { return reply({ error: { code: 'invalid-argument' } }, 400); }
-      if (!body || !['scanProduct', 'aiTask', 'requestAccountDeletion'].includes(body.operation)) return reply({ error: { code: 'invalid-argument' } }, 400);
+      if (!body || !['scanProduct', 'aiTask', 'alternatives', 'requestAccountDeletion'].includes(body.operation)) return reply({ error: { code: 'invalid-argument' } }, 400);
       const bearer = request.headers.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
       if (!bearer) return reply({ error: { code: 'unauthenticated' } }, 401);
       let auth;
@@ -45,9 +45,12 @@ export function createHandler(deps: Dependencies) {
       const data = await deps.invoke(body.operation, { data: body.data ?? {}, auth, app });
       return reply({ data });
     } catch (error) {
-      const safe = error as { code?: string; message?: string };
+      const safe = error as { code?: string; message?: string; details?: {retryAfterSeconds?:number} };
       const code = safe.code && status[safe.code] ? safe.code : 'unavailable';
-      return reply({ error: { code, message: code === 'unavailable' ? 'Service temporarily unavailable.' : safe.message } }, status[code]);
+      const retry = safe.details?.retryAfterSeconds;
+      return reply({ error: { code, message: code === 'unavailable' ? 'Service temporarily unavailable.' : safe.message,
+        ...(code === 'resource-exhausted' && typeof retry === 'number' && Number.isFinite(retry)
+          ? {details:{retryAfterSeconds:Math.max(1,Math.min(86400,retry))}} : {}) } }, status[code]);
     }
   };
 }

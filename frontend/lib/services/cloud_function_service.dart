@@ -1,3 +1,5 @@
+import 'ai_context_builder.dart';
+import 'verified_alternatives_service.dart';
 import 'analytics_service.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -49,7 +51,8 @@ class CloudFunctionService {
             'unauthenticated' => 'Your session expired. Please sign in again.',
             'permission-denied' =>
               'This installation could not be verified. Reinstall from Google Play.',
-            'failed-precondition' => 'AI is temporarily unavailable.',
+            'failed-precondition' =>
+              error.message ?? 'AI is temporarily unavailable.',
             'invalid-argument' =>
               'This request is too large or contains invalid values.',
             'deadline-exceeded' => 'The request timed out. Please retry.',
@@ -68,30 +71,33 @@ class CloudFunctionService {
   }
 
   Future<Map<String, dynamic>> _request(String task, Object content,
-          {Map<String, dynamic>? profile}) =>
-      _call('aiTask', {
-        'task': task,
-        'content': content is String ? content : jsonEncode(content),
-        'profile': {
-          for (final key in [
-            'country',
-            'region',
-            'healthGoals',
-            'activityLevel',
-            'gender',
-            'allergies',
-            'dietaryPreferences',
-            'age',
-            'heightCm',
-            'weightKg',
-            'customCaloriesGoal',
-            'customProteinGoal',
-            'customCarbsGoal',
-            'customFatGoal'
-          ])
-            if (profile?[key] != null) key: profile![key]
-        },
-      });
+      {Map<String, dynamic>? profile}) async {
+    final session = UserSession.instance.capture();
+    final db = UserDataService();
+    profile ??= await db.getUserProfile() ?? {};
+    final logs = task == 'meal'
+        ? <Map<String, dynamic>>[]
+        : await db.getRecentDietLogs();
+    final scans = task == 'chat'
+        ? await db.getScanHistory(limit: 5)
+        : <Map<String, dynamic>>[];
+    final activity = task == 'chat' || task == 'macros'
+        ? await db.getActivity(DateTime.now().toIso8601String().split('T')[0])
+        : null;
+    session.check();
+    final context = AIContextBuilder.build(
+        task: task,
+        userProfile: profile,
+        logs: logs,
+        scans: scans,
+        activity: activity);
+    return _call('aiTask', {
+      'task': task,
+      'content': content is String ? content : jsonEncode(content),
+      'context': context,
+      'profile': context['profile'],
+    });
+  }
 
   Future<Map<String, dynamic>?> scanProduct(String barcode) =>
       analyzeProduct(barcode);
@@ -120,8 +126,9 @@ class CloudFunctionService {
           'Set up your profile before generating a meal plan.');
     }
     final plan = AiResponseParser.plan(
-        await _request('plan', dailySummary, profile: userProfile));
+        await _request('plan', 'Plan balanced Indian meals using the structured targets, logged intake and recent meals. All nutrition is estimated.', profile: userProfile));
     validatePlanSafety(plan, userProfile);
+    AnalyticsService.record(UsageEvent.mealPlanGenerated);
     return plan;
   }
 
@@ -150,20 +157,36 @@ class CloudFunctionService {
   Future<Map<String, dynamic>> recalibrateMacrosWithAI(
           {required Map<String, dynamic> userProfile,
           required List<Map<String, dynamic>> recentDietLogs}) =>
-      _request('macros', recentDietLogs.take(30).toList(),
+      _request('macros',
+          'Review the structured seven-day aggregate. Keep current targets when evidence is insufficient.',
           profile: userProfile);
 
-  /// Verified alternatives require an actual catalog comparison and are disabled.
+  /// Only normalized records from the authenticated catalog endpoint are ranked.
   Future<List<Map<String, dynamic>>> getAlternatives(
-          {required Map<String, dynamic> productData,
-          Map<String, dynamic>? userProfile}) async =>
-      [];
+      {required Map<String, dynamic> productData,
+      Map<String, dynamic>? userProfile}) async {
+    AnalyticsService.record(UsageEvent.alternativesRequested);
+    final result =
+        await _call('alternatives', {'barcode': productData['barcode']});
+    return VerifiedAlternativesService.rank(
+        productData,
+        (result['candidates'] as List? ?? [])
+            .whereType<Map>()
+            .map((p) => Map<String, dynamic>.from(p))
+            .toList(),
+        userProfile ?? {});
+  }
 
   Future<Map<String, dynamic>> explainProduct(
           {required Map<String, dynamic> productData,
           required Map<String, dynamic> fitResult,
           Map<String, dynamic>? userProfile}) =>
-      _request('analysis', {'product': productData, 'foodFit': fitResult},
+      _request(
+          'analysis',
+          {
+            'product': AIContextBuilder.productFacts(productData),
+            'foodFit': fitResult
+          },
           profile: userProfile);
 
   Future<Map<String, dynamic>> chatWithAI(
@@ -171,6 +194,8 @@ class CloudFunctionService {
       String? conversationHistory,
       Map<String, dynamic>? userProfile,
       String? mealLogContext,
+      Map<String,dynamic>? currentProduct,
+      Map<String,dynamic>? foodFit,
       String? imageDataUrl}) async {
     if (message.trim().isEmpty || message.length > 2000) {
       throw const AiRequestException(
@@ -191,10 +216,14 @@ class CloudFunctionService {
         'chat',
         {
           'message': message,
+          if (currentProduct != null) 'currentProduct': AIContextBuilder.productFacts(currentProduct),
+          if (foodFit != null) 'foodFit': foodFit,
           'history': bounded(conversationHistory, 7000),
-          'todaysMeals': bounded(mealLogContext, 3000)
+          'contextNote':
+              'Use the structured nutrition context for current logged intake.'
         },
         profile: userProfile);
+    AnalyticsService.record(UsageEvent.aiChatUsed);
     if (result['reply'] is! String) {
       throw const FormatException('Invalid chat reply');
     }
@@ -209,11 +238,25 @@ class CloudFunctionService {
   }
 
   Future<List<String>> generateQuickReplies(
-          {required String lastMessage,
-          Map<String, dynamic>? userProfile}) async =>
-      const [
-        'Suggest an Indian breakfast',
-        'Help me plan a balanced thali',
-        'Protein-rich vegetarian snacks'
-      ];
+      {required String lastMessage, Map<String, dynamic>? userProfile}) async {
+    const fallback = [
+      'Suggest an Indian breakfast',
+      'Help me plan a balanced thali',
+      'Protein-rich vegetarian snacks'
+    ];
+    try {
+      final result = await _request('quickReplies',
+          lastMessage.substring(0, lastMessage.length.clamp(0, 2500)),
+          profile: userProfile);
+      final replies = (result['replies'] as List).whereType<String>().toList();
+      if (replies.length < 2 ||
+          replies.length > 4 ||
+          replies.any((r) => r.length > 100)) {
+        return fallback;
+      }
+      return replies;
+    } catch (_) {
+      return fallback;
+    }
+  }
 }

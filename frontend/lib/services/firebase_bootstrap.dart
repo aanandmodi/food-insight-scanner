@@ -30,7 +30,9 @@ class FirebaseBootstrap {
       }
       await FirebaseAppCheck.instance.activate(
         androidProvider:
-            kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+            kDebugMode || const bool.fromEnvironment('QA_BUILD')
+                ? AndroidProvider.debug
+                : AndroidProvider.playIntegrity,
       );
       lastError = null;
       ready.value = true;

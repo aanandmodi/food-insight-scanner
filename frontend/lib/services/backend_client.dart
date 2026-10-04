@@ -37,6 +37,7 @@ class BackendClient {
       final details = error.details;
       final remote = details is Map ? details['error'] : null;
       throw FirebaseFunctionsException(
+          details: remote is Map ? remote['details'] : null,
           code: remote is Map
               ? remote['code'] as String? ?? 'unavailable'
               : 'unavailable',

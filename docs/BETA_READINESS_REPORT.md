@@ -1,99 +1,145 @@
-# FOOD INSIGHT BETA READINESS REPORT
+# FOOD INSIGHT FINAL BETA COMPLETION REPORT
 
-Updated 30 September 2026. This is an evidence record, not a declaration that every live-service/Play gate is complete.
+Updated 4 October 2026. This is a verification record. The beta is **not yet fully accepted**: final device, release-artifact and current-head CI results must be recorded, and Play Console work remains.
 
-## 1. Build Status
+## 1. Repository state
 
-Flutter 3.29.3 / Dart 3.7.2; Android JDK 17. Release version `1.0.2+2003`. A prior signed AAB built successfully; a new build with the latest changes is being verified. See the final artifact record below before distributing.
+Repository: `aanandmodi/food-insight-scanner`, branch `main`. Author: `aanandmodi <aanandmodi09@gmail.com>`. Prior bot authors were corrected in an earlier coordinated history rewrite. New signing exposure has not been force-rewritten out of history. Current work targets version `1.0.2+2004`.
 
-## 2. Critical Bugs Fixed
+## 2. What was already complete
 
-Replaced the broken backend client, normalized sodium, removed false safety claims and invented alternatives, isolated owner caches, made meal saves idempotent, required review of AI meal estimates, and fixed navigation when AI is disabled.
+Owner-scoped local storage/outbox, Firestore rules and Supabase RLS, deterministic Food Fit/allergen checks, sodium normalization, editable meal estimates, deletion UI/guards, legal pages, camera lifecycle handling and ephemeral CI signing were retained.
 
-## 3. Security Changes
+## 3. Critical security fixes
 
-Canonical products are read-only to clients. UID ownership applies to current/legacy Firestore records and Supabase RLS. Deletion guards prevent stale-token recreation. Backend validates Firebase Auth, App Check, request size, AI output, daily and burst quotas. No provider secret is compiled into Flutter.
+Removed tracked signing material, added ignore patterns, a signing-secret guard and local pre-commit hook. Generated a replacement RSA upload key outside the repository; registered its public fingerprints with Firebase and removed the exposed certificate registrations. The owner confirmed no Play registration, so no upload-key reset was needed. Private backup location and public fingerprint are in SIGNING_INCIDENT.md. History still contains the compromised material; do not reuse it. Coordinate history removal separately.
 
-## 4. Firebase Changes
+## 4. CI status
 
-Firestore rules and Hosting deployed successfully. Release SHA-1/SHA-256 and App Check Play Integrity configuration exist. The project remains on Spark (`billingEnabled: false`). No paid Functions or Storage provisioning was performed.
+Hosted run `36703883425` passed all four jobs on `a6d3b98`. That result predates this completion batch and is not evidence for the new head. New-head CI must pass before distribution. CI uses a throwaway certificate, never the upload key.
 
-## 5. AI Architecture Changes
+## 5. Backend architecture
 
-Shared TypeScript handlers compile for Firebase Functions or Supabase Free Edge. The mobile default is the latter. Server-only Groq key, task allowlist, bounded profile fields, validated JSON and attempts-based quotas. Global cap: 200 attempts/day and 10/minute. AI remains off unless server flags enable it. **The new Edge deployment still needs Supabase account access.**
+Shared TypeScript implements scan, AI, alternatives and account deletion. Supabase Edge verifies Firebase identity, revocation and App Check, then invokes shared handlers. `food-insight-api` is deployed. The retired `ai-proxy` is deployed as HTTP 410. The deletion migration is applied. Firestore remains the canonical product cache and quota/flag store; Supabase stores private user records/images.
 
-## 6. Food Fit Engine
+## 6. Free-tier architecture
 
-Deterministic score, confidence, positives, cautions, conflicts and unknowns. Confirmed allergens suppress the numeric score. Dietary/trace conflict caps apply after nutrient adjustments. AI may explain the result but does not calculate it.
+Existing Firebase Spark, Supabase Free and Groq free account are retained. No billing upgrade or paid resource was enabled. Firebase has no legacy Storage bucket; cleanup explicitly uses `LEGACY_FIREBASE_STORAGE_ENABLED=false`. GitHub private-repository Actions uses included capacity. Exact service quotas can change; exhaustion must fail gracefully.
 
-## 7. Allergen Safety Changes
+## 7. When payment would become necessary
 
-Structured allergens, trace tags and ingredient synonyms produce confirmed conflict, possible trace, no detected conflict or insufficient information. Physical package verification remains essential.
+Higher quotas or paid hosting would require a separate owner decision. No automatic upgrade is implemented. Google Play developer registration may require Google's fee if the owner has no existing account. App distribution through Play also requires account-holder declarations and testing gates.
 
-## 8. Nutrition Data Fixes
+## 8. AI models
 
-Explicit per-100g keys, sodium in mg, bounded values, missing values preserved as unknown, grams-based portion scaling. Dashboard no longer infers unknown fat from calories or equates carbohydrate intake with sugar. Manual meal entry distinguishes blank nutrients from entered zeros.
+| Route | Default | Tasks |
+| --- | --- | --- |
+| fast | `openai/gpt-oss-20b` | Meal parsing, product explanation, quick replies |
+| smart | `openai/gpt-oss-120b` | Chat, plan, macro review |
+| fallback | `openai/gpt-oss-20b` | One distinct retry on eligible transient errors |
 
-## 9. UI/UX Improvements
+All routes are server-configurable. Attempts time out after 22 seconds. Invalid output/auth errors and 429 are not retried. Provider cooldown is shared; quotas charge failed attempts too. Defaults: 200 global attempts/day and 10/minute, with per-user/task limits and smaller anonymous limits.
 
-Existing warm-white/green identity retained. Scanner errors and manual barcode validation improved. Meal entry supports editable AI estimates, manual fallback and protected saves. Settings exposes legal pages, app version, optional diagnostics/analytics, activity control and deletion confirmation. Dead/fake features are hidden.
+## 9. AI context architecture
 
-## 10. Accessibility
+Allowlisted device snapshots are rebuilt at the server boundary, capped at 14 KB. Missing intake stays unknown; logs are not treated as complete consumption. Sodium is mg, calories kcal, other nutrients g.
 
-Automated safety-card tests at text scales 1.0/1.3/1.6/2.0; full product details at 1.0/2.0; scanner failure at 320×568 with 2.0 text. Dialogs scroll. Physical TalkBack and complete screen coverage remain separate checks.
+| Task | Context |
+| --- | --- |
+| Meal | Country, region and dietary preferences plus entered meal description |
+| Product analysis | Product facts, deterministic Food Fit, profile, targets and today's known intake/remaining targets |
+| Plan | Profile, targets, today's intake/remaining targets and up to eight recent meals |
+| Chat | Above plus seven-day aggregates, up to five recent scans, approved aggregate activity and bounded conversation |
+| Macro review | Adult profile, current deterministic targets, today, seven-day aggregates and activity summary |
+| Quick replies | Latest assistant response, profile and today's target context |
 
-## 11. Performance
+Structured context excludes names, email, UID and raw Health Connect records. User-entered chat can contain personal information; bounded relevant conversation is sent to the provider as disclosed in the privacy policy.
 
-Shared product cache, local SQLite reads/outbox, bounded API timeouts and history, release shrinking and obfuscation. Camera lifecycle handling is present. No low-end-device frame-time claim is made without a measured device run.
+## 10. AI Chat
 
-## 12. Testing
+At most 12 meaningful turns and 7,000 history characters. Local greetings and errors are excluded. Current product context is bounded. Responses are non-streaming; loading, retry and failure states preserve the conversation. A retry does not duplicate the failed user message. No persistent model-generated memory summary is added. Requests are timeout-bounded; true network cancellation is not implemented.
 
-33 Flutter tests (31 full-suite pass plus two added product-screen cases passing); 10 backend unit tests; 11 Firestore/Storage/backend emulator tests; 9 Edge HTTP/runtime tests. Emulator checks include quota races, kill switch, malformed AI, cache normalization and deletion guards. Live Supabase/Groq/account cleanup must be verified after deployment.
+## 11. Product analysis
 
-## 13. CI
+Food Fit remains deterministic. AI explains the supplied facts/result, with instructions not to invent nutrients, prices or safety claims. Live analysis returned validated JSON on 4 October. A successful fixture does not guarantee every generated statement is correct.
 
-GitHub Actions includes analyze/test, backend/Edge bundle checks, rules/backend emulators, and release compilation with an ephemeral CI certificate. That certificate is not the production upload key and the CI AAB is never distributed. Private-repository usage must stay within included Actions minutes. Hosted run results are recorded after pushing.
+## 12. Meal parsing
 
-## 14. Android Release Configuration
+Live Indian meal example passed. The prompt includes household portions and uncertain cooking oil. Results are estimates, reviewed and editable before saving. Manual entry remains available when AI fails.
 
-Application ID `com.food_insight_scanner.app`; min SDK 26; target/compile SDK 36. Cleartext networking/backup disabled. Existing private release key retained. AD_ID permission explicitly removed. Health Connect privacy rationale is registered for Android 13 and 14+ and works from a bundled copy of the published policy.
+## 13. Meal planner
 
-## 15. Play Store Preparation
+Live four-meal generation passed. Validated unique meal types, ingredient lists and numeric ranges; totals are recomputed. Profile allergies/preferences, daily remaining targets and recent meals personalize the request. Existing deterministic client allergy validation remains before acceptance. No plan silently logs food.
 
-Public privacy, terms and deletion URLs are live under `https://food-insight-scanner-app.web.app/`. Data safety, health-use, signing and closed-testing worksheets exist. Store declarations, listing and Play approval require the owner/account holder.
+## 14. Macro recalibration
 
-## 16. Features Disabled / Feature-Flagged
+Uses existing deterministic targets as the baseline. Known adult age and a baseline within the wellness ranges are required. Maximum adjustment is 10%, configurable downward. Calories 1500–4000, protein 30–300 g, carbs 100–600 g and fat 35–180 g are product guardrails, not medical recommendations. Fewer than three logged days retains the baseline. No weight trend is inferred. The scrollable dialog changes targets only after Apply Goals; Cancel changes nothing and duplicate submission is guarded.
 
-Unverified alternatives, OCR, image AI, notifications, fake ratings and billing are off. AI chat/plans require server flags. Analytics is opt-in and sends enum event names only, without account IDs, barcodes, meals, allergies or chat content; SDK app/device identifiers are disclosed.
+## 15. Quick replies
 
-## 17. Remaining Known Risks
+AI generates two to four distinct short follow-up questions after meaningful responses. Output is validated and static suggestions remain as fallback. Live generation passed. No extra request is made for the greeting or an error.
 
-New Edge backend and deletion migration are not yet live-verified; the old proxy must be retired. Two moderate upstream Node dependency audit findings remain in the legacy Storage SDK dependency chain. Play-installed sign-in/attestation, full deletion, physical camera/health and low-end performance must be recorded before calling this beta-ready. See [QA matrix](QA_MATRIX.md) and [known issues](BUGS.md).
+## 16. Personal Food Fit
 
-## 18. Manual Firebase Console Steps Required
+Allergen priority is preserved. Daily context adds explanations about known remaining protein, calories, carbs and fat with explicit per-100g comparison. Missing intake does not become zero. New daily explanations do not add arbitrary numeric penalties.
 
-Current upload fingerprints and Play Integrity config were checked through API. Register the **Play app-signing** certificate if it differs. Configure a least-privilege Firebase Admin service account as a Supabase backend secret; never put its JSON in Git/Flutter. Verify crash and opt-in analytics delivery/retention in the Firebase Console. Do not enable Blaze for this free deployment.
+## 17. Verified alternatives
 
-## 19. Manual Google Play Console Steps Required
+Uses real Open Food Facts records in the cached product's category, filtered for India. Server searches are capped at five/minute and 100/day with seven-day category caching. Client ranking requires sufficiently complete records, better known nutrition and compatible dietary/allergen data. No invented brands, images, prices or barcodes. Live scan succeeded; live alternatives returned an upstream 503, also reproduced directly against Open Food Facts. The UI offers retry; successful live retrieval remains outstanding.
 
-Use an existing developer account, or decide whether to pay Google's unavoidable registration fee. Complete identity verification, Data safety, Health apps/Health Connect declarations, content rating, app access, privacy/deletion URLs, store assets and closed-test setup. Upload the final signed AAB, add testers and verify Play-installed Auth/App Check. Console declarations and acceptance cannot be inferred from repository tests.
+## 18. India/INS intelligence
 
-## 20. Exact Commands To Build Beta
+Bundled versioned glossary covers four verified identities: INS 211, 330, 322(i), 415. Codex/FSSAI source references are in the dataset and UI. Exact variant-aware parsing handles INS/E forms; unknown codes remain unknown. It works offline. This is a limited identity/function glossary, not exhaustive Indian regulatory approval, a toxicity score or clinical advice. Personalized additive-health rules are not fabricated.
 
-See [release procedure](RELEASE.md) for all checks. With Flutter 3.29.3, JDK 17 and the existing private signing files, run from `frontend`:
+## 19. Closed nutrition loop
+
+Meal logs and profile targets feed the context builder for subsequent calls and daily Food Fit. Goal application updates the profile provider; existing log streams update the dashboard. Recent scans and bounded chat make subsequent questions relevant. Full physical-device navigation, sync and account-switch coverage remains to be recorded.
+
+## 20. UI/UX improvements
+
+Preserved green/warm-white identity. Added loading/retry/empty states for alternatives, source links for additives, contextual quick replies, a scrollable goal-review dialog and daily Food Fit explanations. Removed stale Gemini copy. Analytics stays opt-in and event-name-only; added feature-use events without food, chat or health parameters. Existing accessibility and estimate-review UI were retained. No redesign is claimed.
+
+## 21. Tests added
+
+Latest local Flutter suite: 44 passed; backend: 21 passed. New coverage includes context minimization/unknown values, Edge Buffer compatibility, routing/fallback/429, recalibration bounds and confirmation, additive variants and alternative filtering. Earlier local emulator suite: 13 passed; Edge suite: nine passed (rerun pending for latest adapter configuration). Flutter analyze passed before the final QA build configuration change; final CI will recheck it.
+
+Live checks passed: missing/forged auth; missing/forged App Check; AI kill switch; six AI tasks; real barcode lookup; backend account deletion; stale-token rejection after deletion. Two-account RLS/private-storage tests passed on 1 October, including cross-user denial and fixture cleanup. QA debug attestation is not Play Integrity verification.
+
+## 22. Manual steps required
+
+Supabase login, deployment, secret configuration and key rotation are already done. Phone testing uses a separate QA package with the owner's approval to preserve existing data. The owner must handle Play identity/account declarations, closed-test participation and any account registration fee; register Play's app-signing fingerprint when issued. Operate the deletion-request inbox. Keep private signing backups secure. No credentials should be pasted in chat.
+
+## 23. Remaining known risks
+
+Pending: complete device matrix, final signed production artifact evidence, new-head CI, Play-installed Auth/App Check, successful upstream alternatives retrieval, low-end performance and Firebase telemetry delivery evidence. The four-entry additive glossary is intentionally limited. Some optional polish and true request cancellation remain. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
+
+## 24. Exact build commands
+
+From `frontend`, Flutter 3.29.3 / Dart 3.7.2, JDK 17:
 
 ```powershell
 flutter pub get
 flutter analyze
 flutter test
-flutter build apk --release --obfuscate --split-debug-info=build/debug-info
 flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info
+flutter build apk --release --dart-define=QA_BUILD=true --obfuscate --split-debug-info=build/debug-info-qa
 ```
 
-## External actions still requiring access
+Only the first release command produces the production Play bundle. The QA package is separately labelled and uses debug App Check with a registered, revocable token. Never distribute QA as the production release.
 
-Supabase CLI sign-in (`npx supabase login`) is required to deploy the Free Edge backend and retire the old proxy. Its account-deletion SQL and secret setup are detailed in [free-tier setup](FREE_TIER_SETUP.md). A Groq free server key is needed if one is not already configured. Never send tokens or passwords in chat. The deletion-request inbox must be operated by the owner.
+## 25. Exact Supabase deployment commands
 
-## Device and artifact record
+```powershell
+npm test --prefix backend
+npm run build:edge --prefix backend
+npx supabase functions deploy food-insight-api --project-ref tslcgavpkujkfexzmisk --use-api
+npx supabase functions deploy ai-proxy --project-ref tslcgavpkujkfexzmisk --use-api
+```
 
-Connected phone: Nothing A069, Android 17, 1224×2720. Existing installation is release-signed with the matching key, version code 2002. An APK backup was saved privately before updating; no uninstall/data wipe was performed. Updated-build test evidence and final AAB checksum will be recorded after verification.
+The account-deletion migration was already applied; do not blindly replay existing migrations. Secret uploads use a private env file outside the repository.
+
+## 26. Exact configuration/environment variables
+
+Server secrets/config: `GROQ_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `AI_MODEL_FAST`, `AI_MODEL_SMART`, `AI_MODEL_FALLBACK`, `LEGACY_FIREBASE_STORAGE_ENABLED`; Supabase supplies `SUPABASE_SERVICE_ROLE_KEY`. Optional `QA_FIREBASE_APP_ID` permits only the separately registered QA app with valid App Check.
+
+Firestore flags: `aiEnabled`, `aiChatEnabled`, `aiMealParserEnabled`, `aiMealPlannerEnabled`, `mealPlannerEnabled`, `aiProductAnalysisEnabled`, `aiRecalibrationEnabled`, `aiQuickRepliesEnabled`, `alternativesEnabled`, `additiveInsightsEnabled`. Limits: `aiGlobalDailyLimit`, `aiDailyLimits`, `macroMaxAdjustmentPercent`. AI flags were enabled after live verification. Flutter defaults to `BACKEND_TRANSPORT=supabase`; `QA_BUILD=true` is for separate QA builds only. No secret values are recorded here.

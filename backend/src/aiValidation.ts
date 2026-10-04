@@ -1,5 +1,5 @@
-export type AiTask = "meal" | "plan" | "chat" | "macros" | "analysis";
-export const limits: Record<AiTask, number> = { meal: 15, plan: 2, chat: 15, macros: 1, analysis: 10 };
+export type AiTask = "meal" | "plan" | "chat" | "macros" | "analysis" | "quickReplies";
+export const limits: Record<AiTask, number> = { meal: 15, plan: 2, chat: 15, macros: 1, analysis: 10, quickReplies: 20 };
 
 export function boundedNumber(value: unknown, name: string, max: number): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) {
@@ -50,6 +50,13 @@ export function validateOutput(task: AiTask, value: any): Record<string, any> {
   if (task === "meal") return meal(value);
   if (task === "chat") return { reply: boundedString(value.reply, 10000), mealData: value.mealData == null ? null : meal(value.mealData) };
   if (task === "analysis") return { summary: boundedString(value.summary, 2500) };
+  if (task === "quickReplies") {
+    if (!Array.isArray(value.replies) || value.replies.length < 2 || value.replies.length > 4) throw new Error('Invalid replies');
+    const replies = value.replies.map((r: unknown) => boundedString(r, 100));
+    if (new Set(replies.map((r: string) => r.toLowerCase())).size !== replies.length ||
+      replies.some((r: string) => /\b(cure|diagnos|treat disease|stop medication|guaranteed safe)/i.test(r))) throw new Error('Invalid replies');
+    return { replies };
+  }
   if (task === "macros") {
     const calories = boundedNumber(value.calories, "calories", 5000);
     if (calories < 1200) throw new Error("Target needs professional review");

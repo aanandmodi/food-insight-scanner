@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-09-30",
+  "scope": "Small factual identifier glossary. Not a safety assessment or permission to use an additive in a food category. Unlisted codes and unspecified variants remain unknown.",
+  "indiaReference": "https://www.fssai.gov.in/upload/uploadfiles/files/Compendium_Food_Additives_Regulations_03_03_2022.pdf",
+  "additives": [
+    {"ins":"211","name":"Sodium benzoate","functionalClasses":["Preservative"],"sources":[{"authority":"Codex","reference":"https://www.fao.org/input/download/report/657/al29_12e.pdf","location":"GSFA Table One, Benzoates, INS 211"}]},
+    {"ins":"330","name":"Citric acid","functionalClasses":["Acidity regulator","Antioxidant","Colour retention agent","Sequestrant"],"sources":[{"authority":"Codex GSFA","reference":"https://www.fao.org/gsfaonline/additives/details.html?id=173","location":"Citric acid (330), functional classes"}]},
+    {"ins":"322(i)","name":"Lecithin","functionalClasses":["Emulsifier"],"sources":[{"authority":"Codex","reference":"https://www.fao.org/fao-who-codexalimentarius/sh-proxy/ar/?lnk=1&url=https%253A%252F%252Fworkspace.fao.org%252Fsites%252Fcodex%252FMeetings%252FCX-711-51%252FReport%252FREP19_FAe.pdf","location":"Paragraph 149(d), INS 322(i)"}]},
+    {"ins":"415","name":"Xanthan gum","functionalClasses":["Emulsifier","Foaming agent","Stabilizer","Thickener"],"sources":[{"authority":"Codex GSFA","reference":"https://www.fao.org/gsfaonline/additives/details.html?id=48","location":"Xanthan gum (415), functional classes"}]}
+  ]
+}

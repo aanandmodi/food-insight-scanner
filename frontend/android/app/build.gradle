@@ -10,6 +10,11 @@ plugins {
 }
 
 def releaseSigning = new Properties()
+// Explicit opt-in lets device QA coexist with the user's installed app.
+def dartDefines = (project.findProperty('dart-defines') ?: '').split(',').findAll { it }.collect {
+    new String(it.decodeBase64(), 'UTF-8')
+}
+def qaBuild = dartDefines.contains('QA_BUILD=true')
 def signingFile = rootProject.file('key.properties')
 if (signingFile.exists()) {
     signingFile.withInputStream { releaseSigning.load(it) }
@@ -31,7 +36,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.food_insight_scanner.app"
+        applicationId = qaBuild ? "com.food_insight_scanner.app.qa" : "com.food_insight_scanner.app"
+        manifestPlaceholders.appLabel = qaBuild ? "Food Insight QA" : "Food Insight"
         minSdk = 26
         targetSdk = 36
         versionCode = flutter.versionCode

@@ -1,3 +1,5 @@
+import '../../services/analytics_service.dart';
+import '../../services/ai_context_builder.dart';
 import '../../services/product_portion_service.dart';
 import '../../services/feature_flag_service.dart';
 // lib/presentation/product_details/product_details.dart
@@ -17,6 +19,8 @@ import './widgets/action_bar_widget.dart';
 import '../../services/product_facts_adapter.dart';
 import '../../services/food_fit_service.dart';
 import './widgets/ingredients_widget.dart';
+import './widgets/food_additives_widget.dart';
+import './widgets/verified_alternatives_widget.dart';
 import './widgets/nutrition_bars_widget.dart';
 import './widgets/product_image_widget.dart';
 import './widgets/product_info_widget.dart';
@@ -46,6 +50,7 @@ class _ProductDetailsState extends State<ProductDetails> {
   // Loading state for when we receive a barcode string and need to fetch
   bool _isLoadingProduct = false;
   bool _didProcessArgs = false;
+  bool _recordedFitView = false;
 
   @override
   void initState() {
@@ -157,11 +162,22 @@ class _ProductDetailsState extends State<ProductDetails> {
     try {
       final rows = await UserDataService().cachedDiet(date);
       if (!mounted) return;
+      final snapshot = AIContextBuilder.build(
+          task: 'analysis',
+          userProfile:
+              context.read<UserProfileProvider>().profile?.toMap() ?? {},
+          logs: rows);
+      final today = snapshot['today'] as Map;
+      final remaining = today['remaining'] as Map;
       setState(() => _dailyContext = {
-            'sugarGConsumed': rows.fold<num>(
-                0, (sum, row) => sum + (row['sugar'] as num? ?? 0)),
-            'sodiumMgConsumed': rows.fold<num>(
-                0, (sum, row) => sum + (row['sodiumMg'] as num? ?? 0)),
+            for (final key in ['calories', 'protein', 'carbs', 'fat']) ...{
+              if (today[key] is num) '${key}Consumed': today[key] as num,
+              if (remaining[key] is num)
+                '${key}Remaining': remaining[key] as num,
+            },
+            if (today['sugar'] is num) 'sugarGConsumed': today['sugar'] as num,
+            if (today['sodium'] is num)
+              'sodiumMgConsumed': today['sodium'] as num,
           });
     } catch (_) {/* No daily context is preferable to invented totals. */}
   }
@@ -337,28 +353,25 @@ class _ProductDetailsState extends State<ProductDetails> {
     }
   }
 
-  void _navigateToAIChat() async {
+  void _navigateToAIChat() {
     if (!context.read<FeatureFlagService>().aiChatEnabled) return;
-    final profile = context.read<UserProfileProvider>().profile;
-
-    if (mounted) {
-      Navigator.pushNamed(
-        context,
-        '/ai-chat-assistant',
-        arguments: {
-          'name': profile?.name ?? 'User',
-          'allergies': profile?.allergies ?? [],
-          'dietaryPreferences': profile?.dietaryPreferences.join(', ') ?? '',
-          'healthGoals': profile?.healthGoals ?? '',
-          'age': profile?.age ?? 25,
-          'activityLevel': profile?.activityLevel ?? 'moderate',
-        },
-      );
-    }
+    Navigator.pushNamed(context, '/ai-chat-assistant', arguments: {
+      'product': AIContextBuilder.productFacts(productData),
+      'foodFit': FoodFitService.evaluate(productData,
+              allergies: userAllergies,
+              dietaryPreference: dietaryPreference,
+              healthGoal: healthGoal,
+              dailyContext: _dailyContext)
+          .toMap(),
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (productData.isNotEmpty && !_recordedFitView) {
+      _recordedFitView = true;
+      AnalyticsService.record(UsageEvent.foodFitViewed);
+    }
     if (productData.isEmpty) {
       return Scaffold(
         backgroundColor: FoodInsightColors.warmWhite,
@@ -429,23 +442,23 @@ class _ProductDetailsState extends State<ProductDetails> {
                 child: Row(
                   children: [
                     GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(2.w),
-                          decoration: BoxDecoration(
-                            color: FoodInsightColors.warmWhite,
-                            borderRadius: FoodInsightRadius.smAll,
-                            border: Border.all(
-                              color: FoodInsightColors.outlineGray,
-                            ),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(2.w),
+                        decoration: BoxDecoration(
+                          color: FoodInsightColors.warmWhite,
+                          borderRadius: FoodInsightRadius.smAll,
+                          border: Border.all(
+                            color: FoodInsightColors.outlineGray,
                           ),
-                          child: const Icon(Icons.arrow_back_rounded,
-                              color: FoodInsightColors.deepCharcoal),
                         ),
+                        child: const Icon(Icons.arrow_back_rounded,
+                            color: FoodInsightColors.deepCharcoal),
                       ),
+                    ),
                     SizedBox(width: 4.w),
                     Expanded(
                       child: AnimatedOpacity(
@@ -484,23 +497,23 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     if (context.watch<FeatureFlagService>().aiChatEnabled)
                       GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        _navigateToAIChat();
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(2.w),
-                        decoration: BoxDecoration(
-                          color: FoodInsightColors.warmWhite,
-                          borderRadius: FoodInsightRadius.smAll,
-                          border: Border.all(
-                            color: FoodInsightColors.outlineGray,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          _navigateToAIChat();
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(2.w),
+                          decoration: BoxDecoration(
+                            color: FoodInsightColors.warmWhite,
+                            borderRadius: FoodInsightRadius.smAll,
+                            border: Border.all(
+                              color: FoodInsightColors.outlineGray,
+                            ),
                           ),
+                          child: const Icon(Icons.restaurant_rounded,
+                              color: FoodInsightColors.scannerGreen),
                         ),
-                        child: const Icon(Icons.restaurant_rounded,
-                            color: FoodInsightColors.scannerGreen),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -555,15 +568,23 @@ class _ProductDetailsState extends State<ProductDetails> {
                         NutritionBarsWidget(nutritionData: nutrition),
                         SizedBox(height: 3.h),
                         // Ingredients
+                        if (context
+                            .watch<FeatureFlagService>()
+                            .additiveInsightsEnabled)
+                          FoodAdditivesWidget(product: productData),
                         IngredientsWidget(
                           ingredients: ingredients,
                           userAllergies: userAllergies,
                         ).animate().fadeIn(duration: 500.ms, delay: 400.ms),
                         SizedBox(height: 3.h),
-                        if (context.watch<FeatureFlagService>().aiEnabled &&
+                        if (context
+                                .watch<FeatureFlagService>()
+                                .aiProductAnalysisEnabled &&
                             _explanation != null)
                           AiAnalysisWidget(aiAnalysis: _explanation)
-                        else if (context.watch<FeatureFlagService>().aiEnabled)
+                        else if (context
+                            .watch<FeatureFlagService>()
+                            .aiProductAnalysisEnabled)
                           OutlinedButton.icon(
                             onPressed: _explaining ? null : _explainProduct,
                             icon: const Icon(Icons.auto_awesome_outlined),
@@ -572,6 +593,16 @@ class _ProductDetailsState extends State<ProductDetails> {
                                 : 'Explain my Food Fit'),
                           ),
                         const SizedBox(height: 16),
+                        if (context
+                            .watch<FeatureFlagService>()
+                            .alternativesEnabled)
+                          VerifiedAlternativesWidget(
+                              product: productData,
+                              profile: context
+                                      .watch<UserProfileProvider>()
+                                      .profile
+                                      ?.toMap() ??
+                                  {}),
                         if (productData['isOfflineCopy'] == true)
                           const Text(
                               "You're offline — showing saved information."),

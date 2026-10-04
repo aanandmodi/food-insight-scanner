@@ -54,7 +54,9 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAl1HeoDS0yhuaCpDAFDIhlCcSiarYGpvo',
-    appId: '1:579993459207:android:10cf6387d86c313697e8a2',
+    appId: bool.fromEnvironment('QA_BUILD')
+        ? '1:579993459207:android:1b47994ba47a0b4497e8a2'
+        : '1:579993459207:android:10cf6387d86c313697e8a2',
     messagingSenderId: '579993459207',
     projectId: 'food-insight-scanner-app',
     storageBucket: 'food-insight-scanner-app.firebasestorage.app',

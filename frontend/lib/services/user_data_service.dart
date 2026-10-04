@@ -282,6 +282,22 @@ class UserDataService {
     return rows;
   }
 
+  Future<List<Map<String, dynamic>>> getRecentDietLogs({int days = 7}) async {
+    final now = DateTime.now();
+    final end = now.toIso8601String().split('T')[0];
+    final start = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: days.clamp(1, 7) - 1))
+        .toIso8601String()
+        .split('T')[0];
+    final rows = await _read(UserSession.instance.capture(), 'diet_entries');
+    return rows.where((row) {
+      final date = row['date'];
+      return date is String &&
+          date.compareTo(start) >= 0 &&
+          date.compareTo(end) <= 0;
+    }).toList();
+  }
+
   Stream<List<Map<String, dynamic>>> dietLogStream(String date) =>
       _watch('diet_entries', () => getDietLog(date))
           .map((rows) => rows.where((e) => e['date'] == date).toList());

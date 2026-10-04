@@ -10,11 +10,41 @@ const app = initializeApp({ projectId: 'demo-food-insight' });
 const db = getFirestore(app);
 const { aiTask } = require('../backend/lib/aiTask');
 const { scanProduct } = require('../backend/lib/scanProduct');
+const { alternatives } = require('../backend/lib/alternatives');
 const realFetch = global.fetch;
 const request = (uid, data) => ({ auth: { uid, token: { firebase: { sign_in_provider: 'password' } } }, data });
 const meal = { name: 'Rice', calories: 200, protein: 4, carbs: 40, sugar: 0, fat: 2 };
 before(async () => { await db.doc('config/featureFlags').set({ aiEnabled: true }); });
 after(async () => { global.fetch = realFetch; await deleteApp(app); });
+
+test('alternatives require the feature flag and cache only real matching records', async () => {
+  assert.deepEqual(await alternatives.run(request('catalog-user',{barcode:'12345678'})),{candidates:[]});
+  await db.doc('config/featureFlags').set({aiEnabled:true,alternativesEnabled:true});
+  await db.doc('products/12345678').set({categoryTags:['en:oats']});
+  let calls=0;
+  global.fetch=async url=>{
+    calls++;
+    assert.ok(url.includes('categories_tags=en%3Aoats'));
+    return new Response(JSON.stringify({products:[
+      {code:'12345679',product_name:'Real fixture',categories_tags:['en:oats'],nutriments:{sodium_100g:0.1}},
+      {code:'invented',categories_tags:['en:oats']},
+      {code:'12345680',categories_tags:['en:candy']},
+    ]}));
+  };
+  const first=await alternatives.run(request('catalog-user',{barcode:'12345678',category:'en:candy'}));
+  assert.equal(first.candidates.length,1);
+  assert.equal(first.candidates[0].barcode,'12345679');
+  assert.equal(first.candidates[0].nutrition.sodiumMgPer100g,100);
+  assert.equal(first.candidates[0].price,undefined);
+  await alternatives.run(request('catalog-user',{barcode:'12345678'}));
+  assert.equal(calls,1);
+});
+
+test('individual AI feature flags reject before calling the provider', async () => {
+  await db.doc('config/featureFlags').set({aiEnabled:true,aiQuickRepliesEnabled:false});
+  global.fetch=async()=>{throw Error('Provider should not be reached');};
+  await assert.rejects(aiTask.run(request('quick-disabled',{task:'quickReplies',content:'Dinner'})),{code:'failed-precondition'});
+});
 test('kill switch rejects AI before any provider request', async () => {
   await db.doc('config/featureFlags').set({ aiEnabled: false });
   let called = false;

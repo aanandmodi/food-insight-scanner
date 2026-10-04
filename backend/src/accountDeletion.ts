@@ -53,6 +53,8 @@ export async function cleanupUserData(uid: string): Promise<void> {
   for (const collection of ["users", "scan_history", "diet_log", "shopping_list", "activity_logs"]) {
     await db.recursiveDelete(db.collection(collection).doc(uid));
   }
+  // Explicitly disabled only after the operator verifies no legacy bucket exists.
+  if (process.env.LEGACY_FIREBASE_STORAGE_ENABLED === 'false') return;
   try {
     await getStorage().bucket().deleteFiles({ prefix: `users/${uid}/` });
   } catch (error: any) {

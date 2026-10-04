@@ -5,7 +5,7 @@ type Environment = Record<string, string | undefined>;
 export function modelsFor(task: AiTask, env: Environment = process.env): string[] {
   const fast = env.AI_MODEL_FAST?.trim() || 'openai/gpt-oss-20b';
   const smart = env.AI_MODEL_SMART?.trim() || 'openai/gpt-oss-120b';
-  const primary = ['meal', 'analysis'].includes(task) ? fast : smart;
+  const primary = ['meal', 'analysis', 'quickReplies'].includes(task) ? fast : smart;
   const fallback = env.AI_MODEL_FALLBACK?.trim() || fast;
   return [...new Set([primary, fallback])];
 }

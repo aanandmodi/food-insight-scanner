@@ -1,3 +1,4 @@
+import '../../services/feature_flag_service.dart';
 import '../../services/user_session.dart';
 // lib/presentation/ai_chat_assistant/ai_chat_assistant.dart
 
@@ -14,8 +15,6 @@ import './widgets/chat_input_widget.dart';
 import './widgets/message_bubble_widget.dart';
 import './widgets/quick_reply_widget.dart';
 import './widgets/typing_indicator_widget.dart';
-
-
 
 class AiChatAssistant extends StatefulWidget {
   const AiChatAssistant({super.key});
@@ -37,13 +36,12 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   bool _historyLoaded = false;
 
   List<String> _quickReplies = [];
-  String _mealLogContext = '';
+  String? _lastFailedMessage;
 
   @override
   void initState() {
     super.initState();
     _restoreHistory();
-    _loadTodaysMealLogs();
   }
 
   Future<void> _restoreHistory() async {
@@ -65,49 +63,6 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     if (mounted) setState(() => _historyLoaded = true);
   }
 
-  /// Load today's meal logs to provide context to the AI
-  Future<void> _loadTodaysMealLogs() async {
-    _mealLogContext = '';
-    try {
-      final now = DateTime.now();
-      final dateString =
-          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      List<Map<String, dynamic>> entries = [];
-      try {
-        entries = await UserDataService().getDietLog(dateString);
-      } catch (e) {
-        debugPrint('Firestore diet log query failed: $e');
-        try {
-          entries = await UserDataService().getDietLog(dateString);
-        } catch (e2) {
-          debugPrint('Local diet log query failed: $e2');
-        }
-      }
-
-      if (entries.isNotEmpty) {
-        final buffer = StringBuffer();
-        buffer.writeln("Today's meal log:");
-        int totalCals = 0;
-        double totalProtein = 0;
-        for (var entry in entries) {
-          final name = entry['name'] ?? 'Unknown meal';
-          final cals = (entry['calories'] as num?)?.toInt() ?? 0;
-          final protein = (entry['protein'] as num?)?.toDouble() ?? 0;
-          final time = entry['time'] ?? '';
-          buffer.writeln(
-              "- $name: $cals kcal, ${protein.toStringAsFixed(1)}g protein${time.isNotEmpty ? ' (at $time)' : ''}");
-          totalCals += cals;
-          totalProtein += protein;
-        }
-        buffer.writeln(
-            "Total so far: $totalCals kcal, ${totalProtein.toStringAsFixed(1)}g protein");
-        _mealLogContext = buffer.toString();
-      }
-    } catch (e) {
-      debugPrint('Error loading meal logs for chat context: $e');
-    }
-  }
-
   Future<void> _initializeChat(UserProfile? profile) async {
     setState(() {
       _isLoading = true;
@@ -117,6 +72,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     setState(() {
       _messages.add({
         "id": 1,
+        "isGreeting": true,
         "message":
             "Hello, ${profile?.name ?? 'User'}! I'm your personal nutrition assistant. "
                 "How can I assist you with your ${profile?.healthGoals ?? 'general wellness'} goal today?",
@@ -126,7 +82,11 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       _isLoading = false;
       _showTypingIndicator = false;
     });
-    _updateQuickReplies();
+    setState(() => _quickReplies = [
+          'What can I eat tonight?',
+          'How much protein is left today?',
+          'Review my week'
+        ]);
   }
 
   @override
@@ -137,12 +97,17 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   }
 
   String _buildConversationHistory() {
-    final historyMessages = _messages.length > 1
-        ? _messages.sublist(0, _messages.length - 1)
-        : _messages;
+    final meaningful = _messages
+        .where((m) => m['isGreeting'] != true && m['isError'] != true)
+        .toList();
+    final historyMessages =
+        meaningful.isNotEmpty && meaningful.last['isUser'] == true
+            ? meaningful.sublist(0, meaningful.length - 1)
+            : meaningful;
     final history = StringBuffer();
 
-    for (final message in historyMessages.skip((historyMessages.length - 12).clamp(0, historyMessages.length))) {
+    for (final message in historyMessages
+        .skip((historyMessages.length - 12).clamp(0, historyMessages.length))) {
       final sender = (message["isUser"] as bool) ? "User" : "Assistant";
       final content = message["message"] as String;
       history.writeln("$sender: $content");
@@ -152,6 +117,13 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   }
 
   Future<void> _updateQuickReplies() async {
+    if (!mounted || !context.read<FeatureFlagService>().aiQuickRepliesEnabled) {
+      return;
+    }
+    if (_messages.isEmpty ||
+        _messages.last['isError'] == true ||
+        _messages.last['isGreeting'] == true) return;
+    final session = UserSession.instance.capture();
     try {
       final lastMessage = _messages.last["message"] as String? ?? "Hello";
 
@@ -162,7 +134,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
         userProfile: profile?.toMap() ?? {},
       );
 
-      if (mounted) {
+      if (mounted && session.isActive) {
         setState(() => _quickReplies = newReplies);
       }
     } catch (e) {
@@ -175,18 +147,20 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     }
   }
 
-  Future<void> _sendMessage(String message) async {
+  Future<void> _sendMessage(String message, {bool retry = false}) async {
     if (message.trim().isEmpty || _isLoading) return;
     final session = UserSession.instance.capture();
     final messageId = UserDataService.newId();
 
     setState(() {
-      _messages.add({
-        "id": messageId,
-        "message": message,
-        "isUser": true,
-        "timestamp": DateTime.now(),
-      });
+      if (!retry) {
+        _messages.add({
+          "id": messageId,
+          "message": message,
+          "isUser": true,
+          "timestamp": DateTime.now(),
+        });
+      }
       _isLoading = true;
       _showTypingIndicator = true;
       _errorMessage = null;
@@ -196,26 +170,31 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     _scrollToBottom();
 
     try {
-      await UserDataService().saveChatMessage({
-        'id': messageId,
-        'message': message,
-        'isUser': true,
-        'timestamp': DateTime.now().toIso8601String()
-      }, session);
-      await _loadTodaysMealLogs();
+      if (!retry) {
+        await UserDataService().saveChatMessage({
+          'id': messageId,
+          'message': message,
+          'isUser': true,
+          'timestamp': DateTime.now().toIso8601String()
+        }, session);
+      }
       session.check();
       if (!mounted) return;
       final conversationHistory = _buildConversationHistory();
       final profile = context.read<UserProfileProvider>().profile;
 
       final result = await _cloudFunctionService.chatWithAI(
+        currentProduct: (ModalRoute.of(context)?.settings.arguments
+            as Map?)?['product'] as Map<String, dynamic>?,
+        foodFit: (ModalRoute.of(context)?.settings.arguments
+            as Map?)?['foodFit'] as Map<String, dynamic>?,
         message: message,
         conversationHistory: conversationHistory,
         userProfile: profile?.toMap() ?? {},
-        mealLogContext: _mealLogContext,
       );
 
       session.check();
+      _lastFailedMessage = null;
       final displayMessage = result['reply'] as String? ??
           'Sorry, I could not generate a response.';
       await UserDataService().saveChatMessage({
@@ -236,18 +215,23 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
         });
 
         if (result['mealData'] is Map) {
-          await _confirmMeal(Map<String, dynamic>.from(result['mealData'] as Map), session);
+          await _confirmMeal(
+              Map<String, dynamic>.from(result['mealData'] as Map), session);
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          final userMsg = e is AiRequestException ? e.message : 'AI could not complete this request. Please retry.';
+          final userMsg = e is AiRequestException
+              ? e.message
+              : 'AI could not complete this request. Please retry.';
           final bannerMsg = userMsg;
+          _lastFailedMessage = message;
 
           _messages.add({
             "id": _messages.length + 1,
             "message": userMsg,
+            "isError": true,
             "isUser": false,
             "timestamp": DateTime.now(),
           });
@@ -267,24 +251,40 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     }
   }
 
-  Future<void> _confirmMeal(Map<String, dynamic> meal, SessionToken session) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
-      title: const Text('Add this meal?'),
-      content: Text('${meal['name']}\n${meal['calories']} kcal (AI estimate)\nCheck the portion before adding it to today’s log.'),
-      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Not now')),
-        FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Add meal'))],
-    ));
+  Future<void> _confirmMeal(
+      Map<String, dynamic> meal, SessionToken session) async {
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+              title: const Text('Add this meal?'),
+              content: Text(
+                  '${meal['name']}\n${meal['calories']} kcal (AI estimate)\nCheck the portion before adding it to today’s log.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('Not now')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('Add meal'))
+              ],
+            ));
     if (confirmed != true || !mounted || !session.isActive) return;
     final id = UserDataService.newId();
-    await UserDataService().saveDietEntry({...meal, 'id': id, 'brand': 'AI estimate', 'nutritionSource': 'ai_estimate'});
+    await UserDataService().saveDietEntry({
+      ...meal,
+      'id': id,
+      'brand': 'AI estimate',
+      'nutritionSource': 'ai_estimate'
+    });
     if (!mounted || !session.isActive) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: const Text("Meal added to today's log"),
-      action: SnackBarAction(label: 'Undo', onPressed: () async {
-        if (session.isActive) await UserDataService().deleteDietEntry(id);
-      }),
+      action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            if (session.isActive) await UserDataService().deleteDietEntry(id);
+          }),
     ));
-    await _loadTodaysMealLogs();
   }
 
   void _handleQuickReply(String suggestion) {
@@ -348,12 +348,11 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                       ),
                     ),
                   ),
-                  if (_errorMessage!.contains('internet') ||
-                      _errorMessage!.contains('communicating'))
+                  if (_lastFailedMessage != null && !_isLoading)
                     TextButton.icon(
                       onPressed: () {
                         setState(() => _errorMessage = null);
-                        _initializeChat(profile);
+                        _sendMessage(_lastFailedMessage!, retry: true);
                       },
                       icon: const Icon(Icons.refresh,
                           color: FoodInsightColors.healthRed, size: 16),

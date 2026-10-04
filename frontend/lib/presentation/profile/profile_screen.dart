@@ -1,3 +1,8 @@
+import '../../services/analytics_service.dart';
+import 'package:flutter/services.dart';
+import '../../widgets/macro_goals_dialog.dart';
+import '../../services/user_session.dart';
+import '../../services/feature_flag_service.dart';
 import '../../widgets/custom_image_widget.dart';
 import '../../services/user_data_service.dart';
 // lib/presentation/profile/profile_screen.dart
@@ -357,7 +362,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       SizedBox(height: 3.h),
 
                       // AI Recalibration Section
-                      if (profile != null)
+                      if (profile != null &&
+                          context
+                              .watch<FeatureFlagService>()
+                              .aiRecalibrationEnabled)
                         _buildAiRecalibrationCard(context, profile)
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 150.ms)
@@ -591,7 +599,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           SizedBox(height: 1.h),
           Text(
-            'Let Gemini analyze your last 3 days of eating habits to optimize your daily goals dynamically.',
+            'Review your last 7 days of logged nutrition and consider a modest goal adjustment. Incomplete logs reduce confidence.',
             style: FoodInsightTypography.body(
               size: 13,
               color: Colors.white.withValues(alpha: 0.9),
@@ -639,50 +647,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _handleAiRecalibration(
       BuildContext context, UserProfile profile) async {
+    final session = UserSession.instance.capture();
+    AnalyticsService.record(UsageEvent.recalibrationOpened);
     // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          padding: EdgeInsets.all(6.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: FoodInsightRadius.mdAll,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(
-                  color: FoodInsightColors.scannerGreen),
-              SizedBox(height: 2.h),
-              Text('Analyzing your habits...',
-                  style: FoodInsightTypography.body(
-                      size: 14, color: FoodInsightColors.deepCharcoal)),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => PopScope(
+          canPop: false,
+          child: Center(
+            child: Container(
+              padding: EdgeInsets.all(6.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: FoodInsightRadius.mdAll,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                      color: FoodInsightColors.scannerGreen),
+                  SizedBox(height: 2.h),
+                  Text('Analyzing your habits...',
+                      style: FoodInsightTypography.body(
+                          size: 14, color: FoodInsightColors.deepCharcoal)),
+                ],
+              ),
+            ),
+          )),
     );
 
     try {
-      // Fetch last 3 days of logs
-      List<Map<String, dynamic>> recentLogs = [];
-      final db = UserDataService();
-      final now = DateTime.now();
-      for (int i = 0; i < 3; i++) {
-        final date = now.subtract(Duration(days: i));
-        final dateString =
-            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-        final dayLogs = await db.getDietLog(dateString);
-        recentLogs.addAll(dayLogs);
-      }
+      final recentLogs = await UserDataService().getRecentDietLogs();
 
       final newMacros = await CloudFunctionService().recalibrateMacrosWithAI(
         userProfile: profile.toMap(),
         recentDietLogs: recentLogs,
       );
 
+      session.check();
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading
 
@@ -703,92 +706,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showRecalibrationResult(BuildContext context, UserProfile profile,
-      Map<String, dynamic> newMacros) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: FoodInsightRadius.lgAll),
-        title: Row(
-          children: [
-            const Icon(Icons.auto_awesome_rounded,
-                color: FoodInsightColors.scannerGreen),
-            SizedBox(width: 2.w),
-            Text('AI Recommendations',
-                style: FoodInsightTypography.heading(
-                    size: 18, color: FoodInsightColors.deepCharcoal)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(newMacros['explanation'] ?? 'Here are your optimized goals.',
-                style: FoodInsightTypography.body(
-                    size: 14, color: FoodInsightColors.midGray)),
-            SizedBox(height: 2.h),
-            _buildMacroRow('Calories', '${newMacros['calories']} kcal'),
-            _buildMacroRow('Protein', '${newMacros['protein']} g'),
-            _buildMacroRow('Carbs', '${newMacros['carbs']} g'),
-            _buildMacroRow('Fat', '${newMacros['fat']} g'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: FoodInsightColors.midGray)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Update profile
-              final updatedProfile = profile.copyWith(
-                customCaloriesGoal: (newMacros['calories'] as num?)?.toDouble(),
-                customProteinGoal: (newMacros['protein'] as num?)?.toDouble(),
-                customCarbsGoal: (newMacros['carbs'] as num?)?.toDouble(),
-                customFatGoal: (newMacros['fat'] as num?)?.toDouble(),
+  Future<void> _showRecalibrationResult(BuildContext context,
+      UserProfile profile, Map<String, dynamic> newMacros) async {
+    final session = UserSession.instance.capture();
+    final applied = await showDialog<bool>(
+        context: context,
+        builder: (_) => MacroGoalsDialog(
+            proposal: newMacros,
+            onApply: () async {
+              session.check();
+              final provider = context.read<UserProfileProvider>();
+              final current = provider.profile;
+              if (current == null) throw StateError('Profile unavailable');
+              await provider.saveProfile(current.copyWith(
+                customCaloriesGoal: (newMacros['calories'] as num).toDouble(),
+                customProteinGoal: (newMacros['protein'] as num).toDouble(),
+                customCarbsGoal: (newMacros['carbs'] as num).toDouble(),
+                customFatGoal: (newMacros['fat'] as num).toDouble(),
                 lastAiRecalibration: DateTime.now(),
-              );
-              await context
-                  .read<UserProfileProvider>()
-                  .saveProfile(updatedProfile);
-              if (!context.mounted || !mounted) return;
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Macros updated successfully!')));
-              _loadProfile();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: FoodInsightColors.scannerGreen,
-              shape:
-                  RoundedRectangleBorder(borderRadius: FoodInsightRadius.mdAll),
-            ),
-            child: const Text('Apply Goals',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMacroRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 0.5.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: FoodInsightTypography.body(
-                  size: 15,
-                  weight: FontWeight.w600,
-                  color: FoodInsightColors.deepCharcoal)),
-          Text(value,
-              style: FoodInsightTypography.body(
-                  size: 15,
-                  weight: FontWeight.w800,
-                  color: FoodInsightColors.scannerGreen)),
-        ],
-      ),
-    );
+              ));
+              session.check();
+            }));
+    if (applied == true && context.mounted && session.isActive) {
+      HapticFeedback.lightImpact();
+      AnalyticsService.record(UsageEvent.recalibrationApplied);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Macros updated successfully!')));
+      await _loadProfile();
+    }
   }
 }

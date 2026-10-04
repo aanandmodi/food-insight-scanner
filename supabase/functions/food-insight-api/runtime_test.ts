@@ -4,7 +4,7 @@ Deno.test('shared Firebase handlers load in Deno and reject missing authenticati
   const app = initializeApp({ projectId: 'demo-food-insight' });
   initializeFirestore(app, { preferRest: true });
   const handlers = await import('./backend.js');
-  for (const handler of [handlers.scanProduct, handlers.aiTask, handlers.requestAccountDeletion]) {
+  for (const handler of [handlers.scanProduct, handlers.aiTask, handlers.alternatives, handlers.requestAccountDeletion]) {
     let rejected = false;
     try { await handler.run({ data: {} } as Parameters<typeof handler.run>[0]); }
     catch (error) { rejected = (error as { code: string }).code === 'unauthenticated'; }

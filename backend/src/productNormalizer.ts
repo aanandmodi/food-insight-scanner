@@ -3,6 +3,7 @@ export interface ProductFacts {
   name: string;
   brand: string;
   category: string;
+  categoryTags: string[];
   image: string;
   nutrition: Record<string, number | null>;
   ingredients: string[];
@@ -10,6 +11,7 @@ export interface ProductFacts {
   allergens: string[];
   traces: string[];
   ingredientsAnalysisTags: string[];
+  additives: string[];
   servingSize: string;
   quantity: string;
   nutriscore: string | null;
@@ -68,9 +70,13 @@ export function normalizeOpenFoodFacts(raw: Record<string, any>, barcode: string
   return {
     barcode, name: text(raw.product_name) || "Unnamed product", brand: text(raw.brands),
     category: text(raw.categories), image: text(raw.image_front_url) || text(raw.image_url),
+    categoryTags: Array.isArray(raw.categories_tags) ? raw.categories_tags
+      .filter((v: unknown): v is string => typeof v === 'string' && /^en:[a-z0-9-]{1,100}$/.test(v)).slice(0,30) : [],
     nutrition,
     ingredients: ingredientsText.split(",").map((part) => part.trim()).filter(Boolean).slice(0, 100),
     ingredientsText, allergens, traces,
+    additives: Array.isArray(raw.additives_tags) ? raw.additives_tags
+      .filter((v: unknown): v is string => typeof v === 'string').slice(0,100).map((v: string) => text(v,60)) : [],
     ingredientsAnalysisTags: tags(raw.ingredients_analysis_tags),
     servingSize: text(raw.serving_size), quantity: text(raw.quantity),
     nutriscore: text(raw.nutriscore_grade) || null,
