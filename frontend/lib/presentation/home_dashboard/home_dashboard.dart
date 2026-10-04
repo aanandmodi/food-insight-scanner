@@ -523,39 +523,27 @@ class _HomeDashboardState extends State<HomeDashboard>
       },
       child: Scaffold(
         backgroundColor: FoodInsightColors.warmWhite,
-        extendBody: true,
-        body: Stack(
+        body: IndexedStack(
+          index: _currentIndex,
           children: [
-            IndexedStack(
-              index: _currentIndex,
-              children: [
-                KeyedSubtree(
-                  key: ValueKey('home_content_$_unlockAnimationKey'),
-                  child: _buildHomeContent(),
-                ),
-                BarcodeScanner(isActive: _currentIndex == 1),
-                context.watch<FeatureFlagService>().aiChatEnabled
-                    ? const AiChatAssistant()
-                    : const Center(
-                        child: Text('AI chat is currently unavailable.')),
-                const ProfileScreen(),
-              ],
+            KeyedSubtree(
+              key: ValueKey('home_content_$_unlockAnimationKey'),
+              child: _buildHomeContent(),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildBottomNav(),
+            BarcodeScanner(
+              isActive: _currentIndex == 1,
+              onExitRequested: () => setState(() => _currentIndex = 0),
             ),
+            context.watch<FeatureFlagService>().aiChatEnabled
+                ? const AiChatAssistant()
+                : const Center(
+                    child: Text('AI chat is currently unavailable.')),
+            const ProfileScreen(),
           ],
         ),
+        bottomNavigationBar: _buildBottomNav(),
         // ──────────── Skeuomorphic FAB ────────────
-        floatingActionButton: _currentIndex == 0
-            ? Padding(
-                padding: EdgeInsets.only(bottom: 9.h), // Push above bottom nav
-                child: _buildScanFab(),
-              )
-            : null,
+        floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
@@ -605,6 +593,7 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   Widget _buildBottomNav() {
     return SafeArea(
+      top: false,
       child: Container(
         margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
         child: Container(
