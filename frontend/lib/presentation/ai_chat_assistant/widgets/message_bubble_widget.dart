@@ -24,7 +24,7 @@ class MessageBubbleWidget extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
           decoration: BoxDecoration(
-            color: FoodInsightColors.scannerGreen,
+            color: FoodInsightColors.primary,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(5.w),
               topRight: Radius.circular(5.w),
@@ -110,7 +110,7 @@ class MessageBubbleWidget extends StatelessWidget {
                   ),
                   listBullet: FoodInsightTypography.body(
                     size: 15,
-                    color: FoodInsightColors.scannerGreen,
+                    color: FoodInsightColors.primary,
                     weight: FontWeight.w800,
                   ),
                   h1: FoodInsightTypography.heading(size: 20),

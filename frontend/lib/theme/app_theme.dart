@@ -2,22 +2,23 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_design_system.dart';
 
 /// Theme configuration aligned with approved prototypes.
 class AppTheme {
   AppTheme._();
 
   // ──────────────────────── LIGHT PALETTE ────────────────────────
-  static const Color primaryLight = Color(0xFFBA0034);
-  static const Color primaryVariantLight = Color(0xFFE51245);
+  static const Color primaryLight = FoodInsightColors.primary;
+  static const Color primaryVariantLight = FoodInsightColors.scannerGreenDark;
   static const Color secondaryLight = Color(0xFF006E26);
   static const Color secondaryVariantLight = Color(0xFF64FD7D);
-  static const Color backgroundLight = Color(0xFFF9F9FE);
+  static const Color backgroundLight = FoodInsightColors.warmWhite;
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color errorLight = Color(0xFFBA1A1A);
   static const Color warningLight = Color(0xFFF59E0B);
   static const Color successLight = Color(0xFF006E26);
-  static const Color accentLight = Color(0xFFFFDADA);
+  static const Color accentLight = FoodInsightColors.scannerGreenLight;
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFFFFFFFF);
   static const Color onBackgroundLight = Color(0xFF1A1C1F);
@@ -25,8 +26,8 @@ class AppTheme {
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
   // ──────────────────────── DARK PALETTE (Cinematic) ────────────────────────
-  static const Color primaryDark = Color(0xFFFFB3B5);
-  static const Color primaryVariantDark = Color(0xFFE51245);
+  static const Color primaryDark = Color(0xFF9ADAA8);
+  static const Color primaryVariantDark = FoodInsightColors.scannerGreenDark;
   static const Color secondaryDark = Color(0xFF6CFF82);
   static const Color secondaryVariantDark = Color(0xFF47E266);
   static const Color backgroundDark = Color(0xFF1A1C1F);
@@ -34,8 +35,8 @@ class AppTheme {
   static const Color errorDark = Color(0xFFFFDAD6);
   static const Color warningDark = Color(0xFFFCD34D);
   static const Color successDark = Color(0xFF6CFF82);
-  static const Color accentDark = Color(0xFF40000C);
-  static const Color onPrimaryDark = Color(0xFF40000C);
+  static const Color accentDark = Color(0xFF12371D);
+  static const Color onPrimaryDark = Color(0xFF12371D);
   static const Color onSecondaryDark = Color(0xFF002106);
   static const Color onBackgroundDark = Color(0xFFF0F0F5);
   static const Color onSurfaceDark = Color(0xFFF0F0F5);
@@ -43,7 +44,7 @@ class AppTheme {
 
   // Card and dialog colors
   static const Color cardLight = Color(0xFFFFFFFF);
-  static const Color cardDark = Color(0xFF1F2937);        // Translucent base
+  static const Color cardDark = Color(0xFF1F2937); // Translucent base
   static const Color dialogLight = Color(0xFFFFFFFF);
   static const Color dialogDark = Color(0xFF1F2937);
 
@@ -66,13 +67,13 @@ class AppTheme {
 
   // ──────────────────────── GLASSMORPHISM TOKENS ────────────────────────
   static const Color glassBackground = Color(0xB3FFFFFF);
-  static const Color glassBorder = Color(0x26E6BCBD);
-  static const Color glassBorderLight = Color(0x26E6BCBD);
+  static const Color glassBorder = Color(0xFFC5D2C7);
+  static const Color glassBorderLight = Color(0xFFC5D2C7);
   static const double glassBlurSigma = 20.0;
 
   // Dark glass (for dark theme)
   static const Color glassDarkBg = Color(0xB31A1C1F);
-  static const Color glassDarkBorder = Color(0x335D3F40);
+  static const Color glassDarkBorder = Color(0x3356785C);
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -103,7 +104,8 @@ class AppTheme {
   }
 
   /// Creates glow BoxShadow list for bloom effects.
-  static List<BoxShadow> glowBoxShadow(Color color, {double intensity = 0.4, double blur = 25.0}) {
+  static List<BoxShadow> glowBoxShadow(Color color,
+      {double intensity = 0.4, double blur = 25.0}) {
     return [
       BoxShadow(
         color: color.withValues(alpha: intensity),
@@ -229,7 +231,7 @@ class AppTheme {
         elevation: 2.0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9999.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -244,7 +246,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         side: const BorderSide(color: primaryLight, width: 1.5),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9999.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -258,7 +260,7 @@ class AppTheme {
         foregroundColor: primaryLight,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9999.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -276,15 +278,15 @@ class AppTheme {
       filled: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9999.0),
-        borderSide: const BorderSide(color: Color(0x26E6BCBD), width: 1.0),
+        borderRadius: BorderRadius.circular(16.0),
+        borderSide: const BorderSide(color: Color(0xFFC5D2C7), width: 1.0),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9999.0),
-        borderSide: const BorderSide(color: Color(0x26E6BCBD), width: 1.0),
+        borderRadius: BorderRadius.circular(16.0),
+        borderSide: const BorderSide(color: Color(0xFFC5D2C7), width: 1.0),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9999.0),
+        borderRadius: BorderRadius.circular(16.0),
         borderSide: const BorderSide(color: primaryLight, width: 2.0),
       ),
       errorBorder: OutlineInputBorder(

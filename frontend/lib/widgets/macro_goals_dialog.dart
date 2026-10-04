@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// A proposal never changes targets until Apply Goals succeeds.
 class MacroGoalsDialog extends StatefulWidget {
@@ -21,7 +22,10 @@ class _MacroGoalsDialogState extends State<MacroGoalsDialog> {
     });
     try {
       await widget.onApply();
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        HapticFeedback.lightImpact();
+        Navigator.pop(context, true);
+      }
     } catch (_) {
       if (mounted) {
         setState(() {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class CustomBounceButton extends StatefulWidget {
   final Widget child;
@@ -43,7 +42,6 @@ class _CustomBounceButtonState extends State<CustomBounceButton>
   }
 
   void _onTapDown(TapDownDetails details) {
-    HapticFeedback.lightImpact();
     _controller.forward();
   }
 

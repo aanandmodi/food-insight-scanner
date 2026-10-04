@@ -122,7 +122,9 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     }
     if (_messages.isEmpty ||
         _messages.last['isError'] == true ||
-        _messages.last['isGreeting'] == true) return;
+        _messages.last['isGreeting'] == true) {
+      return;
+    }
     final session = UserSession.instance.capture();
     try {
       final lastMessage = _messages.last["message"] as String? ?? "Hello";

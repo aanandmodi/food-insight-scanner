@@ -8,6 +8,10 @@ import 'package:google_fonts/google_fonts.dart';
 class FoodInsightColors {
   FoodInsightColors._();
 
+  // Dark enough for white text on primary actions.
+  static const primary = Color(0xFF1F7535);
+  static const primaryDark = Color(0xFF185B29);
+
   // ── Base Palette ──────────────────────────────────────────────
   static const cream = Color(0xFFF5F0E8);
   static const warmWhite = Color(0xFFFAF8F4);
