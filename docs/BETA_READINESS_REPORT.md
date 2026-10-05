@@ -16,6 +16,8 @@ Owner-scoped local storage/outbox, Firestore rules and Supabase RLS, determinist
 
 Removed tracked signing material, added ignore patterns, a signing-secret guard and local pre-commit hook. Generated a replacement RSA upload key outside the repository; registered its public fingerprints with Firebase and removed the exposed certificate registrations. The owner confirmed no Play registration, so no upload-key reset was needed. Private backup location and public fingerprint are in SIGNING_INCIDENT.md. History still contains the compromised material; do not reuse it. Coordinate history removal separately.
 
+Backend npm dependencies now resolve `@fastify/busboy` 3.2.2 and use a scoped `gaxios@6.7.1` override to UUID 11.1.1. The backend audit reports zero findings, and an actual multipart HTTP request test verifies compatibility. The existing Deno lock already has busboy 3.2.2. Its legacy Google Storage dependency still resolves UUID 9; Google gaxios calls UUID v4, which the [UUID advisory](https://github.com/uuidjs/uuid/security/advisories/GHSA-w5hq-g745-h8pq) explicitly excludes from the affected methods. No unverified Deno override was shipped. Revisit the upstream dependency when Firebase/Google publishes an update. The [busboy advisory](https://github.com/fastify/busboy/security/advisories/GHSA-xjh9-v7x6-24jw) identifies 3.2.1 as patched.
+
 ## 4. CI status
 
 Hosted run `37195264934` passed Flutter analysis/tests, backend/Edge tests, security rules and Android release compilation on `0c8b656`. That result predates this continuation. Current-head results are recorded separately before delivery. CI uses a throwaway certificate, never the upload key.
@@ -111,7 +113,7 @@ Earlier loading/retry/empty states, additive source links, contextual quick repl
 
 ## 21. Tests added
 
-Latest local Flutter suite: 57 passed; backend: 23 passed; Edge: nine passed after rebundling the current backend. Flutter analysis reported no issues. Earlier emulator suite: 13 passed. Added UI checks cover normal and 2x text dietary-card/summary layouts, guest entry/signup, the composer and long replies; service tests cover interval reads and explicit permission denial. Added backend tests verify the latest question is separate from bounded background/history and reject malformed nested messages. Existing coverage includes context minimization, unknown values, Edge compatibility, routing/fallback/429, recalibration, additive variants and alternative filtering.
+Latest local Flutter suite: 57 passed; backend: 24 passed; Edge: nine passed after rebundling the current backend. Flutter analysis reported no issues. Earlier emulator suite: 13 passed. Added UI checks cover normal and 2x text dietary-card/summary layouts, guest entry/signup, the composer and long replies; service tests cover interval reads and explicit permission denial. Added backend tests verify the latest question is separate from bounded background/history, reject malformed nested messages, and check patched dependency multipart compatibility. Existing coverage includes context minimization, unknown values, Edge compatibility, routing/fallback/429, recalibration, additive variants and alternative filtering.
 
 Live checks passed: missing/forged auth; missing/forged App Check; AI kill switch; six AI tasks; real barcode lookup; backend account deletion; stale-token rejection after deletion. Two-account RLS/private-storage tests passed on 1 October, including cross-user denial and fixture cleanup. QA debug attestation is not Play Integrity verification.
 
@@ -123,7 +125,7 @@ Supabase login, deployment, secret configuration and key rotation are already do
 
 ## 23. Remaining known risks
 
-Pending: complete device matrix (Google sign-in, fresh health permissions, all widget sizes, TalkBack, optical barcode variants), Play-installed Auth/App Check, low-end performance and Firebase telemetry delivery evidence. Guest entry and email upgrade passed on the connected phone. The four-entry additive glossary is intentionally limited. Optional streaming, OCR, billing and true request cancellation remain deferred. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
+Pending: complete device matrix (Google sign-in, fresh health permissions, all widget sizes, TalkBack, optical barcode variants), Play-installed Auth/App Check, low-end performance and Firebase telemetry delivery evidence. Guest entry and email upgrade passed on the connected phone. The four-entry additive glossary is intentionally limited. Deno's legacy UUID dependency caveat is recorded in section 3. Optional streaming, OCR, billing and true request cancellation remain deferred. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
 
 ## 24. Exact build commands
 
