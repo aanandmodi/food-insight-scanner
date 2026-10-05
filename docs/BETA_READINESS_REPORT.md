@@ -1,10 +1,12 @@
 # FOOD INSIGHT FINAL BETA COMPLETION REPORT
 
-Updated 4 October 2026. This is a verification record. The beta is **not yet fully accepted**: final device, release-artifact and current-head CI results must be recorded, and Play Console work remains.
+Updated 5 October 2026. This is a verification record. The beta is **not yet fully accepted**: complete device-matrix and Play-installed verification remain. The connected phone tests cover the reported UI and Health Connect defects; they do not substitute for every acceptance scenario.
 
 ## 1. Repository state
 
 Repository: `aanandmodi/food-insight-scanner`, branch `main`. Author: `aanandmodi <aanandmodi09@gmail.com>`. Prior bot authors were corrected in an earlier coordinated history rewrite. New signing exposure has not been force-rewritten out of history. Current work targets version `1.0.2+2004`.
+
+This continuation started at `0c8b656`. Commit `eebb479` contains the dashboard/chat/profile polish, Health Connect interval fix and related tests. The subsequent commit separates the latest AI question from background context, preserves unknown activity calories, fixes rendering performance and adds guest entry and email upgrade. The ending HEAD and current-head CI are recorded in the delivery message.
 
 ## 2. What was already complete
 
@@ -16,7 +18,7 @@ Removed tracked signing material, added ignore patterns, a signing-secret guard 
 
 ## 4. CI status
 
-Hosted run `36703883425` passed all four jobs on `a6d3b98`. That result predates this completion batch and is not evidence for the new head. New-head CI must pass before distribution. CI uses a throwaway certificate, never the upload key.
+Hosted run `37195264934` passed Flutter analysis/tests, backend/Edge tests, security rules and Android release compilation on `0c8b656`. That result predates this continuation. Current-head results are recorded separately before delivery. CI uses a throwaway certificate, never the upload key.
 
 ## 5. Backend architecture
 
@@ -57,7 +59,7 @@ Structured context excludes names, email, UID and raw Health Connect records. Us
 
 ## 10. AI Chat
 
-At most 12 meaningful turns and 7,000 history characters. Local greetings and errors are excluded. Current product context is bounded. Responses are non-streaming; loading, retry and failure states preserve the conversation. A retry does not duplicate the failed user message. No persistent model-generated memory summary is added. Requests are timeout-bounded; true network cancellation is not implemented.
+At most 12 meaningful turns and 7,000 history characters. Local greetings and errors are excluded. Current product context is bounded. The latest question is now a separate final user message, rather than an instruction embedded in background data. A live structured-history BMI question returned the correct 22.7 value for the synthetic profile (170 cm, 65.5 kg). Its disposable account was deleted. Responses are non-streaming; loading, retry and failure states preserve the conversation. A retry does not duplicate the failed user message. No persistent model-generated memory summary is added. Requests are timeout-bounded; true network cancellation is not implemented.
 
 ## 11. Product analysis
 
@@ -69,7 +71,7 @@ Live Indian meal example passed. The prompt includes household portions and unce
 
 ## 13. Meal planner
 
-Live four-meal generation passed. Validated unique meal types, ingredient lists and numeric ranges; totals are recomputed. Profile allergies/preferences, daily remaining targets and recent meals personalize the request. Existing deterministic client allergy validation remains before acceptance. No plan silently logs food.
+Live four-meal generation passed. Phone generation also displayed four paleo meals with an explanation of the dietary constraints. Validated unique meal types, ingredient lists and numeric ranges; totals are recomputed. Profile allergies/preferences, daily remaining targets and recent meals personalize the request. Existing deterministic client allergy validation remains before acceptance. No plan silently logs food.
 
 ## 14. Macro recalibration
 
@@ -85,7 +87,7 @@ Allergen priority is preserved. Daily context adds explanations about known rema
 
 ## 17. Verified alternatives
 
-Uses real Open Food Facts records in the cached product's category, filtered for India. Server searches are capped at five/minute and 100/day with seven-day category caching. Client ranking requires sufficiently complete records, better known nutrition and compatible dietary/allergen data. No invented brands, images, prices or barcodes. Live scan succeeded; live alternatives returned an upstream 503, also reproduced directly against Open Food Facts. The UI offers retry; successful live retrieval remains outstanding.
+Uses real Open Food Facts records in the cached product's category, filtered for India. Server searches are capped at five/minute and 100/day with seven-day category caching. Client ranking requires sufficiently complete records, better known nutrition and compatible dietary/allergen data. No invented brands, images, prices or barcodes. On 5 October, live lookup and alternatives returned HTTP 200 with one real candidate. Client filtering can still produce an empty recommendation set. The earlier upstream 503 is handled with retry. Fixture deletion and stale-token rejection passed.
 
 ## 18. India/INS intelligence
 
@@ -93,17 +95,27 @@ Bundled versioned glossary covers four verified identities: INS 211, 330, 322(i)
 
 ## 19. Closed nutrition loop
 
-Meal logs and profile targets feed the context builder for subsequent calls and daily Food Fit. Goal application updates the profile provider; existing log streams update the dashboard. Recent scans and bounded chat make subsequent questions relevant. Full physical-device navigation, sync and account-switch coverage remains to be recorded.
+Meal logs and profile targets feed the context builder for subsequent calls and daily Food Fit. Phone meal estimation, review and save updated the daily totals. A 300 kcal manual meal saved offline, survived a cold restart in the cached 561 kcal daily total, and synced as exactly one owner record after reconnection. Original phone network settings were restored. Goal application updates the profile provider; existing log streams update the dashboard. Recent scans and bounded chat make subsequent questions relevant. Full account-switch and widget-size coverage remains to be recorded.
 
 ## 20. UI/UX improvements
 
-Preserved green/warm-white identity. Added loading/retry/empty states for alternatives, source links for additives, contextual quick replies, a scrollable goal-review dialog and daily Food Fit explanations. Removed stale Gemini copy. Analytics stays opt-in and event-name-only; added feature-use events without food, chat or health parameters. Existing accessibility and estimate-review UI were retained. No redesign is claimed.
+Preserved green/warm-white identity. Dashboard nutrition/source details now open from compact info buttons; health connection management is in Settings. Activity and nutrient headers wrap, and unknown activity values display an em dash. Cards scroll behind a floating navbar. Scanner manual entry stays above it. Chat has lighter bubbles, explicit Copy, a compact composer, inline suggestions, cached Markdown, and stable reply following without pulling a reader away from older messages. Dietary cards grow with their descriptions; progress shows readable step information. Press feedback and route transitions respect reduced motion and use the recent tap position. Static chat surfaces are separated from the scrolling paint.
+
+On the Nothing A069 (Android 17), Health Connect's energy aggregate API threw a native null-pointer error because the plugin required an interval. Explicit 24-hour interval reads fix it. Settings connection, step/energy import, disconnect and reconnect succeeded. This is Health Connect integration, not Google Fit OAuth. Existing production data was preserved in a separate QA installation.
+
+The QA release containing the final chat rendering changes was measured during 12 alternating long-chat swipes at 120 Hz. All raster frames in the recorded batches were below 8.33 ms; batch p95 raster times were 2.1–3.6 ms. Goals & Diet p95 raster times were 4.3–7.7 ms, with occasional frames over budget. Occasional chat UI frames also exceeded budget, so zero jank is not claimed. Flutter 3.29 Impeller performed substantially worse on this phone; Android now uses the [documented Skia compatibility option](https://docs.flutter.dev/perf/impeller#android). Hidden tab tickers are paused. Recheck this choice on Flutter upgrades and other devices.
+
+Login now offers Continue as guest. Settings offers Save your guest account, which links an email credential while preserving the UID and existing profile. Firebase anonymous sign-in was enabled through the owner configuration API without upgrading the plan. On the phone, a fresh guest completed a vegan profile, reached an empty dashboard without inherited activity state, and upgraded to email with the same UID, name, goal and dietary preference. A separate live API check preserved both profile and diet records during upgrade. Small-screen login/signup layouts passed at normal and 2x text sizes.
+
+Earlier loading/retry/empty states, additive source links, contextual quick replies, goal review and daily Food Fit explanations remain. Analytics stays opt-in and event-name-only, without food, chat or health parameters.
 
 ## 21. Tests added
 
-Latest local Flutter suite: 44 passed; backend: 21 passed. New coverage includes context minimization/unknown values, Edge Buffer compatibility, routing/fallback/429, recalibration bounds and confirmation, additive variants and alternative filtering. Earlier local emulator suite: 13 passed; Edge suite: nine passed (rerun pending for latest adapter configuration). Flutter analyze passed before the final QA build configuration change; final CI will recheck it.
+Latest local Flutter suite: 57 passed; backend: 23 passed; Edge: nine passed after rebundling the current backend. Flutter analysis reported no issues. Earlier emulator suite: 13 passed. Added UI checks cover normal and 2x text dietary-card/summary layouts, guest entry/signup, the composer and long replies; service tests cover interval reads and explicit permission denial. Added backend tests verify the latest question is separate from bounded background/history and reject malformed nested messages. Existing coverage includes context minimization, unknown values, Edge compatibility, routing/fallback/429, recalibration, additive variants and alternative filtering.
 
 Live checks passed: missing/forged auth; missing/forged App Check; AI kill switch; six AI tasks; real barcode lookup; backend account deletion; stale-token rejection after deletion. Two-account RLS/private-storage tests passed on 1 October, including cross-user denial and fixture cleanup. QA debug attestation is not Play Integrity verification.
+
+Disposable email-account deletion was exercised on the phone with Cancel, confirmation and password reauthentication; Firebase identity and all seven private Supabase collections were verified cleared. The guest account was also deleted through the app after its successful email upgrade, returned to sign-in and passed the same identity/collection cleanup check. The latest QA APK was installed afterward. Original app data and phone network settings were preserved; the temporary keep-awake setting was restored. The temporary production-app CLI debug registration was revoked. The separate device QA debug registration remains for continued internal testing and must be revoked when that testing ends.
 
 ## 22. Manual steps required
 
@@ -111,7 +123,7 @@ Supabase login, deployment, secret configuration and key rotation are already do
 
 ## 23. Remaining known risks
 
-Pending: complete device matrix, final signed production artifact evidence, new-head CI, Play-installed Auth/App Check, successful upstream alternatives retrieval, low-end performance and Firebase telemetry delivery evidence. The four-entry additive glossary is intentionally limited. Some optional polish and true request cancellation remain. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
+Pending: complete device matrix (Google sign-in, fresh health permissions, all widget sizes, TalkBack, optical barcode variants), Play-installed Auth/App Check, low-end performance and Firebase telemetry delivery evidence. Guest entry and email upgrade passed on the connected phone. The four-entry additive glossary is intentionally limited. Optional streaming, OCR, billing and true request cancellation remain deferred. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
 
 ## 24. Exact build commands
 
@@ -126,6 +138,15 @@ flutter build apk --release --dart-define=QA_BUILD=true --obfuscate --split-debu
 ```
 
 Only the first release command produces the production Play bundle. The QA package is separately labelled and uses debug App Check with a registered, revocable token. Never distribute QA as the production release.
+
+Verified final artifacts on 5 October:
+
+| Artifact | Package/version | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| Production `frontend/build/app/outputs/bundle/release/app-release.aab` | `com.food_insight_scanner.app`, `1.0.2+2004` | 43,494,377 | `84d6b35e314edad0a6b04f8dc3cc2962d91d330894908855bb03fa9c746905d7` |
+| QA `frontend/build/app/outputs/flutter-apk/app-release.apk` | `com.food_insight_scanner.app.qa`, `1.0.2+2004` | 80,358,544 | `a0b174970f860e041c57d307c5bf2cea4296343eb9bd470d16e7d85972688bcc` |
+
+Bundle manifest/package/version, Skia setting, JAR signature and both artifact certificates were verified. Certificate SHA-256 is `0EAFA364987E6B403EC626362771DB0B6A225ECC660A0D37FC0267BC3701A35F`. Matching production symbols are in `frontend/build/debug-info`; QA symbols in `frontend/build/debug-info-qa`. Artifacts, credentials, device screenshots and private fixtures remain ignored.
 
 ## 25. Exact Supabase deployment commands
 

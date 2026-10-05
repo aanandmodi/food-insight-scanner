@@ -1,6 +1,6 @@
 # Release procedure
 
-Android ID: `com.food_insight_scanner.app`; version `1.0.2+2003`. The previous device installation used build 2002, so this build supports an in-place update with the same release certificate. The default backend is Supabase Free Edge with shared TypeScript handlers; Firebase remains on Spark.
+Android ID: `com.food_insight_scanner.app`; version `1.0.2+2004`. The upload certificate was rotated after exposure. An existing installation signed with the old certificate cannot receive this APK in place. Physical testing uses the separate `com.food_insight_scanner.app.qa` package to preserve the original installation and its data. The default backend is Supabase Free Edge with shared TypeScript handlers; Firebase remains on Spark.
 
 ## Deployment
 
@@ -36,7 +36,7 @@ npm ci
 npm test
 ```
 
-Release signing requires the existing ignored `frontend/android/key.properties` and keystore. Do not generate a new production key. APK/AAB outputs and matching symbols remain private. CI creates a short-lived test certificate only to verify release compilation/shrinking; its AAB must never be distributed.
+Release signing requires the ignored `frontend/android/key.properties`, pointing to the replacement key outside Git as documented in [signing incident](../SIGNING_INCIDENT.md). Preserve that replacement identity and its private backup. APK/AAB outputs and matching symbols remain private. CI creates a short-lived test certificate only to verify release compilation/shrinking; its AAB must never be distributed.
 
 ## Release decision
 

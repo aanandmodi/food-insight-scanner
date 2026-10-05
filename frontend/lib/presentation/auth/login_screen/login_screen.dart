@@ -9,7 +9,7 @@ import '../../../theme/app_design_system.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/user_profile_provider.dart';
 
-enum _AuthMethod { none, email, google }
+enum _AuthMethod { none, email, google, guest }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,7 +65,9 @@ class _LoginScreenState extends State<LoginScreen>
         content: Row(
           children: [
             Icon(
-              isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+              isError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -105,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _navigateAfterAuth() {
     if (!mounted) return;
-    
+
     // Force a fresh fetch/sync from Firestore now that the user is logged in
     Provider.of<UserProfileProvider>(context, listen: false).fetchProfile();
 
@@ -148,6 +150,18 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Future<void> _handleGuestSignIn() async {
+    if (_isLoading) return;
+    _setLoading(true, _AuthMethod.guest);
+    try {
+      await _authService.signInAnonymously();
+      _navigateAfterAuth();
+    } catch (e) {
+      _showSnackBar(AuthService.getErrorMessage(e));
+    } finally {
+      _setLoading(false);
+    }
+  }
 
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
@@ -198,8 +212,6 @@ class _LoginScreenState extends State<LoginScreen>
                           children: [
                             SizedBox(height: 5.h),
 
-
-
                             // ── Logo & Brand ──
                             _buildBrandSection(),
 
@@ -227,9 +239,19 @@ class _LoginScreenState extends State<LoginScreen>
                             // ── Google Sign In ──
                             _buildGoogleSignInButton(),
 
+                            TextButton.icon(
+                              onPressed: _isLoading ? null : _handleGuestSignIn,
+                              icon: _activeMethod == _AuthMethod.guest
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2))
+                                  : const Icon(Icons.person_outline_rounded),
+                              label: const Text('Continue as guest'),
+                            ),
+
                             SizedBox(height: 2.h),
-
-
 
                             const Spacer(),
 
@@ -250,7 +272,6 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
-
 
   Widget _buildBrandSection() {
     return Column(
@@ -473,10 +494,10 @@ class _LoginScreenState extends State<LoginScreen>
     required bool isLoading,
     VoidCallback? onPressed,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 54),
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF34C759), Color(0xFF30D158)],
@@ -554,10 +575,10 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildGoogleSignInButton() {
     final isGoogleLoading = _isLoading && _activeMethod == _AuthMethod.google;
 
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 54),
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: FoodInsightRadius.mdAll,
@@ -577,50 +598,54 @@ class _LoginScreenState extends State<LoginScreen>
           child: InkWell(
             onTap: _isLoading ? null : _handleGoogleSignIn,
             borderRadius: FoodInsightRadius.mdAll,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isGoogleLoading)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        FoodInsightColors.midGray,
-                      ),
-                    ),
-                  )
-                else
-                  // Google "G" logo built with text
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'G',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF4285F4),
+            child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isGoogleLoading)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            FoodInsightColors.midGray,
+                          ),
+                        ),
+                      )
+                    else
+                      // Google "G" logo built with text
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'G',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF4285F4),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                const SizedBox(width: 12),
-                Text(
-                  'Continue with Google',
-                  style: FoodInsightTypography.body(
-                    size: 15,
-                    weight: FontWeight.w600,
-                    color: FoodInsightColors.deepCharcoal,
-                  ),
-                ),
-              ],
-            ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                        child: Text(
+                      'Continue with Google',
+                      textAlign: TextAlign.center,
+                      style: FoodInsightTypography.body(
+                        size: 15,
+                        weight: FontWeight.w600,
+                        color: FoodInsightColors.deepCharcoal,
+                      ),
+                    )),
+                  ],
+                )),
           ),
         ),
       ),
@@ -630,8 +655,9 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildSignUpLink() {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 1.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
             "Don't have an account? ",

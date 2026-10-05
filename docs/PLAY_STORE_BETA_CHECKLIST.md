@@ -5,11 +5,11 @@ Record owner, date, device and evidence for every item. A locally built AAB alon
 ## Repository and services
 
 - [ ] Flutter analyze/test, backend test/build and Firebase emulator rules tests pass in CI on the release commit.
-- [ ] Deploy Supabase migrations in order and test RLS with two Firebase UIDs and both image buckets.
-- [ ] Set Firebase Functions `GROQ_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`; deploy Functions, Firestore rules/indexes and Storage rules to the intended project.
-- [ ] Create `config/featureFlags` with documented limits and confirm `aiEnabled` kill switch works. Verify quota counters cannot be changed by a client.
-- [ ] Retire the deployed Supabase AI proxy and remove unused deployed legacy Firebase AI endpoints after old clients are accounted for.
-- [ ] Register App Check Play Integrity and debug providers; verify enforcement in release.
+- [x] Supabase migration and two-UID RLS/private image bucket tests passed on 1 October 2026.
+- [x] Configure server-only Groq/Firebase credentials in Supabase Edge and deploy `food-insight-api`. Firebase remains Spark; no paid Firebase Functions/Storage deployment is required for this architecture.
+- [x] Configure `config/featureFlags`, verify the live AI kill switch and enforce client-denied quota counters.
+- [x] Retire the Supabase `ai-proxy` with HTTP 410. The active AI route is the shared Edge backend.
+- [ ] App Check providers are configured; verify Play Integrity in a production build installed through Play. Temporary QA debug attestation is separate evidence.
 - [ ] Verify email, guest and Google authentication and account upgrade. Register both upload and Play app-signing SHA fingerprints in Firebase.
 - [ ] Test in-app account deletion end to end for email, Google and guest, including Supabase rows/images, Firestore and local caches. Operate the external deletion inbox.
 

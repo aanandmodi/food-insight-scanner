@@ -344,10 +344,11 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       backgroundColor: FoodInsightColors.warmWhite,
       body: Column(
         children: [
-          ChatHeaderWidget(
+          RepaintBoundary(
+              child: ChatHeaderWidget(
             onBackPressed:
                 widget.onExitRequested ?? () => Navigator.maybePop(context),
-          ),
+          )),
           if (_errorMessage != null)
             Container(
               width: double.infinity,
@@ -405,7 +406,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               child: Column(
                 children: [
                   Expanded(
-                      child: ListView.builder(
+                      child: RepaintBoundary(
+                          child: ListView.builder(
                     controller: _scrollController,
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
@@ -431,16 +433,18 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                           ? KeyedSubtree(key: _latestReplyKey, child: bubble)
                           : bubble;
                     },
-                  )),
-                  QuickReplyWidget(
+                  ))),
+                  RepaintBoundary(
+                      child: QuickReplyWidget(
                     suggestions: _quickReplies,
                     onSuggestionTap: _handleQuickReply,
-                  ),
+                  )),
                 ],
               ),
             ),
           ),
-          Padding(
+          RepaintBoundary(
+              child: Padding(
             padding:
                 EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
             child: ChatInputWidget(
@@ -449,7 +453,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               onVoiceMessage: (text) => _sendMessage("🎤 (Voice) $text"),
               isLoading: _isLoading,
             ),
-          ),
+          )),
         ],
       ),
     );

@@ -77,15 +77,25 @@ class _SignupScreenState extends State<SignupScreen>
 
     setState(() => _isLoading = true);
     try {
-      await _authService.signUpWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text,
-        displayName: _nameController.text.trim(),
-      );
+      final upgradingGuest = _authService.isGuest;
+      if (upgradingGuest) {
+        await _authService.linkAnonymousWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text,
+          displayName: _nameController.text.trim(),
+        );
+      } else {
+        await _authService.signUpWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text,
+          displayName: _nameController.text.trim(),
+        );
+      }
       if (mounted) {
         // Force a fresh fetch/sync from Firestore now that the user is logged in
         Provider.of<UserProfileProvider>(context, listen: false).fetchProfile();
-        Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.authGate, (_) => false);
       }
     } catch (e) {
       _showError(AuthService.getErrorMessage(e));
@@ -151,12 +161,14 @@ class _SignupScreenState extends State<SignupScreen>
                                   decoration: BoxDecoration(
                                     color: isDark
                                         ? Colors.white.withValues(alpha: 0.15)
-                                        : colorScheme.surface.withValues(alpha: 0.95), // Highly opaque
+                                        : colorScheme.surface.withValues(
+                                            alpha: 0.95), // Highly opaque
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isDark
                                           ? Colors.white.withValues(alpha: 0.25)
-                                          : colorScheme.outline.withValues(alpha: 0.4),
+                                          : colorScheme.outline
+                                              .withValues(alpha: 0.4),
                                     ),
                                   ),
                                   child: CustomIconWidget(
@@ -177,21 +189,18 @@ class _SignupScreenState extends State<SignupScreen>
                               style: theme.textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 shadows: isDark
-                                    ? AppTheme.textGlow(colorScheme.primary, blur: 6)
+                                    ? AppTheme.textGlow(colorScheme.primary,
+                                        blur: 6)
                                     : null,
                               ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 100.ms),
+                            ).animate().fadeIn(duration: 500.ms, delay: 100.ms),
                             SizedBox(height: 1.h),
                             Text(
                               'Sign up to personalize your food insights and track your nutrition.',
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 200.ms),
+                            ).animate().fadeIn(duration: 500.ms, delay: 200.ms),
                             SizedBox(height: 4.h),
                             // Form
                             Form(
@@ -206,7 +215,8 @@ class _SignupScreenState extends State<SignupScreen>
                                     colorScheme: colorScheme,
                                     capitalization: TextCapitalization.words,
                                     validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
                                         return 'Please enter your name';
                                       }
                                       if (value.trim().length < 2) {
@@ -224,10 +234,12 @@ class _SignupScreenState extends State<SignupScreen>
                                     colorScheme: colorScheme,
                                     keyboardType: TextInputType.emailAddress,
                                     validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
                                         return 'Please enter your email';
                                       }
-                                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                      if (!RegExp(
+                                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                                           .hasMatch(value.trim())) {
                                         return 'Please enter a valid email';
                                       }
@@ -241,8 +253,8 @@ class _SignupScreenState extends State<SignupScreen>
                                     hint: 'At least 6 characters',
                                     colorScheme: colorScheme,
                                     obscure: _obscurePassword,
-                                    onToggle: () => setState(
-                                        () => _obscurePassword = !_obscurePassword),
+                                    onToggle: () => setState(() =>
+                                        _obscurePassword = !_obscurePassword),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter a password';
@@ -285,12 +297,14 @@ class _SignupScreenState extends State<SignupScreen>
                                       height: 7.h,
                                       decoration: BoxDecoration(
                                         gradient: AppTheme.primaryGradient,
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                       ),
                                       child: Center(
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
                                             colorScheme.onPrimary,
                                           ),
                                         ),
@@ -300,15 +314,14 @@ class _SignupScreenState extends State<SignupScreen>
                                       label: 'Create Account',
                                       onPressed: _handleSignUp,
                                     ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 400.ms),
+                            ).animate().fadeIn(duration: 500.ms, delay: 400.ms),
                             const Spacer(),
                             // Already have an account
                             Padding(
                               padding: EdgeInsets.symmetric(vertical: 3.h),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              child: Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(
                                     'Already have an account? ',
@@ -321,7 +334,8 @@ class _SignupScreenState extends State<SignupScreen>
                                     },
                                     child: Text(
                                       'Sign In',
-                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
                                         color: colorScheme.primary,
                                         fontWeight: FontWeight.w600,
                                       ),

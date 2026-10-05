@@ -559,10 +559,15 @@ class _HomeDashboardState extends State<HomeDashboard>
                   : const Center(
                       child: Text('AI chat is currently unavailable.')),
               const ProfileScreen(),
-            ],
+            ]
+                .asMap()
+                .entries
+                .map((tab) => TickerMode(
+                    enabled: tab.key == _currentIndex, child: tab.value))
+                .toList(),
           ),
         ),
-        bottomNavigationBar: _buildBottomNav(),
+        bottomNavigationBar: RepaintBoundary(child: _buildBottomNav()),
         // ──────────── Skeuomorphic FAB ────────────
         floatingActionButton: _currentIndex == 0 ? _buildScanFab() : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,

@@ -371,6 +371,10 @@ class AuthService {
     }
 
     try {
+      final originalProfile = await UserDataService().getUserProfile() ?? {};
+      if (currentUser?.uid != user.uid || !isGuest) {
+        throw SessionChangedException();
+      }
       final credential = EmailAuthProvider.credential(
         email: email.trim(),
         password: password,
@@ -385,6 +389,9 @@ class AuthService {
         }
         try {
           await UserDataService().saveUserProfile({
+            ...originalProfile,
+            if (displayName != null && displayName.trim().isNotEmpty)
+              'name': displayName.trim(),
             'email': linked.email ?? email.trim(),
             'isAnonymous': false,
           });
@@ -416,6 +423,10 @@ class AuthService {
     }
 
     try {
+      final originalProfile = await UserDataService().getUserProfile() ?? {};
+      if (currentUser?.uid != user.uid || !isGuest) {
+        throw SessionChangedException();
+      }
       await _googleSignIn.signOut();
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
@@ -431,6 +442,7 @@ class AuthService {
       if (linked != null) {
         try {
           await UserDataService().saveUserProfile({
+            ...originalProfile,
             'email': linked.email ?? '',
             'photoUrl': linked.photoURL ?? '',
             'isAnonymous': false,
@@ -497,7 +509,10 @@ class AuthService {
         'fat_consumed',
         'steps',
         'active_calories',
-        'calories_goal', 'carbs_goal', 'protein_goal', 'fat_goal',
+        'calories_goal',
+        'carbs_goal',
+        'protein_goal',
+        'fat_goal',
       ]) {
         await HomeWidget.saveWidgetData<int>(key, 0);
       }
@@ -509,7 +524,8 @@ class AuthService {
         'LargeWidgetProvider',
         'CalorieGraphWidgetProvider'
       ]) {
-        await HomeWidget.updateWidget(androidName: 'com.food_insight_scanner.app.$name');
+        await HomeWidget.updateWidget(
+            androidName: 'com.food_insight_scanner.app.$name');
       }
     } catch (_) {}
   }
@@ -545,7 +561,9 @@ class AuthService {
         debugPrint('Google sign-out error (non-fatal): $e');
       }
 
-      try { await AnalyticsService.setEnabled(false); } catch (_) {}
+      try {
+        await AnalyticsService.setEnabled(false);
+      } catch (_) {}
       await _clearLocalData(uid: deletedUid);
       await signOut();
 
@@ -565,23 +583,33 @@ class AuthService {
 
   Future<void> _reauthenticateIfPossible(User user, String? password) async {
     if (user.isAnonymous) return;
-    final providers = user.providerData.map((provider) => provider.providerId).toSet();
+    final providers =
+        user.providerData.map((provider) => provider.providerId).toSet();
     if (providers.contains('password')) {
       if (password == null || password.isEmpty || user.email == null) {
-        throw AuthException(code: 'password-required', message: 'Enter your password to confirm account deletion.');
+        throw AuthException(
+            code: 'password-required',
+            message: 'Enter your password to confirm account deletion.');
       }
-      await user.reauthenticateWithCredential(EmailAuthProvider.credential(email: user.email!, password: password));
+      await user.reauthenticateWithCredential(
+          EmailAuthProvider.credential(email: user.email!, password: password));
       return;
     }
     if (providers.contains('google.com')) {
       await _googleSignIn.signOut();
       final account = await _googleSignIn.signIn();
-      if (account == null) throw AuthException(code: 'cancelled', message: 'Account deletion cancelled.');
+      if (account == null) {
+        throw AuthException(
+            code: 'cancelled', message: 'Account deletion cancelled.');
+      }
       final token = await account.authentication;
-      await user.reauthenticateWithCredential(GoogleAuthProvider.credential(accessToken: token.accessToken, idToken: token.idToken));
+      await user.reauthenticateWithCredential(GoogleAuthProvider.credential(
+          accessToken: token.accessToken, idToken: token.idToken));
       return;
     }
-    throw AuthException(code: 'requires-recent-login', message: 'Sign in again before deleting your account.');
+    throw AuthException(
+        code: 'requires-recent-login',
+        message: 'Sign in again before deleting your account.');
   }
 
   /// Clears all locally cached user data to prevent leakage between accounts.
@@ -590,7 +618,10 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       if (uid != null) {
         await UserDataService().clearLocalOwner(uid);
-        for (final key in prefs.getKeys().where((key) => key.startsWith('user:$uid:')).toList()) {
+        for (final key in prefs
+            .getKeys()
+            .where((key) => key.startsWith('user:$uid:'))
+            .toList()) {
           await prefs.remove(key);
         }
       }
@@ -646,7 +677,9 @@ class AuthService {
       return error.message;
     }
     if (error is FirebaseFunctionsException) {
-      return error.code == 'failed-precondition' ? 'Sign in again before deleting your account.' : 'Account cleanup could not finish. Please retry deletion.';
+      return error.code == 'failed-precondition'
+          ? 'Sign in again before deleting your account.'
+          : 'Account cleanup could not finish. Please retry deletion.';
     }
     if (error is FirebaseAuthException) {
       return AuthException.fromFirebase(error).message;

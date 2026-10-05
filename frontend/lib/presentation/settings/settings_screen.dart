@@ -284,6 +284,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Navigator.pushNamed(context, AppRoutes.profileSetup);
                   },
                 ),
+                if (_currentUser?.isAnonymous == true)
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.person_add_alt_1_rounded,
+                    title: 'Save your guest account',
+                    subtitle:
+                        'Add email sign-in and keep your profile and meals',
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
+                  ),
                 if (_currentUser != null && !_currentUser!.isAnonymous) ...[
                   const Divider(
                       height: 1, color: FoodInsightColors.outlineGray),

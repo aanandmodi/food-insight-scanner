@@ -113,7 +113,7 @@ class ActivityProvider extends ChangeNotifier {
     try {
       await UserDataService().saveActivity({
         'steps': _steps,
-        'activeCalories': _activeCalories,
+        'activeCalories': hasActiveCalories ? _activeCalories : null,
         'source': source.name,
         'distanceKm': _distanceKm,
         'hasActiveCalories': hasActiveCalories

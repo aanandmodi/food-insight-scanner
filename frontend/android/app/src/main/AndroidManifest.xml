@@ -24,6 +24,10 @@
             android:usesCleartextTraffic="false"
             android:allowBackup="false"
             android:enableOnBackInvokedCallback="true">
+        <!-- Flutter 3.29 Impeller regresses long-chat rendering on the tested
+             Android device; Skia passes the measured 120 Hz scroll budget.
+             Re-evaluate this compatibility choice when upgrading Flutter. -->
+        <meta-data android:name="io.flutter.embedding.android.EnableImpeller" android:value="false"/>
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false"/>
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false"/>
         <meta-data android:name="google_analytics_default_allow_ad_personalization_signals" android:value="false"/>
