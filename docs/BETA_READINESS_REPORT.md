@@ -111,6 +111,8 @@ Login now offers Continue as guest. Settings offers Save your guest account, whi
 
 Earlier loading/retry/empty states, additive source links, contextual quick replies, goal review and daily Food Fit explanations remain. Analytics stays opt-in and event-name-only, without food, chat or health parameters.
 
+The release compatibility audit found 4 KB native scanner libraries. Android now selects bundled ML Kit barcode scanning 17.3.0 and CameraX 1.4.2 while retaining the current Flutter scanner API. Both final artifacts pass the 16 KB LOAD/RELRO layout check for all 14 64-bit libraries. The AAB declares `PAGE_ALIGNMENT_16K`, and QA APK zipalign verification passed. CI now runs `tools/check_android_alignment.py` after release compilation. Final QA camera startup, torch toggle, tab pause/resume, permission denial and recovery passed; original camera permission and keep-awake settings were restored. The connected phone uses 4 KB pages: this is artifact compatibility evidence, not a 16 KB device runtime test. See [Android's compatibility guidance](https://developer.android.com/guide/practices/page-sizes).
+
 ## 21. Tests added
 
 Latest local Flutter suite: 57 passed; backend: 24 passed; Edge: nine passed after rebundling the current backend. Flutter analysis reported no issues. Earlier emulator suite: 13 passed. Added UI checks cover normal and 2x text dietary-card/summary layouts, guest entry/signup, the composer and long replies; service tests cover interval reads and explicit permission denial. Added backend tests verify the latest question is separate from bounded background/history, reject malformed nested messages, and check patched dependency multipart compatibility. Existing coverage includes context minimization, unknown values, Edge compatibility, routing/fallback/429, recalibration, additive variants and alternative filtering.
@@ -125,7 +127,7 @@ Supabase login, deployment, secret configuration and key rotation are already do
 
 ## 23. Remaining known risks
 
-Pending: complete device matrix (Google sign-in, fresh health permissions, all widget sizes, TalkBack, optical barcode variants), Play-installed Auth/App Check, low-end performance and Firebase telemetry delivery evidence. Guest entry and email upgrade passed on the connected phone. The four-entry additive glossary is intentionally limited. Deno's legacy UUID dependency caveat is recorded in section 3. Optional streaming, OCR, billing and true request cancellation remain deferred. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
+Pending: complete device matrix (Google sign-in confirmation, fresh health permissions, all widget sizes, TalkBack, optical barcode variants), Play-installed Auth/App Check, low-end and 16 KB device runtime checks, and Firebase telemetry delivery evidence. Guest entry and email upgrade passed on the connected phone. An existing owner profile also loaded in QA and survived the native-library update; its data was preserved. The four-entry additive glossary is intentionally limited. Deno's legacy UUID dependency caveat is recorded in section 3. Optional streaming, OCR, billing and true request cancellation remain deferred. Historical exposed key material remains in Git history but is rotated. Do not call all 97 prompt sections complete while these gates remain.
 
 ## 24. Exact build commands
 
@@ -145,10 +147,12 @@ Verified final artifacts on 5 October:
 
 | Artifact | Package/version | Bytes | SHA-256 |
 | --- | --- | ---: | --- |
-| Production `frontend/build/app/outputs/bundle/release/app-release.aab` | `com.food_insight_scanner.app`, `1.0.2+2004` | 43,494,377 | `84d6b35e314edad0a6b04f8dc3cc2962d91d330894908855bb03fa9c746905d7` |
-| QA `frontend/build/app/outputs/flutter-apk/app-release.apk` | `com.food_insight_scanner.app.qa`, `1.0.2+2004` | 80,358,544 | `a0b174970f860e041c57d307c5bf2cea4296343eb9bd470d16e7d85972688bcc` |
+| Production `frontend/build/app/outputs/bundle/release/app-release.aab` | `com.food_insight_scanner.app`, `1.0.2+2004` | 44,469,957 | `4cacada12069ac04e9f18b2116af162918cd0989d958bee0e52feb6a353e15de` |
+| QA `frontend/build/app/outputs/flutter-apk/app-release.apk` | `com.food_insight_scanner.app.qa`, `1.0.2+2004` | 82,496,681 | `9601ec87c464c7e500c0561c4a60407ecbeebd9ec1d6b61c09726483197fe7bb` |
 
 Bundle manifest/package/version, Skia setting, JAR signature and both artifact certificates were verified. Certificate SHA-256 is `0EAFA364987E6B403EC626362771DB0B6A225ECC660A0D37FC0267BC3701A35F`. Matching production symbols are in `frontend/build/debug-info`; QA symbols in `frontend/build/debug-info-qa`. Artifacts, credentials, device screenshots and private fixtures remain ignored.
+
+Delivery copies and matching symbols are preserved in the ignored `releases` directory as `Food-Insight-1.0.2-2004-Oct5.aab`, `Food-Insight-QA-1.0.2-2004-Oct5.apk`, `debug-info-production-1.0.2-2004-Oct5` and `debug-info-qa-1.0.2-2004-Oct5`.
 
 ## 25. Exact Supabase deployment commands
 

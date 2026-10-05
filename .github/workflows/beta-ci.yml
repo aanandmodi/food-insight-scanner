@@ -75,6 +75,8 @@ jobs:
       - name: Release compilation and shrinking (ephemeral CI certificate; never distributed)
         run: flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info
         working-directory: frontend
+      - name: Verify 16 KB native library alignment
+        run: python tools/check_android_alignment.py frontend/build/app/outputs/bundle/release/app-release.aab
 
   rules:
     runs-on: ubuntu-latest

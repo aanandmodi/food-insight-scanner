@@ -6,7 +6,7 @@ Updated 5 October 2026. `Automated` means a local test passed; it does not mean 
 | --- | --- | --- |
 | Auth routing/account switch | Automated loading, cached profile, retry and UID mismatch; phone email and guest entry, same-UID email upgrade with preserved profile/diet | Google sign-in and full account-switch matrix |
 | Owner isolation/offline outbox | SQLite/rules tests; live owner/cross-user RLS and private storage; phone offline 300 kcal meal survives restart and syncs exactly once | Full account-switch/widget matrix |
-| Scanner | Invalid/manual barcode tests; connected-phone preview and manual Nutella lookup; manual controls above floating nav | Camera denial, flashlight, repeated optical capture, unknown product, offline |
+| Scanner | Invalid/manual barcode tests; phone preview/manual Nutella lookup; final native SDK camera startup/torch/tab lifecycle/permission denial/recovery; controls above nav | Repeated optical capture, unknown product, offline |
 | Product | Sodium and allergen engine tests, full screen at text scale 1 and 2 | Live OFF barcode lookup passed; existing-history device compatibility pending |
 | Diet log | Estimate-review, validation, save deduplication, local tombstone tests; phone estimate review/save and offline restart/sync | Full manual edit/delete and conflict matrix |
 | AI | 24 backend tests and nine Edge tests; six live tasks, auth/App Check rejection; structured-history BMI returns 22.7; real alternatives retrieval; phone chat, meal estimate, planner and insufficient-data recalibration review | Apply-goal confirmation, failures/retries and Play attestation |
@@ -16,7 +16,7 @@ Updated 5 October 2026. `Automated` means a local test passed; it does not mean 
 | Widgets | UID guards and clearing logic | Each size, owner switch, launcher refresh |
 | Performance | Release phone chat p95 raster 2.1–3.6 ms; Goals & Diet 4.3–7.7 ms; bounded requests/cache/shrinking | Full startup/memory benchmarks and low-end device |
 | Legal | Published pages HTTP 200; synced offline policy | Store declarations/inbox operations |
-| Release | Final 1.0.2+2004 QA installed; production AAB signature/package/version/hash verified against replacement upload key; original installation preserved | Play account/declarations, internal-test install, Play signing/Auth/App Check |
+| Release | Final 1.0.2+2004 QA installed; signed AAB verified; 14 native libraries and packaging pass 16 KB checks; original installation/profile preserved | Play account/declarations, internal-test install, Play signing/Auth/App Check; 16 KB runtime |
 
 Physical-device results are recorded in the readiness report. Never mark blocked production AI/deletion as passed merely because the UI displays a graceful error.
 

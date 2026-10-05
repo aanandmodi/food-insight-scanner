@@ -31,6 +31,9 @@ flutter analyze
 flutter test
 flutter build apk --release --obfuscate --split-debug-info=build/debug-info
 flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info
+cd ..
+python tools/check_android_alignment.py frontend/build/app/outputs/bundle/release/app-release.aab
+cd frontend
 cd ../security-tests
 npm ci
 npm test
