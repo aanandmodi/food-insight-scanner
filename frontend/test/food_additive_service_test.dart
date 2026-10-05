@@ -26,6 +26,21 @@ void main() {
       expect(FoodAdditiveService.extract(input), isEmpty, reason: input);
     }
   });
+  test('OFF lecithin subtype resolves without duplicating its parent tag', () {
+    final service = FoodAdditiveService.fromMap(jsonDecode(
+        File('assets/data/food_additives_v1.json').readAsStringSync()));
+    final rows = service.inspect({
+      'additives': ['en:e322', 'en:e322i']
+    });
+    expect(rows.length, 1);
+    expect(rows.single['ins'], '322(i)');
+    expect(rows.single['known'], true);
+    expect(
+        service.inspect({
+          'additives': ['en:e322']
+        }).single['known'],
+        false);
+  });
   test('local data only resolves exact curated identities', () {
     final service = FoodAdditiveService.fromMap(jsonDecode(
         File('assets/data/food_additives_v1.json').readAsStringSync()));

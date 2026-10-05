@@ -13,7 +13,11 @@ class ChatHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(left: 4.w, right: 4.w, top: MediaQuery.of(context).padding.top + 1.h, bottom: 1.5.h),
+      padding: EdgeInsets.only(
+          left: 4.w,
+          right: 4.w,
+          top: MediaQuery.of(context).padding.top + 1.h,
+          bottom: 1.5.h),
       decoration: BoxDecoration(
         color: FoodInsightColors.warmWhite,
         border: Border(
@@ -71,7 +75,7 @@ class ChatHeaderWidget extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'AI Nutritionist',
+                  'Food Insight AI',
                   style: FoodInsightTypography.heading(
                     size: 17,
                     weight: FontWeight.w800,
@@ -92,7 +96,7 @@ class ChatHeaderWidget extends StatelessWidget {
                     ),
                     SizedBox(width: 1.5.w),
                     Text(
-                      'Always active',
+                      'Nutrition assistant',
                       style: FoodInsightTypography.caption(
                         size: 13,
                         color: FoodInsightColors.scannerGreen,

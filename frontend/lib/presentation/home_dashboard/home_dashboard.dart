@@ -41,6 +41,7 @@ class _HomeDashboardState extends State<HomeDashboard>
   String? _subscribedDate;
   int _loadRevision = 0;
   int _currentIndex = 0;
+  late AnimationController _tabController;
   late AnimationController _refreshController;
   bool _isRefreshing = false;
   int _unlockAnimationKey = 0;
@@ -67,6 +68,8 @@ class _HomeDashboardState extends State<HomeDashboard>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    _tabController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 180), value: 1);
     _subscribe();
     DataRefreshBus.profileRevision.addListener(_loadUserData);
     _loadUserData();
@@ -103,6 +106,7 @@ class _HomeDashboardState extends State<HomeDashboard>
     DataRefreshBus.profileRevision.removeListener(_loadUserData);
     WidgetsBinding.instance.removeObserver(this);
     _refreshController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -154,16 +158,20 @@ class _HomeDashboardState extends State<HomeDashboard>
         gender: profile?.gender ?? 'Male',
         activityLevel: profile?.activityLevel ?? 'moderate',
         healthGoal: profile?.healthGoals ?? '',
+        customGoal: profile?.customCaloriesGoal,
       );
 
       final proteinGoal = UserUtils.calculateProteinGoal(
         weightKg: profile?.weightKg ?? 70.0,
         healthGoal: profile?.healthGoals ?? '',
+        customGoal: profile?.customProteinGoal,
       );
 
       final sugarGoal = UserUtils.calculateSugarGoal(calGoal);
-      final carbsGoal = UserUtils.calculateCarbsGoal(calGoal);
-      final fatGoal = UserUtils.calculateFatGoal(calGoal);
+      final carbsGoal = UserUtils.calculateCarbsGoal(calGoal,
+          customGoal: profile?.customCarbsGoal);
+      final fatGoal = UserUtils.calculateFatGoal(calGoal,
+          customGoal: profile?.customFatGoal);
 
       setState(() {
         _nutritionData['calories'] = totalCals;
@@ -232,7 +240,8 @@ class _HomeDashboardState extends State<HomeDashboard>
         'SmallWidgetProvider',
         'LargeWidgetProvider'
       ]) {
-        await HomeWidget.updateWidget(name: name);
+        await HomeWidget.updateWidget(
+            androidName: 'com.food_insight_scanner.app.$name');
       }
     } catch (e) {
       debugPrint('Failed to sync widget data: $e');
@@ -284,6 +293,7 @@ class _HomeDashboardState extends State<HomeDashboard>
     HapticFeedback.lightImpact();
     setState(() {
       _currentIndex = index;
+      _tabController.forward(from: 0);
     });
     if (index == 0) {
       _loadUserData();
@@ -300,6 +310,7 @@ class _HomeDashboardState extends State<HomeDashboard>
     if (!context.read<FeatureFlagService>().aiChatEnabled) return;
     setState(() {
       _currentIndex = 2;
+      _tabController.forward(from: 0);
     });
   }
 
@@ -337,6 +348,7 @@ class _HomeDashboardState extends State<HomeDashboard>
         gradient: FoodInsightColors.warmBackground,
       ),
       child: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: _handleRefresh,
           color: FoodInsightColors.scannerGreen,
@@ -396,6 +408,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                       onScanBarcode: () {
                         setState(() {
                           _currentIndex = 1;
+                          _tabController.forward(from: 0);
                         });
                       },
                       onUploadImage: _handleUploadImage,
@@ -523,23 +536,31 @@ class _HomeDashboardState extends State<HomeDashboard>
       },
       child: Scaffold(
         backgroundColor: FoodInsightColors.warmWhite,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: [
-            KeyedSubtree(
-              key: ValueKey('home_content_$_unlockAnimationKey'),
-              child: _buildHomeContent(),
-            ),
-            BarcodeScanner(
-              isActive: _currentIndex == 1,
-              onExitRequested: () => setState(() => _currentIndex = 0),
-            ),
-            context.watch<FeatureFlagService>().aiChatEnabled
-                ? const AiChatAssistant()
-                : const Center(
-                    child: Text('AI chat is currently unavailable.')),
-            const ProfileScreen(),
-          ],
+        extendBody: true,
+        body: FadeTransition(
+          opacity: MediaQuery.disableAnimationsOf(context)
+              ? const AlwaysStoppedAnimation(1.0)
+              : CurvedAnimation(
+                  parent: _tabController, curve: Curves.easeOutCubic),
+          child: IndexedStack(
+            index: _currentIndex,
+            children: [
+              KeyedSubtree(
+                key: ValueKey('home_content_$_unlockAnimationKey'),
+                child: _buildHomeContent(),
+              ),
+              BarcodeScanner(
+                isActive: _currentIndex == 1,
+                onExitRequested: () => setState(() => _currentIndex = 0),
+              ),
+              context.watch<FeatureFlagService>().aiChatEnabled
+                  ? AiChatAssistant(
+                      onExitRequested: () => setState(() => _currentIndex = 0))
+                  : const Center(
+                      child: Text('AI chat is currently unavailable.')),
+              const ProfileScreen(),
+            ],
+          ),
         ),
         bottomNavigationBar: _buildBottomNav(),
         // ──────────── Skeuomorphic FAB ────────────
@@ -569,6 +590,7 @@ class _HomeDashboardState extends State<HomeDashboard>
             HapticFeedback.lightImpact();
             setState(() {
               _currentIndex = 1;
+              _tabController.forward(from: 0);
             });
           },
           backgroundColor: FoodInsightColors.scannerGreen,

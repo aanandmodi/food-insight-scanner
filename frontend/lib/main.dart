@@ -8,6 +8,8 @@ import 'services/feature_flag_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'routes/tap_origin.dart';
+import 'core/utils/qa_frame_metrics.dart';
 import 'package:sizer/sizer.dart';
 import 'core/app_export.dart';
 import 'services/local_database_service.dart';
@@ -23,6 +25,10 @@ Future<bool> retryFirebaseInit() => FirebaseBootstrap.ensureReady();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (const bool.fromEnvironment('QA_BUILD')) {
+    final output = debugPrint;
+    installQaFrameMetrics((message) => output(message));
+  }
   if (kReleaseMode) debugPrint = (String? message, {int? wrapWidth}) {};
 
   // Catch synchronous and rendering errors without closing app
@@ -131,6 +137,11 @@ class MyApp extends StatelessWidget {
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,
         debugShowCheckedModeBanner: false,
+        builder: (context, child) => Listener(
+          onPointerDown: (event) =>
+              TapOrigin.record(event.position, MediaQuery.sizeOf(context)),
+          child: child!,
+        ),
 
         // The initial route is now the splash screen.
         initialRoute: AppRoutes.splash,

@@ -1,6 +1,7 @@
 // lib/routes/app_routes.dart
 
 import 'package:flutter/material.dart';
+import 'tap_origin.dart';
 import '../core/auth_gate.dart';
 import '../presentation/auth/login_screen/login_screen.dart';
 import '../presentation/auth/signup_screen/signup_screen.dart';
@@ -93,12 +94,14 @@ class AppRoutes {
     required RouteSettings settings,
     required Widget child,
   }) {
+    final origin = TapOrigin.take();
     return PageRouteBuilder(
       settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => child,
-      transitionDuration: const Duration(milliseconds: 350),
-      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        if (MediaQuery.disableAnimationsOf(context)) return child;
         final curvedAnimation = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,
@@ -107,11 +110,9 @@ class AppRoutes {
 
         return FadeTransition(
           opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation),
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.0, 0.03),
-              end: Offset.zero,
-            ).animate(curvedAnimation),
+          child: ScaleTransition(
+            alignment: origin,
+            scale: Tween<double>(begin: .94, end: 1).animate(curvedAnimation),
             child: child,
           ),
         );

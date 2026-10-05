@@ -1,131 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:sizer/sizer.dart';
 import '../../../theme/app_design_system.dart';
 
-class MessageBubbleWidget extends StatelessWidget {
+class MessageBubbleWidget extends StatefulWidget {
   final String message;
   final bool isUser;
   final DateTime timestamp;
+  const MessageBubbleWidget(
+      {super.key,
+      required this.message,
+      required this.isUser,
+      required this.timestamp});
+  @override
+  State<MessageBubbleWidget> createState() => _MessageBubbleWidgetState();
+}
 
-  const MessageBubbleWidget({
-    super.key,
-    required this.message,
-    required this.isUser,
-    required this.timestamp,
-  });
+class _MessageBubbleWidgetState extends State<MessageBubbleWidget> {
+  Widget? _body;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _body = null;
+  }
+
+  @override
+  void didUpdateWidget(covariant MessageBubbleWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message != widget.message ||
+        oldWidget.isUser != widget.isUser) {
+      _body = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (isUser) {
-      return Container(
-        margin: EdgeInsets.only(top: 1.h, bottom: 1.h, left: 15.w, right: 4.w),
-        alignment: Alignment.centerRight,
+    final style = FoodInsightTypography.body(size: 15).copyWith(height: 1.5);
+    // Keep parsed Markdown stable when composer, suggestions or typing state changes.
+    _body ??= widget.isUser
+        ? Text(widget.message, style: style.copyWith(color: Colors.white))
+        : MarkdownBody(
+            data: widget.message,
+            selectable: false,
+            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                .copyWith(
+                    p: style,
+                    strong: style.copyWith(fontWeight: FontWeight.w700),
+                    listBullet:
+                        style.copyWith(color: FoodInsightColors.primary),
+                    listIndent: 22,
+                    blockSpacing: 12));
+    return RepaintBoundary(
+        child: Padding(
+      padding: EdgeInsets.fromLTRB(widget.isUser ? 56 : 16, 6, 16, 10),
+      child: Align(
+        alignment: widget.isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           decoration: BoxDecoration(
-            color: FoodInsightColors.primary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(5.w),
-              topRight: Radius.circular(5.w),
-              bottomLeft: Radius.circular(5.w),
-              bottomRight: Radius.circular(1.w),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: FoodInsightColors.scannerGreen.withValues(alpha: 0.25),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: widget.isUser ? FoodInsightColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: widget.isUser
+                ? null
+                : Border.all(
+                    color:
+                        FoodInsightColors.outlineGray.withValues(alpha: .45)),
           ),
-          child: Text(
-            message,
-            style: FoodInsightTypography.body(
-              size: 15,
-              color: Colors.white,
-              weight: FontWeight.w600,
-            ),
-          ),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!widget.isUser)
+                  Row(children: [
+                    const Icon(Icons.auto_awesome_rounded,
+                        size: 16, color: FoodInsightColors.primary),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                        child: Text('Food Insight AI',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: FoodInsightColors.primary))),
+                    IconButton(
+                        tooltip: 'Copy reply',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: widget.message));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Reply copied')));
+                          }
+                        }),
+                  ]),
+                _body!,
+              ]),
         ),
-      );
-    }
-
-    // AI Message Bubble
-    return Container(
-      margin: EdgeInsets.only(top: 1.h, bottom: 1.h, left: 4.w, right: 10.w),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 8.w,
-            height: 8.w,
-            margin: EdgeInsets.only(top: 0.5.h, right: 3.w),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: FoodInsightColors.healthyGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: FoodInsightColors.scannerGreen.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              color: Colors.white,
-              size: 4.5.w,
-            ),
-          ),
-          Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(1.w),
-                  topRight: Radius.circular(5.w),
-                  bottomLeft: Radius.circular(5.w),
-                  bottomRight: Radius.circular(5.w),
-                ),
-                border: Border.all(
-                  color: FoodInsightColors.outlineGray.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-                boxShadow: FoodInsightShadows.subtleCard,
-              ),
-              child: MarkdownBody(
-                data: message,
-                selectable: true,
-                styleSheet: MarkdownStyleSheet(
-                  p: FoodInsightTypography.body(
-                    size: 15,
-                    color: FoodInsightColors.deepCharcoal,
-                  ),
-                  strong: FoodInsightTypography.body(
-                    size: 15,
-                    weight: FontWeight.w800,
-                    color: FoodInsightColors.deepCharcoal,
-                  ),
-                  listBullet: FoodInsightTypography.body(
-                    size: 15,
-                    color: FoodInsightColors.primary,
-                    weight: FontWeight.w800,
-                  ),
-                  h1: FoodInsightTypography.heading(size: 20),
-                  h2: FoodInsightTypography.heading(size: 18),
-                  h3: FoodInsightTypography.heading(size: 16),
-                  blockquote: FoodInsightTypography.body(
-                    size: 14,
-                    color: FoodInsightColors.midGray,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
-    );
+    ));
   }
 }

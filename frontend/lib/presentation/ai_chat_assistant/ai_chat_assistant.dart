@@ -17,7 +17,8 @@ import './widgets/quick_reply_widget.dart';
 import './widgets/typing_indicator_widget.dart';
 
 class AiChatAssistant extends StatefulWidget {
-  const AiChatAssistant({super.key});
+  final VoidCallback? onExitRequested;
+  const AiChatAssistant({super.key, this.onExitRequested});
   @override
   State<AiChatAssistant> createState() => _AiChatAssistantState();
 }
@@ -25,6 +26,7 @@ class AiChatAssistant extends StatefulWidget {
 class _AiChatAssistantState extends State<AiChatAssistant> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _latestReplyKey = GlobalKey();
   final CloudFunctionService _cloudFunctionService = CloudFunctionService();
 
   bool _isLoading = false;
@@ -60,7 +62,10 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     } catch (error) {
       debugPrint('Chat history unavailable: $error');
     }
-    if (mounted) setState(() => _historyLoaded = true);
+    if (mounted) {
+      setState(() => _historyLoaded = true);
+      _scrollToBottom(animate: false);
+    }
   }
 
   Future<void> _initializeChat(UserProfile? profile) async {
@@ -207,6 +212,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       session.check();
 
       if (mounted) {
+        final followReply = !_scrollController.hasClients ||
+            _scrollController.position.extentAfter < 160;
         setState(() {
           _messages.add({
             "id": _messages.length + 1,
@@ -215,6 +222,19 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
             "timestamp": DateTime.now(),
           });
         });
+        if (followReply) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final replyContext = _latestReplyKey.currentContext;
+            if (mounted && replyContext != null) {
+              Scrollable.ensureVisible(replyContext,
+                  alignment: 0,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic);
+            }
+          });
+        }
 
         if (result['mealData'] is Map) {
           await _confirmMeal(
@@ -247,7 +267,6 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
           _isLoading = false;
           _showTypingIndicator = false;
         });
-        _scrollToBottom();
         await _updateQuickReplies();
       }
     }
@@ -293,9 +312,13 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     _sendMessage(suggestion);
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animate = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
+        if (!animate || MediaQuery.disableAnimationsOf(context)) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          return;
+        }
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
@@ -322,7 +345,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       body: Column(
         children: [
           ChatHeaderWidget(
-            onBackPressed: () => Navigator.maybePop(context),
+            onBackPressed:
+                widget.onExitRequested ?? () => Navigator.maybePop(context),
           ),
           if (_errorMessage != null)
             Container(
@@ -378,11 +402,14 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               decoration: const BoxDecoration(
                 gradient: FoodInsightColors.warmBackground,
               ),
-              child: Stack(
+              child: Column(
                 children: [
-                  ListView.builder(
+                  Expanded(
+                      child: ListView.builder(
                     controller: _scrollController,
-                    padding: EdgeInsets.only(top: 2.h, bottom: 8.h),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     itemCount:
                         _messages.length + (_showTypingIndicator ? 1 : 0),
                     itemBuilder: (context, index) {
@@ -392,28 +419,30 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                             : const SizedBox.shrink();
                       }
                       final message = _messages[index];
-                      return MessageBubbleWidget(
+                      final bubble = MessageBubbleWidget(
+                        key: ValueKey(
+                            '${message['id']}-${message['timestamp']}'),
                         message: message["message"] as String,
                         isUser: message["isUser"] as bool,
                         timestamp: message["timestamp"] as DateTime,
                       );
+                      return index == _messages.length - 1 &&
+                              message['isUser'] != true
+                          ? KeyedSubtree(key: _latestReplyKey, child: bubble)
+                          : bubble;
                     },
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: QuickReplyWidget(
-                      suggestions: _quickReplies,
-                      onSuggestionTap: _handleQuickReply,
-                    ),
+                  )),
+                  QuickReplyWidget(
+                    suggestions: _quickReplies,
+                    onSuggestionTap: _handleQuickReply,
                   ),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: EdgeInsets.only(bottom: 10.h),
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
             child: ChatInputWidget(
               textController: _messageController,
               onSendMessage: _sendMessage,

@@ -107,36 +107,36 @@ class _DietaryPreferencesWidgetState extends State<DietaryPreferencesWidget> {
                 size: 20,
               ),
               SizedBox(width: 2.w),
-              Text(
+              Expanded(
+                  child: Text(
                 'Dietary Preferences',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+                      fontWeight: FontWeight.w600,
+                    ),
+              )),
             ],
           ),
           SizedBox(height: 1.h),
           Text(
             'Select all dietary preferences that apply to you:',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           SizedBox(height: 2.h),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 3.w,
-              mainAxisSpacing: 2.h,
-              childAspectRatio: 2.5,
-            ),
-            itemCount: dietaryOptions.length,
-            itemBuilder: (context, index) {
-              return _buildPreferenceCard(dietaryOptions[index]);
-            },
-          ),
+          LayoutBuilder(builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 300 &&
+                    MediaQuery.textScalerOf(context).scale(1) < 1.5
+                ? 2
+                : 1;
+            const gap = 12.0;
+            final width =
+                (constraints.maxWidth - gap * (columns - 1)) / columns;
+            return Wrap(spacing: gap, runSpacing: gap, children: [
+              for (final option in dietaryOptions)
+                SizedBox(width: width, child: _buildPreferenceCard(option)),
+            ]);
+          }),
         ],
       ),
     );
@@ -146,95 +146,68 @@ class _DietaryPreferencesWidgetState extends State<DietaryPreferencesWidget> {
     final bool isSelected =
         widget.selectedPreferences.contains(option['value']);
 
-    return GestureDetector(
-      onTap: () => _togglePreference(option['value']),
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      selected: isSelected,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.all(3.w),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: isSelected
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
+              ? colors.primary.withValues(alpha: .08)
+              : colors.surface,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline
-                    .withValues(alpha: 0.3),
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Theme.of(context).colorScheme.primary
-                        .withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+              color: isSelected
+                  ? colors.primary
+                  : colors.outline.withValues(alpha: .2),
+              width: 2),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(1.5.w),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : (option['color'] as Color).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: CustomIconWidget(
-                    iconName: option['icon'],
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : option['color'],
-                    size: 16,
-                  ),
-                ),
-                const Spacer(),
-                if (isSelected)
-                  CustomIconWidget(
-                    iconName: 'check_circle',
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 18,
-                  ),
-              ],
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _togglePreference(option['value']),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: colors.primary.withValues(alpha: .08),
+                            borderRadius: BorderRadius.circular(10)),
+                        child: CustomIconWidget(
+                            iconName: option['icon'],
+                            color: colors.primary,
+                            size: 22),
+                      ),
+                      const Spacer(),
+                      if (isSelected)
+                        Icon(Icons.check_circle_rounded,
+                            color: colors.primary, size: 22),
+                    ]),
+                    const SizedBox(height: 12),
+                    Text(option['label'],
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Text(option['description'],
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant, height: 1.4)),
+                  ]),
             ),
-            SizedBox(height: 1.h),
-            Text(
-              option['label'],
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            SizedBox(height: 0.5.h),
-            Text(
-              option['description'],
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 10.sp,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
-

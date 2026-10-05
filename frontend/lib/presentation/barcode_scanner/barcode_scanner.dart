@@ -101,7 +101,9 @@ class _BarcodeScannerState extends State<BarcodeScanner>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_scannerController == null || !_isInitialized || !widget.isActive) return;
+    if (_scannerController == null || !_isInitialized || !widget.isActive) {
+      return;
+    }
 
     switch (state) {
       case AppLifecycleState.resumed:
@@ -232,45 +234,48 @@ class _BarcodeScannerState extends State<BarcodeScanner>
   Future<void> _openProduct(String barcode) async {
     final session = UserSession.instance.capture();
     try {
-    final product = await _productService.getProductByBarcode(barcode);
-    if (!mounted || !widget.isActive || !session.isActive) return;
+      final product = await _productService.getProductByBarcode(barcode);
+      if (!mounted || !widget.isActive || !session.isActive) return;
 
-    if (product == null) {
-      setState(() {
-        _isLoading = false;
-        _errorTitle = 'Product Not Found';
-        _errorMessage = "We couldn't find product info for barcode: $barcode.\n"
-            'Try scanning again or enter the barcode manually.';
-      });
-      return;
-    }
+      if (product == null) {
+        setState(() {
+          _isLoading = false;
+          _errorTitle = 'Product Not Found';
+          _errorMessage =
+              "We couldn't find product info for barcode: $barcode.\n"
+              'Try scanning again or enter the barcode manually.';
+        });
+        return;
+      }
 
-    // Persisting must never block navigation, but a total failure is worth
-    // telling the user about — it used to fail completely silently.
-    final saveResult = await _productService.saveToScanHistory(product);
-    if (!mounted) return;
-    if (!saveResult.isPersisted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Couldn't save this scan to your history."),
-          behavior: SnackBarBehavior.floating,
-        ),
+      // Persisting must never block navigation, but a total failure is worth
+      // telling the user about — it used to fail completely silently.
+      final saveResult = await _productService.saveToScanHistory(product);
+      if (!mounted) return;
+      if (!saveResult.isPersisted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't save this scan to your history."),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      if (!mounted) return;
+      await Navigator.pushNamed(
+        context,
+        '/product-details',
+        arguments: product,
       );
-    }
-
-    if (!mounted) return;
-    await Navigator.pushNamed(
-      context,
-      '/product-details',
-      arguments: product,
-    );
-    if (mounted) _resetScanner();
+      if (mounted) _resetScanner();
     } catch (error) {
       if (!mounted || !session.isActive) return;
       setState(() {
         _isLoading = false;
         _errorTitle = 'Product lookup unavailable';
-        _errorMessage = error is AiRequestException ? error.message : 'Check your internet connection and retry. Saved products remain available in history.';
+        _errorMessage = error is AiRequestException
+            ? error.message
+            : 'Check your internet connection and retry. Saved products remain available in history.';
       });
     }
   }
@@ -367,7 +372,10 @@ class _BarcodeScannerState extends State<BarcodeScanner>
       body: Stack(
         children: [
           // Camera preview or permission request
-          if (widget.isActive && _hasPermission && _isInitialized && _scannerController != null)
+          if (widget.isActive &&
+              _hasPermission &&
+              _isInitialized &&
+              _scannerController != null)
             MobileScanner(
               controller: _scannerController!,
               onDetect: _onBarcodeDetected,
@@ -391,10 +399,9 @@ class _BarcodeScannerState extends State<BarcodeScanner>
                       _hasPermission
                           ? 'Initializing Camera...'
                           : 'Camera Access Needed',
-                      style:
-                          Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                          ),
                     ),
                     if (!_hasPermission) ...[
                       SizedBox(height: 2.h),
@@ -420,7 +427,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
           // Manual input bottom sheet
           if (_showManualInput)
             Positioned(
-              bottom: 0,
+              bottom: MediaQuery.of(context).padding.bottom,
               left: 0,
               right: 0,
               child: ManualInputWidget(
@@ -479,4 +486,3 @@ class _BarcodeScannerState extends State<BarcodeScanner>
     );
   }
 }
-

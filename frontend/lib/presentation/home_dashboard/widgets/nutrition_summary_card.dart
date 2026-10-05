@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../theme/app_design_system.dart';
 import '../../../widgets/skeuomorphic/skeu_card.dart';
+import '../../../widgets/insight_info_button.dart';
 
 class NutritionSummaryCard extends StatelessWidget {
   final Map<String, dynamic> nutritionData;
@@ -45,52 +46,33 @@ class NutritionSummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Header Row: Title & Badge ──
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: FoodInsightColors.ctaRed,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'DAILY SUMMARY',
-                      style: FoodInsightTypography.smallCaps(
-                        size: 11,
-                        weight: FontWeight.w900,
-                        color: FoodInsightColors.deepCharcoal
-                            .withValues(alpha: 0.8),
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            Row(children: [
+              Container(
+                  width: 4,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: FoodInsightColors.ctaRed.withValues(alpha: 0.08),
-                    borderRadius: FoodInsightRadius.pillAll,
-                  ),
-                  child: Text(
-                    'Goal: ${_formatNumber(caloriesGoal)} kcal',
-                    style: FoodInsightTypography.caption(
-                      size: 11,
-                      weight: FontWeight.w800,
                       color: FoodInsightColors.ctaRed,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text('Recorded nutrients only; unknown values are excluded.'),
+                      borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text('DAILY SUMMARY',
+                        style: FoodInsightTypography.smallCaps(
+                            size: 11,
+                            weight: FontWeight.w800,
+                            letterSpacing: 1)),
+                    const SizedBox(height: 4),
+                    Text('Goal: ${_formatNumber(caloriesGoal)} kcal',
+                        style: FoodInsightTypography.caption(
+                            size: 11, color: FoodInsightColors.midGray)),
+                  ])),
+              const InsightInfoButton(
+                  title: 'Daily summary',
+                  information:
+                      'These totals include nutrients recorded in your food log. Missing nutrition is left out, so the totals may be incomplete. They do not prove your full intake. Goals come from your profile and any targets you apply. You can review or change goals in Profile.'),
+            ]),
             const SizedBox(height: 20),
 
             // ── Main Content: Left Ring, Right Progress Details ──
@@ -338,8 +320,9 @@ class _MacroProgressRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 8,
+          runSpacing: 2,
           children: [
             Text(
               label,

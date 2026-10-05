@@ -17,37 +17,43 @@ class QuickReplyWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return suggestions.isNotEmpty
         ? Container(
-            height: 5.6.h,
+            height:
+                48 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5),
             margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 0.5.h),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: suggestions.length,
               separatorBuilder: (context, index) => SizedBox(width: 2.w),
               itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () => onSuggestionTap(suggestions[index]),
-                  child: Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: FoodInsightShadows.subtleCard,
-                    ),
-                    child: Center(
-                      child: Text(
-                        suggestions[index],
-                        style: FoodInsightTypography.caption(
-                          size: 12,
-                          weight: FontWeight.w700,
-                          color: FoodInsightColors.scannerGreen,
+                return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () => onSuggestionTap(suggestions[index]),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 4.w, vertical: 1.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                              color: FoodInsightColors.outlineGray
+                                  .withValues(alpha: .4)),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: Center(
+                          child: Text(
+                            suggestions[index],
+                            style: FoodInsightTypography.caption(
+                              size: 12,
+                              weight: FontWeight.w700,
+                              color: FoodInsightColors.scannerGreen,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
+                    ));
               },
             ),
           )

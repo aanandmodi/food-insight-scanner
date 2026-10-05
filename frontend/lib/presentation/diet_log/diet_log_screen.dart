@@ -117,6 +117,10 @@ class _DietLogScreenState extends State<DietLogScreen> {
       );
 
       final sugarGoal = UserUtils.calculateSugarGoal(calGoal);
+      final carbsGoal = UserUtils.calculateCarbsGoal(calGoal,
+          customGoal: profileProviderData?.customCarbsGoal);
+      final fatGoal = UserUtils.calculateFatGoal(calGoal,
+          customGoal: profileProviderData?.customFatGoal);
 
       _userProfile = profileProviderData?.toMap() ??
           {
@@ -128,11 +132,15 @@ class _DietLogScreenState extends State<DietLogScreen> {
       int totalCals = 0;
       double totalProtein = 0;
       double totalSugar = 0;
+      double totalCarbs = 0;
+      double totalFat = 0;
 
       for (var entry in entries) {
         totalCals += (entry['calories'] as num?)?.toInt() ?? 0;
         totalProtein += (entry['protein'] as num?)?.toDouble() ?? 0;
         totalSugar += (entry['sugar'] as num?)?.toDouble() ?? 0;
+        totalCarbs += (entry['carbs'] as num?)?.toDouble() ?? 0;
+        totalFat += (entry['fat'] as num?)?.toDouble() ?? 0;
       }
 
       if (mounted) {
@@ -145,6 +153,10 @@ class _DietLogScreenState extends State<DietLogScreen> {
             'proteinGoal': proteinGoal,
             'sugar': totalSugar.round(),
             'sugarGoal': sugarGoal,
+            'carbs': totalCarbs.round(),
+            'fat': totalFat.round(),
+            'carbsGoal': carbsGoal,
+            'fatGoal': fatGoal,
           };
         });
       }

@@ -509,7 +509,7 @@ class AuthService {
         'LargeWidgetProvider',
         'CalorieGraphWidgetProvider'
       ]) {
-        await HomeWidget.updateWidget(name: name);
+        await HomeWidget.updateWidget(androidName: 'com.food_insight_scanner.app.$name');
       }
     } catch (_) {}
   }

@@ -373,8 +373,10 @@ class _ProfileSetupState extends State<ProfileSetup>
   void _nextStep() {
     if (_currentStep < _totalSteps) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
       );
     }
   }
@@ -382,8 +384,10 @@ class _ProfileSetupState extends State<ProfileSetup>
   void _previousStep() {
     if (_currentStep > 1) {
       _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
       );
     }
   }

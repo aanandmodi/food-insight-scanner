@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sizer/sizer.dart';
 import '../../../theme/app_design_system.dart';
 
 class ChatInputWidget extends StatefulWidget {
@@ -7,26 +6,33 @@ class ChatInputWidget extends StatefulWidget {
   final Function(String) onSendMessage;
   final Function(String) onVoiceMessage;
   final bool isLoading;
-
-  const ChatInputWidget({
-    super.key,
-    required this.textController,
-    required this.onSendMessage,
-    required this.onVoiceMessage,
-    this.isLoading = false,
-  });
-
+  const ChatInputWidget(
+      {super.key,
+      required this.textController,
+      required this.onSendMessage,
+      required this.onVoiceMessage,
+      this.isLoading = false});
   @override
   State<ChatInputWidget> createState() => _ChatInputWidgetState();
 }
 
 class _ChatInputWidgetState extends State<ChatInputWidget> {
   bool _hasText = false;
-
   @override
   void initState() {
     super.initState();
+    _hasText = widget.textController.text.trim().isNotEmpty;
     widget.textController.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatInputWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.textController != widget.textController) {
+      oldWidget.textController.removeListener(_onTextChanged);
+      widget.textController.addListener(_onTextChanged);
+      _hasText = widget.textController.text.trim().isNotEmpty;
+    }
   }
 
   @override
@@ -36,116 +42,61 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   }
 
   void _onTextChanged() {
-    setState(() {
-      _hasText = widget.textController.text.trim().isNotEmpty;
-    });
+    final hasText = widget.textController.text.trim().isNotEmpty;
+    if (_hasText != hasText) setState(() => _hasText = hasText);
   }
 
   void _sendMessage() {
-    if (widget.textController.text.trim().isNotEmpty && !widget.isLoading) {
-      widget.onSendMessage(widget.textController.text.trim());
-      widget.textController.clear();
-    }
+    if (!_hasText || widget.isLoading) return;
+    widget.onSendMessage(widget.textController.text.trim());
+    widget.textController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(left: 4.w, right: 4.w, top: 1.5.h, bottom: MediaQuery.of(context).padding.bottom + 1.h),
-      decoration: BoxDecoration(
-        color: FoodInsightColors.warmWhite,
-        border: Border(
-          top: BorderSide(
-            color: FoodInsightColors.outlineGray.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6.w),
-                border: Border.all(
-                  color: FoodInsightColors.outlineGray.withValues(alpha: 0.8),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+                color: FoodInsightColors.outlineGray.withValues(alpha: .6))),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 6, 4),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+                child: TextField(
+              controller: widget.textController,
+              maxLength: 2000,
+              maxLines: 4,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
+              style: FoodInsightTypography.body(size: 15),
+              decoration: const InputDecoration(
+                hintText: 'Ask about nutrition…',
+                counterText: '',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
-                      child: TextField(
-                        controller: widget.textController,
-                        enabled: !widget.isLoading,
-                        maxLength: 2000,
-                        maxLines: 4,
-                        minLines: 1,
-                        textCapitalization: TextCapitalization.sentences,
-                        style: FoodInsightTypography.body(size: 15),
-                        decoration: InputDecoration(
-                          hintText: 'Ask about nutrition...',
-                          hintStyle: FoodInsightTypography.body(
-                            size: 15,
-                            color: FoodInsightColors.midGray,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 1.5.h),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_hasText)
-                    Container(
-                      margin: EdgeInsets.all(1.w),
-                      decoration: BoxDecoration(
-                        color: FoodInsightColors.scannerGreen,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: widget.isLoading
-                            ? SizedBox(
-                                width: 5.w,
-                                height: 5.w,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : Icon(
-                                Icons.arrow_upward_rounded,
-                                color: Colors.white,
-                                size: 5.w,
-                              ),
-                        tooltip: 'Send message',
-                        onPressed: widget.isLoading ? null : _sendMessage,
-                      ),
-                    ),
-                ],
-              ),
+            )),
+            IconButton.filled(
+              tooltip: widget.isLoading ? 'Waiting for reply' : 'Send message',
+              onPressed: _hasText && !widget.isLoading ? _sendMessage : null,
+              style: IconButton.styleFrom(
+                  backgroundColor: FoodInsightColors.primary),
+              icon: widget.isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.arrow_upward_rounded),
             ),
-          ),
-        ],
+          ]),
+        ),
       ),
     );
   }

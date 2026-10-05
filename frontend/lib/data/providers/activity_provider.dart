@@ -4,6 +4,7 @@ import 'package:home_widget/home_widget.dart';
 import '../services/activity_service.dart';
 import '../../services/user_session.dart';
 import '../../services/user_data_service.dart';
+import '../../services/user_preferences.dart';
 
 enum ActivityDataSource { none, healthConnect, pedometerEstimate }
 
@@ -14,6 +15,7 @@ class ActivityProvider extends ChangeNotifier {
   int _activeCalories = 0;
   double _distanceKm = 0;
   bool _isLoading = false;
+  bool _hasActiveCalories = false;
   bool _disposed = false;
   int? _lastSensor;
   String _date = '';
@@ -23,6 +25,8 @@ class ActivityProvider extends ChangeNotifier {
   int get activeCalories => _activeCalories;
   double get distanceKm => _distanceKm;
   bool get isLoading => _isLoading;
+  bool get hasActiveCalories =>
+      source == ActivityDataSource.pedometerEstimate || _hasActiveCalories;
   int get dailyStepGoal => 10000;
   int get dailyCalorieGoal => 400;
   double get dailyDistanceGoal => 7.5;
@@ -40,6 +44,7 @@ class ActivityProvider extends ChangeNotifier {
     _steps = 0;
     _activeCalories = 0;
     _distanceKm = 0;
+    _hasActiveCalories = false;
     _lastSensor = null;
     _lastSave = null;
     _date = DateTime.now().toIso8601String().split('T')[0];
@@ -49,13 +54,21 @@ class ActivityProvider extends ChangeNotifier {
     _isLoading = true;
     try {
       final saved = await UserDataService().getActivity(_date);
+      final preferences = await UserPreferences.getInstance();
       if (!session.isActive || _disposed) return;
-      source = ActivityDataSource.values.firstWhere((value) => value.name == saved?['source'], orElse: () => ActivityDataSource.none);
+      final sourceName =
+          preferences.getString('activity_source') ?? saved?['source'];
+      source = ActivityDataSource.values.firstWhere(
+          (value) => value.name == sourceName,
+          orElse: () => ActivityDataSource.none);
       _steps = (saved?['steps'] as num?)?.toInt() ?? 0;
       _activeCalories = (saved?['activeCalories'] as num?)?.toInt() ?? 0;
       _distanceKm = (saved?['distanceKm'] as num?)?.toDouble() ?? 0;
+      _hasActiveCalories = saved?['hasActiveCalories'] == true;
       if (_subscription == null) {
-        if (source == ActivityDataSource.pedometerEstimate) await _activityService.initPedometer();
+        if (source == ActivityDataSource.pedometerEstimate) {
+          await _activityService.initPedometer();
+        }
         if (!session.isActive || _disposed) return;
         _subscription = _activityService.pedometerSteps.listen(_onSteps);
       }
@@ -102,7 +115,8 @@ class ActivityProvider extends ChangeNotifier {
         'steps': _steps,
         'activeCalories': _activeCalories,
         'source': source.name,
-        'distanceKm': _distanceKm
+        'distanceKm': _distanceKm,
+        'hasActiveCalories': hasActiveCalories
       }, session);
     } catch (e) {
       debugPrint('Activity sync: $e');
@@ -111,34 +125,66 @@ class ActivityProvider extends ChangeNotifier {
 
   // Health Connect import only follows an explicit refresh by the user.
   Future<void> disconnect() async {
+    if (_isLoading) return;
     final session = UserSession.instance.capture();
-    await _activityService.disconnect();
+    await _activityService.disconnect(
+        revokeHealth: source == ActivityDataSource.healthConnect);
     session.check();
     source = ActivityDataSource.none;
+    // Preserve the last imported daily totals; clear only the current display.
+    await _save(session);
+    session.check();
     _lastSensor = null;
+    _steps = 0;
+    _activeCalories = 0;
+    _distanceKm = 0;
+    _hasActiveCalories = false;
+    final preferences = await UserPreferences.getInstance();
+    session.check();
+    await preferences.setString('activity_source', source.name);
     _notify();
-    await _save(session);
-  }
-
-  Future<void> refresh({bool requestPermission = false}) async {
-    final session = UserSession.instance.capture();
-    final data = await _activityService.syncHealthData(requestPermission: requestPermission);
-    if (!session.isActive || _disposed) return;
-    if (data.isEmpty) return;
-    source = ActivityDataSource.healthConnect;
-    _steps = data['steps'] ?? _steps;
-    _activeCalories = data['activeCalories'] ?? 0;
-    _distanceKm = _steps * 0.000762;
-    _notify();
-    await _save(session);
     await _widget(session);
   }
 
+  Future<void> refresh({bool requestPermission = false}) async {
+    if (_isLoading) return;
+    final session = UserSession.instance.capture();
+    _isLoading = true;
+    _notify();
+    try {
+      final data = await _activityService.syncHealthData(
+          requestPermission: requestPermission);
+      if (!session.isActive || _disposed) return;
+      if (data.isEmpty && !requestPermission) return;
+      source = ActivityDataSource.healthConnect;
+      _steps = data['steps'] ?? 0;
+      _activeCalories = data['activeCalories'] ?? 0;
+      _hasActiveCalories = data.containsKey('activeCalories');
+      _distanceKm = _steps * 0.000762;
+      _notify();
+      final preferences = await UserPreferences.getInstance();
+      session.check();
+      await preferences.setString('activity_source', source.name);
+      await _save(session);
+      await _widget(session);
+    } finally {
+      if (session.isActive && !_disposed) {
+        _isLoading = false;
+        _notify();
+      }
+    }
+  }
+
   Future<void> connectPedometer() async {
+    if (_isLoading) return;
     final session = UserSession.instance.capture();
     await _activityService.initPedometer(requestPermission: true);
     session.check();
     source = ActivityDataSource.pedometerEstimate;
+    _lastSensor = null;
+    final preferences = await UserPreferences.getInstance();
+    session.check();
+    await preferences.setString('activity_source', source.name);
     _notify();
     await _save(session);
   }
@@ -152,7 +198,9 @@ class ActivityProvider extends ChangeNotifier {
       session.check();
       await HomeWidget.saveWidgetData<double>('distance_km', _distanceKm);
       session.check();
-      await HomeWidget.updateWidget(name: 'CalorieGraphWidgetProvider');
+      await HomeWidget.updateWidget(
+          androidName:
+              'com.food_insight_scanner.app.CalorieGraphWidgetProvider');
     } catch (_) {}
   }
 

@@ -10,8 +10,8 @@ class CustomBounceButton extends StatefulWidget {
     super.key,
     required this.child,
     required this.onTap,
-    this.scaleFactor = 0.95,
-    this.duration = const Duration(milliseconds: 150),
+    this.scaleFactor = 0.97,
+    this.duration = const Duration(milliseconds: 120),
   });
 
   @override
@@ -30,8 +30,12 @@ class _CustomBounceButtonState extends State<CustomBounceButton>
       vsync: this,
       duration: widget.duration,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    _scaleAnimation =
+        Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
+      CurvedAnimation(
+          parent: _controller,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeOutCubic),
     );
   }
 
@@ -42,7 +46,7 @@ class _CustomBounceButtonState extends State<CustomBounceButton>
   }
 
   void _onTapDown(TapDownDetails details) {
-    _controller.forward();
+    if (!MediaQuery.disableAnimationsOf(context)) _controller.forward();
   }
 
   void _onTapUp(TapUpDetails details) {

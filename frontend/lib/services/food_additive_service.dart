@@ -22,6 +22,9 @@ class FoodAdditiveService {
         .allMatches(text)
         .map((m) =>
             '${(m[1] ?? m[2])!.toLowerCase()}${m[3] == null ? '' : '(${m[3]!.toLowerCase()})'}')
+        // OFF's documented lecithin subtype uses e322i for INS 322(i).
+        // Keep this alias explicit: arbitrary letter suffixes are not Roman numerals.
+        .map((code) => code == '322i' ? '322(i)' : code)
         .toSet()
         .toList();
   }
@@ -30,6 +33,7 @@ class FoodAdditiveService {
     final codes = extract(
         '${product['ingredientsText'] ?? ''} ${(product['additives'] as List? ?? []).join(' ')}');
     return codes
+        .where((code) => code != '322' || !codes.contains('322(i)'))
         .map((code) => {
               'ins': code,
               'known': _records.containsKey(code),

@@ -1,4 +1,4 @@
-import '../../../widgets/health_connection_prompt.dart';
+import '../../../widgets/insight_info_button.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +33,7 @@ class ActivitySummaryCard extends StatelessWidget {
         }
 
         final steps = provider.steps;
+        final connected = provider.source != ActivityDataSource.none;
         final stepGoal = provider.dailyStepGoal;
         final stepPct = stepGoal > 0 ? (steps / stepGoal).clamp(0.0, 1.0) : 0.0;
 
@@ -54,59 +55,34 @@ class ActivitySummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton.icon(onPressed: () => showHealthConnectionPrompt(context),
-                  icon: const Icon(Icons.health_and_safety_outlined),
-                  label: Text(provider.source == ActivityDataSource.none ? 'Connect activity data' : 'Manage activity connection')),
-                Text(provider.source == ActivityDataSource.healthConnect ? 'Health Connect • distance estimated' :
-                  provider.source == ActivityDataSource.pedometerEstimate ? 'Step counter • calories and distance estimated' : 'No activity source connected',
-                  style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: 12),
                 // ── Header Row: Title & Badge ──
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: FoodInsightColors.scannerGreen,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'ACTIVITY & STEPS',
-                          style: FoodInsightTypography.smallCaps(
-                            size: 11,
-                            weight: FontWeight.w900,
-                            color: FoodInsightColors.deepCharcoal
-                                .withValues(alpha: 0.8),
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                Row(children: [
+                  Container(
+                      width: 4,
+                      height: 32,
                       decoration: BoxDecoration(
-                        color: FoodInsightColors.scannerGreen
-                            .withValues(alpha: 0.08),
-                        borderRadius: FoodInsightRadius.pillAll,
-                      ),
-                      child: Text(
-                        'Goal: ${_formatNumber(stepGoal)} steps',
-                        style: FoodInsightTypography.caption(
-                          size: 11,
-                          weight: FontWeight.w800,
-                          color: FoodInsightColors.scannerGreen,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                          color: FoodInsightColors.primary,
+                          borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text('ACTIVITY & STEPS',
+                            style: FoodInsightTypography.smallCaps(
+                                size: 11,
+                                weight: FontWeight.w800,
+                                letterSpacing: 1)),
+                        const SizedBox(height: 4),
+                        Text('Goal: ${_formatNumber(stepGoal)} steps',
+                            style: FoodInsightTypography.caption(
+                                size: 11, color: FoodInsightColors.midGray)),
+                      ])),
+                  InsightInfoButton(
+                      title: 'Activity & steps',
+                      information:
+                          '${provider.source == ActivityDataSource.healthConnect ? 'Source: Health Connect. Steps and active calories come from shared activity records; distance is estimated.' : provider.source == ActivityDataSource.pedometerEstimate ? 'Source: phone step counter. It counts steps since connection; calories and distance are estimates.' : 'No activity source is connected. Measurements are unavailable.'}\n\nManage your connection, permissions and refresh in Settings → Activity connection. Scanning and food logging work without an activity connection. Activity goals are general app defaults, not medical targets.'),
+                ]),
                 const SizedBox(height: 20),
 
                 // ── Main Content: Left Step Ring, Right Progress Details ──
@@ -120,6 +96,7 @@ class ActivitySummaryCard extends StatelessWidget {
                           steps: steps,
                           stepGoal: stepGoal,
                           progress: stepPct,
+                          hasData: connected,
                         ),
                       ),
                     ),
@@ -131,7 +108,7 @@ class ActivitySummaryCard extends StatelessWidget {
                         children: [
                           _ActivityProgressRow(
                             label: 'Steps',
-                            currentStr: _formatNumber(steps),
+                            currentStr: connected ? _formatNumber(steps) : '—',
                             goalStr: _formatNumber(stepGoal),
                             progress: stepPct,
                             color: FoodInsightColors.scannerGreen,
@@ -140,7 +117,9 @@ class ActivitySummaryCard extends StatelessWidget {
                           const SizedBox(height: 12),
                           _ActivityProgressRow(
                             label: 'Active Cals',
-                            currentStr: _formatNumber(calories),
+                            currentStr: connected && provider.hasActiveCalories
+                                ? _formatNumber(calories)
+                                : '—',
                             goalStr: _formatNumber(calorieGoal),
                             progress: caloriePct,
                             color: const Color(0xFFFF5252),
@@ -149,7 +128,8 @@ class ActivitySummaryCard extends StatelessWidget {
                           const SizedBox(height: 12),
                           _ActivityProgressRow(
                             label: 'Distance',
-                            currentStr: distanceKm.toStringAsFixed(1),
+                            currentStr:
+                                connected ? distanceKm.toStringAsFixed(1) : '—',
                             goalStr: distanceGoal.toStringAsFixed(1),
                             progress: distancePct,
                             color: FoodInsightColors.carbsBlue,
@@ -185,11 +165,13 @@ class _StepRing extends StatefulWidget {
   final int steps;
   final int stepGoal;
   final double progress;
+  final bool hasData;
 
   const _StepRing({
     required this.steps,
     required this.stepGoal,
     required this.progress,
+    this.hasData = true,
   });
 
   @override
@@ -298,7 +280,7 @@ class _StepRingState extends State<_StepRing>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _formatSteps(widget.steps),
+                    widget.hasData ? _formatSteps(widget.steps) : '—',
                     style: FoodInsightTypography.display(
                       size: 24,
                       weight: FontWeight.w900,
@@ -365,8 +347,9 @@ class _ActivityProgressRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 8,
+          runSpacing: 2,
           children: [
             Text(
               label,

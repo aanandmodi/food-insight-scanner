@@ -22,6 +22,11 @@ class FoodFitResult {
       required this.allergen});
   Map<String, dynamic> toMap() => {
         'score': score,
+        'scoreStatus': hasCriticalAllergenConflict
+            ? 'withheld_due_to_allergen_conflict'
+            : score == null
+                ? 'insufficient_data'
+                : 'available',
         'confidence': confidence.name,
         'positives': positives,
         'cautions': cautions,
