@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
+import '../theme/apple_motion.dart';
 import '../theme/app_theme.dart';
 
 /// A button widget with glow bloom effect and squishy press animation.
-/// Features haptic feedback on tap.
+/// Features haptic feedback and Apple-style spring physics on tap.
 class GlowButton extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -30,20 +32,14 @@ class GlowButton extends StatefulWidget {
 
 class _GlowButtonState extends State<GlowButton>
     with SingleTickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
+  late final AnimationController _scaleController;
 
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 100),
+    _scaleController = AnimationController.unbounded(
       vsync: this,
-      lowerBound: 0.0,
-      upperBound: 1.0,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+      value: 0.0,
     );
   }
 
@@ -54,19 +50,43 @@ class _GlowButtonState extends State<GlowButton>
   }
 
   void _handleTapDown(TapDownDetails details) {
-    _scaleController.forward();
-  }
-
-  void _handleTapUp(TapUpDetails details) {
-    _scaleController.reverse();
     if (widget.enableHaptic) {
       HapticFeedback.lightImpact();
     }
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _scaleController.value = 1.0;
+      return;
+    }
+    final sim = SpringSimulation(
+      AppleMotion.snappy,
+      _scaleController.value,
+      1.0,
+      _scaleController.velocity,
+    );
+    _scaleController.animateWith(sim);
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    _animateRelease();
     widget.onTap?.call();
   }
 
   void _handleTapCancel() {
-    _scaleController.reverse();
+    _animateRelease();
+  }
+
+  void _animateRelease() {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _scaleController.value = 0.0;
+      return;
+    }
+    final sim = SpringSimulation(
+      AppleMotion.smooth,
+      _scaleController.value,
+      0.0,
+      _scaleController.velocity,
+    );
+    _scaleController.animateWith(sim);
   }
 
   @override
@@ -76,10 +96,12 @@ class _GlowButtonState extends State<GlowButton>
         (isDark ? AppTheme.primaryDark : AppTheme.primaryLight);
 
     return AnimatedBuilder(
-      animation: _scaleAnimation,
+      animation: _scaleController,
       builder: (context, child) {
+        final progress = _scaleController.value.clamp(0.0, 1.25);
+        final scale = 1.0 - (1.0 - 0.95) * progress;
         return Transform.scale(
-          scale: _scaleAnimation.value,
+          scale: scale,
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(widget.borderRadius),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../theme/apple_motion.dart';
 
-class CustomBounceButton extends StatefulWidget {
+/// Legacy bounce button upgraded with Apple-style spring physics.
+class CustomBounceButton extends StatelessWidget {
   final Widget child;
   final VoidCallback onTap;
   final double scaleFactor;
@@ -10,65 +12,19 @@ class CustomBounceButton extends StatefulWidget {
     super.key,
     required this.child,
     required this.onTap,
-    this.scaleFactor = 0.97,
-    this.duration = const Duration(milliseconds: 120),
+    this.scaleFactor = AppleMotion.pressScaleButton,
+    this.duration = AppleMotion.durationFast,
   });
 
   @override
-  State<CustomBounceButton> createState() => _CustomBounceButtonState();
-}
-
-class _CustomBounceButtonState extends State<CustomBounceButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
-    _scaleAnimation =
-        Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeOutCubic),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onTapDown(TapDownDetails details) {
-    if (!MediaQuery.disableAnimationsOf(context)) _controller.forward();
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    _controller.reverse();
-    widget.onTap();
-  }
-
-  void _onTapCancel() {
-    _controller.reverse();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
-      behavior: HitTestBehavior.opaque,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: widget.child,
-      ),
+    return PressScale(
+      onTap: onTap,
+      scaleFactor: scaleFactor,
+      pressSpring: AppleMotion.snappy,
+      releaseSpring: AppleMotion.smooth,
+      child: child,
     );
   }
 }
+

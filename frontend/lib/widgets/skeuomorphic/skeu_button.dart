@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
+import '../../theme/apple_motion.dart';
 import '../../theme/app_design_system.dart';
 
 /// Tactile button with physical press animation.
@@ -32,21 +35,13 @@ class SkeuButton extends StatefulWidget {
 class _SkeuButtonState extends State<SkeuButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _scaleAnim;
-  late final Animation<double> _shadowAnim;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _controller = AnimationController.unbounded(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _shadowAnim = Tween<double>(begin: 1.0, end: 0.3).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      value: 0.0,
     );
   }
 
@@ -61,20 +56,61 @@ class _SkeuButtonState extends State<SkeuButton>
     return widget.backgroundColor ?? FoodInsightColors.scannerGreen;
   }
 
+  void _onTapDown(TapDownDetails _) {
+    if (widget.isLoading || widget.onPressed == null) return;
+    HapticFeedback.lightImpact();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1.0;
+      return;
+    }
+    final sim = SpringSimulation(
+      AppleMotion.snappy,
+      _controller.value,
+      1.0,
+      _controller.velocity,
+    );
+    _controller.animateWith(sim);
+  }
+
+  void _onTapUp(TapUpDetails _) {
+    _animateRelease();
+    if (!widget.isLoading) {
+      widget.onPressed?.call();
+    }
+  }
+
+  void _onTapCancel() {
+    _animateRelease();
+  }
+
+  void _animateRelease() {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 0.0;
+      return;
+    }
+    final sim = SpringSimulation(
+      AppleMotion.smooth,
+      _controller.value,
+      0.0,
+      _controller.velocity,
+    );
+    _controller.animateWith(sim);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) async {
-        await _controller.reverse();
-        widget.onPressed?.call();
-      },
-      onTapCancel: () => _controller.reverse(),
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
+          final progress = _controller.value.clamp(0.0, 1.2);
+          final scale = 1.0 - (1.0 - AppleMotion.pressScaleButton) * progress;
+          final shadow = (1.0 - 0.7 * progress).clamp(0.0, 1.0);
           return Transform.scale(
-            scale: _scaleAnim.value,
+            scale: scale,
             child: Container(
               width: widget.width,
               padding:
@@ -84,9 +120,9 @@ class _SkeuButtonState extends State<SkeuButton>
                 boxShadow: [
                   BoxShadow(
                     color:
-                        _bgColor.withValues(alpha: 0.4 * _shadowAnim.value),
-                    blurRadius: 20 * _shadowAnim.value,
-                    offset: Offset(0, 8 * _shadowAnim.value),
+                        _bgColor.withValues(alpha: 0.4 * shadow),
+                    blurRadius: 20 * shadow,
+                    offset: Offset(0, 8 * shadow),
                   ),
                   BoxShadow(
                     color: Colors.white.withValues(alpha: 0.3),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../theme/apple_motion.dart';
 import '../../../theme/app_design_system.dart';
 
 class QuickActionsSection extends StatelessWidget {
@@ -115,7 +115,7 @@ class QuickActionsSection extends StatelessWidget {
   }
 }
 
-class _PremiumActionCard extends StatefulWidget {
+class _PremiumActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
@@ -133,82 +133,39 @@ class _PremiumActionCard extends StatefulWidget {
   });
 
   @override
-  State<_PremiumActionCard> createState() => _PremiumActionCardState();
-}
-
-class _PremiumActionCardState extends State<_PremiumActionCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // GestureDetector alone is invisible to TalkBack; the wrapper makes each
-    // card announce itself as a button with its title.
     return Semantics(
       button: true,
-      label: '${widget.title}. ${widget.subtitle}',
-      child: GestureDetector(
-        onTapDown: (_) {
-          HapticFeedback.lightImpact();
-          _controller.forward();
-        },
-        onTapUp: (_) {
-          _controller.reverse();
-          widget.onTap();
-        },
-        onTapCancel: () => _controller.reverse(),
-        child: AnimatedBuilder(
-          animation: _scale,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: _scale.value,
-              child: child,
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 15,
-                  spreadRadius: -2,
-                  offset: const Offset(0, 6),
-                ),
-                BoxShadow(
-                  color: widget.startColor.withValues(alpha: 0.02),
-                  blurRadius: 25,
-                  spreadRadius: 2,
-                ),
-              ],
-              border: Border.all(
-                color: Colors.white,
-                width: 1.5,
+      label: '$title. $subtitle',
+      child: PressScale(
+        onTap: onTap,
+        scaleFactor: AppleMotion.pressScaleCard,
+        pressSpring: AppleMotion.snappy,
+        releaseSpring: AppleMotion.smooth,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 15,
+                spreadRadius: -2,
+                offset: const Offset(0, 6),
               ),
+              BoxShadow(
+                color: startColor.withValues(alpha: 0.02),
+                blurRadius: 25,
+                spreadRadius: 2,
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white,
+              width: 1.5,
             ),
-            child: _buildSquareLayout(),
           ),
+          child: _buildSquareLayout(),
         ),
       ),
     );
@@ -221,7 +178,7 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
         _buildIconContainer(),
         const SizedBox(height: 16),
         Text(
-          widget.title,
+          title,
           style: FoodInsightTypography.heading(
             size: 15,
             weight: FontWeight.w800,
@@ -230,7 +187,7 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
         ),
         const SizedBox(height: 4),
         Text(
-          widget.subtitle,
+          subtitle,
           style: FoodInsightTypography.caption(
             size: 12,
             weight: FontWeight.w600,
@@ -252,14 +209,14 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            widget.startColor,
-            widget.endColor,
+            startColor,
+            endColor,
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: widget.startColor.withValues(alpha: 0.25),
+            color: startColor.withValues(alpha: 0.25),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -267,7 +224,7 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
       ),
       child: Center(
         child: Icon(
-          widget.icon,
+          icon,
           color: Colors.white,
           size: 22,
         ),
@@ -275,3 +232,4 @@ class _PremiumActionCardState extends State<_PremiumActionCard>
     );
   }
 }
+

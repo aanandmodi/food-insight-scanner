@@ -14,6 +14,7 @@ import '../../services/user_data_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
+import '../../theme/apple_motion.dart';
 import '../../theme/app_design_system.dart';
 import '../../routes/app_routes.dart';
 import '../profile/profile_screen.dart';
@@ -576,20 +577,22 @@ class _HomeDashboardState extends State<HomeDashboard>
   }
 
   Widget _buildScanFab() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.35),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: GestureDetector(
-        onTapDown: (_) => HapticFeedback.lightImpact(),
+    return PressScale(
+      scaleFactor: AppleMotion.pressScaleButton,
+      pressSpring: AppleMotion.snappy,
+      releaseSpring: AppleMotion.smooth,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: FoodInsightColors.scannerGreen.withValues(alpha: 0.35),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: FloatingActionButton.extended(
           onPressed: () {
             HapticFeedback.lightImpact();
@@ -617,6 +620,7 @@ class _HomeDashboardState extends State<HomeDashboard>
       ),
     );
   }
+
 
   Widget _buildBottomNav() {
     return SafeArea(
