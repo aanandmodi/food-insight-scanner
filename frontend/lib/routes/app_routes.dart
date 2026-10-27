@@ -1,6 +1,8 @@
 // lib/routes/app_routes.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
+import '../theme/apple_motion.dart';
 import 'tap_origin.dart';
 import '../core/auth_gate.dart';
 import '../presentation/auth/login_screen/login_screen.dart';
@@ -89,30 +91,23 @@ class AppRoutes {
     return _buildCinematicRoute(settings: settings, child: page);
   }
 
-  /// Creates a smooth fade + slide cinematic page transition
-  static PageRouteBuilder _buildCinematicRoute({
+  /// Creates an Apple-style spring-driven cinematic page transition
+  static Route<dynamic> _buildCinematicRoute({
     required RouteSettings settings,
     required Widget child,
   }) {
     final origin = TapOrigin.take();
-    return PageRouteBuilder(
+    return _SpringPageRouteBuilder(
       settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => child,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 220),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         if (MediaQuery.disableAnimationsOf(context)) return child;
-        final curvedAnimation = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
 
         return FadeTransition(
-          opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation),
+          opacity: animation.drive(Tween<double>(begin: 0.0, end: 1.0)),
           child: ScaleTransition(
             alignment: origin,
-            scale: Tween<double>(begin: .94, end: 1).animate(curvedAnimation),
+            scale: animation.drive(Tween<double>(begin: 0.94, end: 1.0)),
             child: child,
           ),
         );
@@ -120,3 +115,45 @@ class AppRoutes {
     );
   }
 }
+
+class _SpringPageRouteBuilder<T> extends PageRouteBuilder<T> {
+  _SpringPageRouteBuilder({
+    required super.pageBuilder,
+    super.settings,
+    super.transitionsBuilder,
+    super.transitionDuration = const Duration(milliseconds: 350),
+    super.reverseTransitionDuration = const Duration(milliseconds: 280),
+  });
+
+  @override
+  AnimationController createAnimationController() {
+    return _SpringAnimationController(
+      vsync: navigator!,
+      duration: transitionDuration,
+      reverseDuration: reverseTransitionDuration,
+    );
+  }
+}
+
+class _SpringAnimationController extends AnimationController {
+  _SpringAnimationController({
+    required super.vsync,
+    super.duration,
+    super.reverseDuration,
+  });
+
+  @override
+  TickerFuture forward({double? from}) {
+    final start = from ?? value;
+    final sim = SpringSimulation(AppleMotion.smooth, start, 1.0, velocity);
+    return animateWith(sim);
+  }
+
+  @override
+  TickerFuture reverse({double? from}) {
+    final start = from ?? value;
+    final sim = SpringSimulation(AppleMotion.smooth, start, 0.0, velocity);
+    return animateWith(sim);
+  }
+}
+

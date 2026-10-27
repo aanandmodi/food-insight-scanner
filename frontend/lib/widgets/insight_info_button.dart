@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'motion/velocity_drag_dismissible.dart';
 
 /// Keeps the dashboard focused while making data limitations easy to inspect.
 class InsightInfoButton extends StatelessWidget {
@@ -18,18 +19,22 @@ class InsightInfoButton extends StatelessWidget {
           context: context,
           useSafeArea: true,
           showDragHandle: true,
-          builder: (context) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  Text(information,
-                      style: Theme.of(context).textTheme.bodyLarge),
-                ]),
+          builder: (sheetContext) => VelocityDragDismissible(
+            onDismiss: () => Navigator.of(sheetContext).pop(),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: Theme.of(sheetContext).textTheme.titleLarge),
+                    const SizedBox(height: 12),
+                    Text(information,
+                        style: Theme.of(sheetContext).textTheme.bodyLarge),
+                  ]),
+            ),
           ),
         ),
       );
 }
+
