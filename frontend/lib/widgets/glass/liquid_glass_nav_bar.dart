@@ -487,11 +487,37 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    isSelected ? (item.activeIcon ?? item.icon) : item.icon,
-                    size: 24,
-                    color: isSelected ? activeColor : inactiveColor,
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Inactive outline icon variant
+                        Opacity(
+                          opacity: (1.0 - pop).clamp(0.0, 1.0),
+                          child: Icon(
+                            item.icon,
+                            size: 24,
+                            color: inactiveColor,
+                          ),
+                        ),
+                        // Active filled icon variant with bouncy scale morph
+                        Opacity(
+                          opacity: pop.clamp(0.0, 1.0),
+                          child: Transform.scale(
+                            scale: 0.90 + (0.10 * pop),
+                            child: Icon(
+                              item.activeIcon ?? item.icon,
+                              size: 24,
+                              color: activeColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
                   if (!isCompact) ...[
                     const SizedBox(height: 3),
                     AnimatedDefaultTextStyle(

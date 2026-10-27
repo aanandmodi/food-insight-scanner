@@ -322,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildGlassSettingsCard(context, [
                 _buildSettingsTile(
                   context,
-                  icon: Icons.restaurant_menu,
+                  icon: Icons.restaurant_menu_rounded,
                   title: 'Preferred Indian cuisine',
                   subtitle:
                       context.watch<UserProfileProvider>().profile?.region ??
@@ -362,7 +362,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(height: 1.5.h),
               _buildGlassSettingsCard(context, [
                 SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.insights_outlined),
+                  secondary: const Icon(Icons.insights_rounded),
                   title: const Text('Optional usage analytics'),
                   subtitle: const Text(
                       'Share feature counts without food, health or chat details'),
@@ -373,7 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.bug_report_outlined),
+                  secondary: const Icon(Icons.bug_report_rounded),
                   title: const Text('Crash reporting'),
                   subtitle: const Text(
                       'Send minimized diagnostics to help fix crashes'),
@@ -386,7 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1, color: FoodInsightColors.outlineGray),
                 _buildSettingsTile(
                   context,
-                  icon: Icons.shopping_cart_outlined,
+                  icon: Icons.shopping_cart_rounded,
                   title: 'Shopping List',
                   subtitle: 'View your saved products',
                   onTap: () {
@@ -436,19 +436,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1, color: FoodInsightColors.outlineGray),
                 _buildSettingsTile(context,
-                    icon: Icons.privacy_tip_outlined,
+                    icon: Icons.privacy_tip_rounded,
                     title: 'Privacy Policy',
                     subtitle: 'How your data is used',
                     onTap: () => _openLegal(LegalPage.privacy)),
                 const Divider(height: 1, color: FoodInsightColors.outlineGray),
                 _buildSettingsTile(context,
-                    icon: Icons.description_outlined,
+                    icon: Icons.description_rounded,
                     title: 'Terms of Use',
                     subtitle: 'Food and health information terms',
                     onTap: () => _openLegal(LegalPage.terms)),
                 const Divider(height: 1, color: FoodInsightColors.outlineGray),
                 _buildSettingsTile(context,
-                    icon: Icons.dataset_outlined,
+                    icon: Icons.dataset_rounded,
                     title: 'Data Sources',
                     subtitle: 'Open Food Facts and AI information',
                     onTap: () => _openLegal(LegalPage.dataSources)),

@@ -587,7 +587,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                             .aiProductAnalysisEnabled)
                           OutlinedButton.icon(
                             onPressed: _explaining ? null : _explainProduct,
-                            icon: const Icon(Icons.auto_awesome_outlined),
+                            icon: const Icon(Icons.auto_awesome_rounded),
                             label: Text(_explaining
                                 ? 'Preparing explanation…'
                                 : 'Explain my Food Fit'),

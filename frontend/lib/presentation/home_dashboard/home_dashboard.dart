@@ -644,26 +644,27 @@ class _HomeDashboardState extends State<HomeDashboard>
       isCompact: _isNavCompact,
       items: const [
         LiquidGlassNavItem(
-          icon: Icons.home_rounded,
+          icon: Icons.home_outlined,
           activeIcon: Icons.home_rounded,
           label: 'Home',
         ),
         LiquidGlassNavItem(
-          icon: Icons.qr_code_scanner_rounded,
+          icon: Icons.qr_code_scanner_outlined,
           activeIcon: Icons.qr_code_scanner_rounded,
           label: 'Scan',
         ),
         LiquidGlassNavItem(
-          icon: Icons.auto_awesome_rounded,
+          icon: Icons.auto_awesome_outlined,
           activeIcon: Icons.auto_awesome_rounded,
           label: 'AI Chat',
         ),
         LiquidGlassNavItem(
-          icon: Icons.person_rounded,
+          icon: Icons.person_outline_rounded,
           activeIcon: Icons.person_rounded,
           label: 'Profile',
         ),
       ],
+
     );
   }
 

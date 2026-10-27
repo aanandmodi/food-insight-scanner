@@ -162,7 +162,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       floatingActionButton: FloatingActionButton(
           onPressed: _addItem,
           tooltip: 'Add shopping item',
-          child: const Icon(Icons.add)),
+          child: const Icon(Icons.add_rounded)),
       appBar: AppBar(
         title: Text(
           'Shopping List',
@@ -349,7 +349,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   ),
                 ),
                 child: checked
-                    ? Icon(Icons.check, size: 4.w, color: Colors.white)
+                    ? Icon(Icons.check_rounded, size: 4.w, color: Colors.white)
                     : null,
               ),
               SizedBox(width: 3.w),

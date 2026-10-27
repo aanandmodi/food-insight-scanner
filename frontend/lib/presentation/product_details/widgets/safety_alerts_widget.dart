@@ -65,7 +65,7 @@ class SafetyAlertsWidget extends StatelessWidget {
           for (final message in result.unknowns)
             _line(context, Icons.help_outline_rounded, message, theme.colorScheme.onSurfaceVariant),
           if (result.allergen.status == AllergenStatus.noDetectedConflict)
-            _line(context, Icons.fact_check_outlined, userAllergies.isEmpty ? 'No allergies recorded in your profile' : 'No detected allergen conflicts', theme.colorScheme.onSurface),
+            _line(context, Icons.fact_check_rounded, userAllergies.isEmpty ? 'No allergies recorded in your profile' : 'No detected allergen conflicts', theme.colorScheme.onSurface),
           const Divider(height: 24),
           Text('Based on available product information and your profile. Ingredient and allergen data may be incomplete. Always verify the package label if you have a serious allergy.',
             style: theme.textTheme.bodySmall?.copyWith(height: 1.5)),

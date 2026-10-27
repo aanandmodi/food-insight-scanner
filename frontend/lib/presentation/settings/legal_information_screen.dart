@@ -112,7 +112,7 @@ class LegalInformationScreen extends StatelessWidget {
             if (_url.isNotEmpty)
               TextButton.icon(
                 onPressed: () => _openOnline(context),
-                icon: const Icon(Icons.open_in_new),
+                icon: const Icon(Icons.open_in_new_rounded),
                 label: Text(page == LegalPage.dataSources
                     ? 'Visit Open Food Facts'
                     : 'Read online'),

@@ -363,7 +363,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline,
+                  Icon(Icons.error_outline_rounded,
                       color: FoodInsightColors.healthRed, size: 5.w),
                   SizedBox(width: 2.w),
                   Expanded(
@@ -381,7 +381,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                         setState(() => _errorMessage = null);
                         _sendMessage(_lastFailedMessage!, retry: true);
                       },
-                      icon: const Icon(Icons.refresh,
+                      icon: const Icon(Icons.refresh_rounded,
                           color: FoodInsightColors.healthRed, size: 16),
                       label: Text('Retry',
                           style: FoodInsightTypography.caption(
@@ -392,7 +392,7 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
                     ),
                   IconButton(
                     onPressed: () => setState(() => _errorMessage = null),
-                    icon: Icon(Icons.close,
+                    icon: Icon(Icons.close_rounded,
                         color: FoodInsightColors.healthRed, size: 4.w),
                   ),
                 ],

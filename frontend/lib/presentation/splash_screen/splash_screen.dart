@@ -199,7 +199,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_hasError) {
       return Column(
         children: [
-          const Icon(Icons.error_outline,
+          const Icon(Icons.error_outline_rounded,
               color: FoodInsightColors.healthRed, size: 32),
           SizedBox(height: 1.5.h),
           Text(

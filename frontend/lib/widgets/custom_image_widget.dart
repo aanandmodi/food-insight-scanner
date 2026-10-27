@@ -31,7 +31,7 @@ class CustomImageWidget extends StatelessWidget {
               return SizedBox(
                   width: width,
                   height: height,
-                  child: errorWidget ?? const Icon(Icons.person));
+                  child: errorWidget ?? const Icon(Icons.person_rounded));
             }
             return CustomImageWidget(
                 imageUrl: snapshot.data,

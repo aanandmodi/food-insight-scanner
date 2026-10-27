@@ -336,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen>
             controller: _emailController,
             label: 'Email',
             hint: 'you@example.com',
-            icon: Icons.email_outlined,
+            icon: Icons.email_rounded,
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -362,8 +362,8 @@ class _LoginScreenState extends State<LoginScreen>
               onTap: () => setState(() => _obscurePassword = !_obscurePassword),
               child: Icon(
                 _obscurePassword
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
                 color: FoodInsightColors.midGray,
                 size: 20,
               ),

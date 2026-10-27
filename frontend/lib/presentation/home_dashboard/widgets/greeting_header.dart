@@ -149,7 +149,7 @@ class GreetingHeader extends StatelessWidget {
   Widget _buildSettingsButton(BuildContext context) => IconButton(
     tooltip: 'Settings',
     onPressed: () => Navigator.pushNamed(context, '/settings'),
-    icon: const Icon(Icons.settings_outlined, color: FoodInsightColors.deepCharcoal),
+    icon: const Icon(Icons.settings_rounded, color: FoodInsightColors.deepCharcoal),
   );
 
   String _getGreeting() {

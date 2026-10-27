@@ -148,7 +148,7 @@ class _MealEntryDialogState extends State<MealEntryDialog> {
           if (widget.estimate != null)
             TextButton.icon(
                 onPressed: _busy ? null : _estimate,
-                icon: const Icon(Icons.auto_awesome_outlined),
+                icon: const Icon(Icons.auto_awesome_rounded),
                 label: const Text('Estimate with AI')),
           if (_estimated)
             const Text(
