@@ -311,21 +311,33 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                       borderRadius: BorderRadius.circular(36),
                       child: Stack(
                         children: [
-                          // 1. Backdrop Blur Layer
+                          // 1. Transparent Glass Backdrop with subtle blur
                           Positioned.fill(
                             child: GlassConfig.enableBlur
                                 ? BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                                    filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                                     child: Container(
-                                      color: isDark
-                                          ? Colors.black.withValues(alpha: 0.45)
-                                          : Colors.white.withValues(alpha: 0.78),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: isDark
+                                              ? [
+                                                  Colors.black.withValues(alpha: 0.35),
+                                                  Colors.black.withValues(alpha: 0.20),
+                                                ]
+                                              : [
+                                                  Colors.white.withValues(alpha: 0.45),
+                                                  Colors.white.withValues(alpha: 0.25),
+                                                ],
+                                        ),
+                                      ),
                                     ),
                                   )
                                 : Container(
                                     color: isDark
-                                        ? const Color(0xFF1C1E22)
-                                        : Colors.white.withValues(alpha: 0.95),
+                                        ? const Color(0xFF1C1E22).withValues(alpha: 0.70)
+                                        : Colors.white.withValues(alpha: 0.50),
                                   ),
                           ),
 
@@ -348,35 +360,15 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                             ),
                           ),
 
-                          // 4. Edge Light: 1dp Gradient Border
+                          // 4. Refraction Motion Edge Light: dynamic prismatic glow following lens
                           Positioned.fill(
                             child: IgnorePointer(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(36),
-                                  border: Border.all(
-                                    color: Colors.transparent,
-                                    width: 1.0,
-                                  ),
-                                  gradient: SweepGradient(
-                                    center: Alignment.center,
-                                    startAngle: 0.0,
-                                    endAngle: 3.14159 * 2,
-                                    colors: isDark
-                                        ? [
-                                            Colors.white.withValues(alpha: 0.30),
-                                            Colors.white.withValues(alpha: 0.05),
-                                            Colors.white.withValues(alpha: 0.18),
-                                            Colors.white.withValues(alpha: 0.30),
-                                          ]
-                                        : [
-                                            Colors.white.withValues(alpha: 0.85),
-                                            Colors.white.withValues(alpha: 0.20),
-                                            Colors.white.withValues(alpha: 0.50),
-                                            Colors.white.withValues(alpha: 0.85),
-                                          ],
-                                    stops: const [0.0, 0.45, 0.75, 1.0],
-                                  ),
+                              child: CustomPaint(
+                                painter: _RefractionEdgePainter(
+                                  progress: _leadingController.value,
+                                  pressProgress: _pressController.value,
+                                  tabCount: count,
+                                  isDark: isDark,
                                 ),
                               ),
                             ),
@@ -443,8 +435,11 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
     final scale = 1.0 + (pop * 0.10); // Subtle 1.1x pop
     final lift = -(pop * 2.0); // 2dp lift on active pop
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     const activeColor = FoodInsightColors.scannerGreen;
-    const inactiveColor = FoodInsightColors.midGray;
+    final inactiveColor = isDark
+        ? const Color(0xFFC7C7CC)
+        : const Color(0xFF3A3A3C);
 
     return Semantics(
       button: true,
@@ -523,8 +518,8 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                     AnimatedDefaultTextStyle(
                       duration: AppleMotion.durationFast,
                       style: FoodInsightTypography.caption(
-                        size: 10,
-                        weight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        size: 11,
+                        weight: isSelected ? FontWeight.w700 : FontWeight.w600,
                         color: isSelected ? activeColor : inactiveColor,
                       ),
                       child: Text(
@@ -541,5 +536,94 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
         ),
       ),
     );
+  }
+}
+
+/// Custom painter that renders the Apple-style physical refraction motion
+/// along the rim of the floating glass capsule.
+class _RefractionEdgePainter extends CustomPainter {
+  final double progress;
+  final double pressProgress;
+  final int tabCount;
+  final bool isDark;
+
+  const _RefractionEdgePainter({
+    required this.progress,
+    required this.pressProgress,
+    required this.tabCount,
+    required this.isDark,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0.5, 0.5, size.width - 1.0, size.height - 1.0),
+      const Radius.circular(36),
+    );
+
+    // 1. Base glass rim highlight (top specular catch, bottom subtle shadow)
+    final basePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: isDark
+            ? [
+                Colors.white.withValues(alpha: 0.35),
+                Colors.white.withValues(alpha: 0.08),
+              ]
+            : [
+                Colors.white.withValues(alpha: 0.85),
+                Colors.white.withValues(alpha: 0.20),
+              ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRRect(rrect, basePaint);
+
+    // 2. Dynamic Refraction Motion Beam along the capsule edge
+    // Tracks the active droplet lens position in real time
+    final tabWidth = size.width / (tabCount > 0 ? tabCount : 1);
+    final activeCenterX = (progress * tabWidth) + (tabWidth / 2);
+    final normalizedX = (activeCenterX / size.width).clamp(0.0, 1.0);
+
+    // Prismatic chromatic refraction beam centered at the moving lens
+    final refractionPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6 + (pressProgress * 0.8)
+      ..shader = RadialGradient(
+        center: Alignment(normalizedX * 2 - 1, -1.0),
+        radius: (tabWidth * 1.5) / size.width,
+        colors: [
+          Colors.white,
+          FoodInsightColors.scannerGreen.withValues(alpha: 0.70),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.45, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawRRect(rrect, refractionPaint);
+
+    // Subtle bottom refraction bounce
+    final bottomRefractionPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..shader = RadialGradient(
+        center: Alignment(normalizedX * 2 - 1, 1.0),
+        radius: (tabWidth * 1.0) / size.width,
+        colors: [
+          FoodInsightColors.scannerGreen.withValues(alpha: 0.45),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawRRect(rrect, bottomRefractionPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RefractionEdgePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.pressProgress != pressProgress ||
+        oldDelegate.isDark != isDark;
   }
 }

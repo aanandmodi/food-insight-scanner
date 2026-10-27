@@ -384,7 +384,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
             Container(
               width: double.infinity,
               height: double.infinity,
-              color: Colors.black,
+              color: const Color(0xFF141416),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -408,6 +408,12 @@ class _BarcodeScannerState extends State<BarcodeScanner>
                       ElevatedButton(
                         onPressed: _requestCameraPermission,
                         child: const Text('Grant Permission'),
+                      ),
+                      SizedBox(height: 1.h),
+                      TextButton(
+                        onPressed: _handleClose,
+                        child: const Text('Back to Home',
+                            style: TextStyle(color: Colors.white70)),
                       ),
                     ],
                   ],

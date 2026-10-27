@@ -85,7 +85,10 @@ Future<void> main() async {
         });
         return CustomErrorWidget(errorDetails: details);
       }
-      return const SizedBox.shrink();
+      return const ColoredBox(
+        color: Color(0xFFFAFAFA),
+        child: SizedBox.expand(),
+      );
     };
 
     // Set preferred screen orientations.

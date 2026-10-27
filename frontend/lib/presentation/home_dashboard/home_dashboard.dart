@@ -553,35 +553,29 @@ class _HomeDashboardState extends State<HomeDashboard>
       child: Scaffold(
         backgroundColor: FoodInsightColors.warmWhite,
         extendBody: true,
-        body: FadeTransition(
-          opacity: MediaQuery.disableAnimationsOf(context)
-              ? const AlwaysStoppedAnimation(1.0)
-              : CurvedAnimation(
-                  parent: _tabController, curve: Curves.easeOutCubic),
-          child: IndexedStack(
-            index: _currentIndex,
-            children: [
-              KeyedSubtree(
-                key: ValueKey('home_content_$_unlockAnimationKey'),
-                child: _buildHomeContent(),
-              ),
-              BarcodeScanner(
-                isActive: _currentIndex == 1,
-                onExitRequested: () => setState(() => _currentIndex = 0),
-              ),
-              context.watch<FeatureFlagService>().aiChatEnabled
-                  ? AiChatAssistant(
-                      onExitRequested: () => setState(() => _currentIndex = 0))
-                  : const Center(
-                      child: Text('AI chat is currently unavailable.')),
-              const ProfileScreen(),
-            ]
-                .asMap()
-                .entries
-                .map((tab) => TickerMode(
-                    enabled: tab.key == _currentIndex, child: tab.value))
-                .toList(),
-          ),
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            KeyedSubtree(
+              key: ValueKey('home_content_$_unlockAnimationKey'),
+              child: _buildHomeContent(),
+            ),
+            BarcodeScanner(
+              isActive: _currentIndex == 1,
+              onExitRequested: () => setState(() => _currentIndex = 0),
+            ),
+            context.watch<FeatureFlagService>().aiChatEnabled
+                ? AiChatAssistant(
+                    onExitRequested: () => setState(() => _currentIndex = 0))
+                : const Center(
+                    child: Text('AI chat is currently unavailable.')),
+            const ProfileScreen(),
+          ]
+              .asMap()
+              .entries
+              .map((tab) => TickerMode(
+                  enabled: tab.key == _currentIndex, child: tab.value))
+              .toList(),
         ),
         bottomNavigationBar: RepaintBoundary(child: _buildBottomNav()),
         // ──────────── Skeuomorphic FAB ────────────
@@ -644,22 +638,22 @@ class _HomeDashboardState extends State<HomeDashboard>
       isCompact: _isNavCompact,
       items: const [
         LiquidGlassNavItem(
-          icon: Icons.home_outlined,
+          icon: Icons.home_rounded,
           activeIcon: Icons.home_rounded,
           label: 'Home',
         ),
         LiquidGlassNavItem(
-          icon: Icons.qr_code_scanner_outlined,
+          icon: Icons.qr_code_scanner_rounded,
           activeIcon: Icons.qr_code_scanner_rounded,
           label: 'Scan',
         ),
         LiquidGlassNavItem(
-          icon: Icons.auto_awesome_outlined,
+          icon: Icons.auto_awesome_rounded,
           activeIcon: Icons.auto_awesome_rounded,
           label: 'AI Chat',
         ),
         LiquidGlassNavItem(
-          icon: Icons.person_outline_rounded,
+          icon: Icons.person_rounded,
           activeIcon: Icons.person_rounded,
           label: 'Profile',
         ),
