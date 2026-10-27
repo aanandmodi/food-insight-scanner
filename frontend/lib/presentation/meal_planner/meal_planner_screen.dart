@@ -128,7 +128,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
         _mealPlan = plan;
         _generatedAt = generatedAt;
       });
-      HapticFeedback.mediumImpact();
+      HapticFeedback.lightImpact();
     } catch (e) {
       if (mounted) {
         setState(() => _error = 'Could not reach the planner. $e');

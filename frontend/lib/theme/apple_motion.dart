@@ -225,3 +225,16 @@ extension AppleMotionExtension on Widget {
     );
   }
 }
+
+/// App-wide Apple scroll behavior providing smooth scrolling and
+/// iOS-style rubber-band bouncing overscroll physics across all platforms.
+class AppleScrollBehavior extends MaterialScrollBehavior {
+  const AppleScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
+    );
+  }
+}

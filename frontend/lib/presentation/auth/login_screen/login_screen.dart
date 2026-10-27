@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleEmailSignIn() async {
     if (!_formKey.currentState!.validate()) return;
-    HapticFeedback.mediumImpact();
+    HapticFeedback.lightImpact();
 
     _setLoading(true, _AuthMethod.email);
     try {
@@ -134,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleGoogleSignIn() async {
-    HapticFeedback.mediumImpact();
+    HapticFeedback.lightImpact();
     _setLoading(true, _AuthMethod.google);
     try {
       final user = await _authService.signInWithGoogle();

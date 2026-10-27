@@ -288,7 +288,7 @@ class _ProductDetailsState extends State<ProductDetails> {
       setState(() => _isLogging = false);
       return;
     }
-    HapticFeedback.mediumImpact();
+    HapticFeedback.lightImpact();
     try {
       final now = DateTime.now();
       final dateString =

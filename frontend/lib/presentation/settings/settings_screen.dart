@@ -368,6 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'Share feature counts without food, health or chat details'),
                   value: AnalyticsService.enabled,
                   onChanged: (value) async {
+                    HapticFeedback.lightImpact();
                     await AnalyticsService.setEnabled(value);
                     if (mounted) setState(() {});
                   },
@@ -379,6 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'Send minimized diagnostics to help fix crashes'),
                   value: CrashReportingService.enabled,
                   onChanged: (value) async {
+                    HapticFeedback.lightImpact();
                     await CrashReportingService.setEnabled(value);
                     if (mounted) setState(() {});
                   },

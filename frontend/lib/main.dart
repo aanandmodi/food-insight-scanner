@@ -16,6 +16,7 @@ import 'services/local_database_service.dart';
 
 // Corrected Path
 import 'widgets/custom_error_widget.dart';
+import 'theme/apple_motion.dart';
 
 import 'package:provider/provider.dart';
 import 'data/providers/user_profile_provider.dart';
@@ -137,6 +138,7 @@ class MyApp extends StatelessWidget {
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,
         debugShowCheckedModeBanner: false,
+        scrollBehavior: const AppleScrollBehavior(),
         builder: (context, child) => Listener(
           onPointerDown: (event) =>
               TapOrigin.record(event.position, MediaQuery.sizeOf(context)),

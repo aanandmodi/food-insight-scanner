@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
 import '../../theme/apple_motion.dart';
 
 /// A gesture wrapper implementing Apple-grade gesture physics:
@@ -85,6 +86,7 @@ class _VelocityDragDismissibleState extends State<VelocityDragDismissible>
     final shouldDismiss = projected > widget.dismissThreshold || velocity > 750.0;
 
     if (shouldDismiss && widget.onDismiss != null) {
+      HapticFeedback.lightImpact();
       // Continue motion toward dismissal with current velocity
       final dismissTarget = (_controller.value + 400.0).clamp(400.0, 1000.0);
       final sim = SpringSimulation(
@@ -97,6 +99,10 @@ class _VelocityDragDismissibleState extends State<VelocityDragDismissible>
         if (mounted) widget.onDismiss?.call();
       });
     } else {
+      // Soft haptic feedback when released and snapping back from a pull
+      if (_rawOffset.abs() > 30.0) {
+        HapticFeedback.lightImpact();
+      }
       // Snap back to origin with spring physics preserving release momentum
       final sim = SpringSimulation(
         AppleMotion.smooth,
