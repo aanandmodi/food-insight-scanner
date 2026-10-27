@@ -14,8 +14,10 @@ import '../../services/user_data_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
+import 'package:flutter/rendering.dart';
 import '../../theme/apple_motion.dart';
 import '../../theme/app_design_system.dart';
+import '../../widgets/glass/liquid_glass_nav_bar.dart';
 import '../../routes/app_routes.dart';
 import '../profile/profile_screen.dart';
 import '../barcode_scanner/barcode_scanner.dart';
@@ -45,6 +47,7 @@ class _HomeDashboardState extends State<HomeDashboard>
   late AnimationController _tabController;
   late AnimationController _refreshController;
   bool _isRefreshing = false;
+  bool _isNavCompact = false;
   int _unlockAnimationKey = 0;
 
   final Map<String, dynamic> _nutritionData = {
@@ -350,8 +353,17 @@ class _HomeDashboardState extends State<HomeDashboard>
       ),
       child: SafeArea(
         bottom: false,
-        child: RefreshIndicator(
-          onRefresh: _handleRefresh,
+        child: NotificationListener<UserScrollNotification>(
+          onNotification: (notification) {
+            if (notification.direction == ScrollDirection.reverse && !_isNavCompact) {
+              setState(() => _isNavCompact = true);
+            } else if (notification.direction == ScrollDirection.forward && _isNavCompact) {
+              setState(() => _isNavCompact = false);
+            }
+            return false;
+          },
+          child: RefreshIndicator(
+            onRefresh: _handleRefresh,
           color: FoodInsightColors.scannerGreen,
           backgroundColor: Colors.white,
           child: CustomScrollView(
@@ -492,8 +504,11 @@ class _HomeDashboardState extends State<HomeDashboard>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -623,79 +638,35 @@ class _HomeDashboardState extends State<HomeDashboard>
 
 
   Widget _buildBottomNav() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        margin: EdgeInsets.only(left: 5.w, right: 5.w, bottom: 2.h),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(
-                alpha:
-                    0.95), // Highly opaque to prevent visual mess without blur
-            borderRadius: FoodInsightRadius.xxlAll,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 24,
-                spreadRadius: -4,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: FoodInsightColors.outlineGray.withValues(alpha: 0.3),
-                blurRadius: 0,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: MediaQuery.removePadding(
-            context: context,
-            removeBottom: true,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 1.h),
-              child: BottomNavigationBar(
-                currentIndex: _currentIndex,
-                onTap: _onBottomNavTap,
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                selectedItemColor: FoodInsightColors.scannerGreen,
-                unselectedItemColor: FoodInsightColors.midGray,
-                selectedLabelStyle: FoodInsightTypography.caption(
-                  size: 10,
-                  weight: FontWeight.w700,
-                  color: FoodInsightColors.scannerGreen,
-                ),
-                unselectedLabelStyle: FoodInsightTypography.caption(
-                  size: 10,
-                  weight: FontWeight.w500,
-                  color: FoodInsightColors.midGray,
-                ),
-                items: [
-                  _buildNavItem(Icons.home_rounded, 'Home', 0),
-                  _buildNavItem(Icons.qr_code_scanner_rounded, 'Scan', 1),
-                  _buildNavItem(Icons.auto_awesome_rounded, 'AI Chat', 2),
-                  _buildNavItem(Icons.person_rounded, 'Profile', 3),
-                ],
-              ),
-            ),
-          ),
+    return LiquidGlassNavBar(
+      currentIndex: _currentIndex,
+      onTap: _onBottomNavTap,
+      isCompact: _isNavCompact,
+      items: const [
+        LiquidGlassNavItem(
+          icon: Icons.home_rounded,
+          activeIcon: Icons.home_rounded,
+          label: 'Home',
         ),
-      ),
+        LiquidGlassNavItem(
+          icon: Icons.qr_code_scanner_rounded,
+          activeIcon: Icons.qr_code_scanner_rounded,
+          label: 'Scan',
+        ),
+        LiquidGlassNavItem(
+          icon: Icons.auto_awesome_rounded,
+          activeIcon: Icons.auto_awesome_rounded,
+          label: 'AI Chat',
+        ),
+        LiquidGlassNavItem(
+          icon: Icons.person_rounded,
+          activeIcon: Icons.person_rounded,
+          label: 'Profile',
+        ),
+      ],
     );
   }
 
-  BottomNavigationBarItem _buildNavItem(
-      IconData icon, String label, int index) {
-    final isSelected = _currentIndex == index;
-    return BottomNavigationBarItem(
-      icon: AnimatedScale(
-        scale: isSelected ? 1.15 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        child: Icon(icon, size: 24),
-      ),
-      label: label,
-    );
-  }
 
   String _formatCurrentDate() {
     final now = DateTime.now();
