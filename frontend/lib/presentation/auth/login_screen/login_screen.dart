@@ -9,6 +9,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/consent_service.dart';
 import '../../../theme/app_design_system.dart';
 import '../../../widgets/legal_consent_card.dart';
+import '../auth_dialogs.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/user_profile_provider.dart';
 
@@ -209,18 +210,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleForgotPassword() async {
-    final email = _emailController.text.trim();
-    final emailError = InputValidators.validateEmail(email);
-    if (emailError != null) {
-      _showSnackBar(email.isEmpty ? 'Please enter your email first.' : emailError);
-      return;
-    }
-    try {
-      await _authService.sendPasswordResetEmail(email);
-      _showSnackBar('Password reset link sent to $email', isError: false);
-    } catch (e) {
-      _showSnackBar(AuthService.getErrorMessage(e));
-    }
+    await showForgotPasswordDialog(
+      context,
+      initialEmail: _emailController.text.trim(),
+    );
   }
 
   @override

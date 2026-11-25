@@ -1,6 +1,12 @@
 export type AiTask = "meal" | "plan" | "chat" | "macros" | "analysis" | "quickReplies";
 export const limits: Record<AiTask, number> = { meal: 15, plan: 2, chat: 15, macros: 1, analysis: 10, quickReplies: 20 };
 
+export function requiresEmailVerification(
+  token: { email_verified?: unknown; firebase?: { sign_in_provider?: unknown } } | undefined,
+): boolean {
+  return token?.firebase?.sign_in_provider === "password" && token.email_verified !== true;
+}
+
 export function boundedNumber(value: unknown, name: string, max: number): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) {
     throw new Error(`Invalid ${name}`);

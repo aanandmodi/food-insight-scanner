@@ -282,6 +282,17 @@ class UserDataService {
     return rows;
   }
 
+  Future<List<Map<String, dynamic>>> getAllDietLogs() async {
+    final rows = await _read(UserSession.instance.capture(), 'diet_entries');
+    rows.sort((a, b) {
+      final byDate = '${b['date'] ?? ''}'.compareTo('${a['date'] ?? ''}');
+      return byDate != 0
+          ? byDate
+          : '${b['time'] ?? ''}'.compareTo('${a['time'] ?? ''}');
+    });
+    return rows;
+  }
+
   Future<List<Map<String, dynamic>>> getRecentDietLogs({int days = 7}) async {
     final now = DateTime.now();
     final end = now.toIso8601String().split('T')[0];

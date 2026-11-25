@@ -60,6 +60,9 @@ async function requestAi(task, apiKey, messages, fetcher = fetch, env = process.
 
 // src/aiValidation.ts
 var limits = { meal: 15, plan: 2, chat: 15, macros: 1, analysis: 10, quickReplies: 20 };
+function requiresEmailVerification(token) {
+  return token?.firebase?.sign_in_provider === "password" && token.email_verified !== true;
+}
 function boundedNumber(value, name, max) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) {
     throw new Error(`Invalid ${name}`);
@@ -291,6 +294,9 @@ var aiTask = onCall({
   if (!request.auth) throw new HttpsError2("unauthenticated", "Sign in to use AI.");
   if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
     throw new HttpsError2("permission-denied", "Account deletion is in progress.");
+  }
+  if (requiresEmailVerification(request.auth.token)) {
+    throw new HttpsError2("failed-precondition", "Verify your email address before using AI features.");
   }
   let task;
   let content;

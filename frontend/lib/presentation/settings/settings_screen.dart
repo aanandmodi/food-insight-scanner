@@ -16,7 +16,9 @@ import '../../services/crash_reporting_service.dart';
 import '../../services/analytics_service.dart';
 import '../../data/providers/activity_provider.dart';
 import '../../services/consent_service.dart';
+import '../../widgets/email_verification_banner.dart';
 import '../../widgets/health_connection_prompt.dart';
+import '../auth/auth_dialogs.dart';
 import 'legal_information_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -29,6 +31,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
   bool _isDeleting = false;
+  bool _isLinkingGoogle = false;
   User? _currentUser;
   String _appVersion = '1.0.0';
 
@@ -242,6 +245,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _handleChangePassword() async {
+    HapticFeedback.lightImpact();
+    final updated = await showChangePasswordDialog(context);
+    if (updated && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password updated successfully.'),
+          backgroundColor: FoodInsightColors.scannerGreen,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleLinkGoogleAccount() async {
+    if (_isLinkingGoogle) return;
+    HapticFeedback.lightImpact();
+    setState(() => _isLinkingGoogle = true);
+    try {
+      final linked = await _authService.linkAnonymousWithGoogle();
+      if (linked == null || !mounted) return;
+      await context.read<UserProfileProvider>().fetchProfile();
+      if (!mounted) return;
+      setState(() => _currentUser = _authService.currentUser);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Google account connected! Your meals and scans are preserved.'),
+          backgroundColor: FoodInsightColors.scannerGreen,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AuthService.getErrorMessage(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLinkingGoogle = false);
+    }
+  }
+
+  String _connectedProvidersSummary() {
+    if (_currentUser == null) return 'Not signed in';
+    if (_currentUser!.isAnonymous) return 'Guest session (not backed up)';
+    final labels = <String>[];
+    if (_authService.hasGoogleProvider) labels.add('Google');
+    if (_authService.hasPasswordProvider) labels.add('Email & Password');
+    if (labels.isEmpty) return _currentUser!.email ?? 'Signed in';
+    final email = _currentUser!.email;
+    return email == null || email.isEmpty
+        ? labels.join(' · ')
+        : '${labels.join(' · ')} ($email)';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -269,12 +326,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_authService.needsEmailVerification) ...[
+                EmailVerificationBanner(
+                  onVerified: () {
+                    if (mounted) {
+                      setState(() => _currentUser = _authService.currentUser);
+                    }
+                  },
+                ),
+                SizedBox(height: 2.5.h),
+              ],
+
               // Account Section
               _buildSectionHeader(context, 'Account')
                   .animate()
                   .fadeIn(duration: 400.ms),
               SizedBox(height: 1.5.h),
               _buildGlassSettingsCard(context, [
+                ListTile(
+                  leading: const Icon(Icons.verified_outlined),
+                  title: const Text('Sign-in method'),
+                  subtitle: Text(_connectedProvidersSummary()),
+                ),
+                const Divider(height: 1, color: FoodInsightColors.outlineGray),
                 _buildSettingsTile(
                   context,
                   icon: Icons.person_outline_rounded,
@@ -285,22 +359,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Navigator.pushNamed(context, AppRoutes.profileSetup);
                   },
                 ),
-                if (_currentUser?.isAnonymous == true)
+                if (_currentUser?.isAnonymous == true) ...[
+                  const Divider(
+                      height: 1, color: FoodInsightColors.outlineGray),
                   _buildSettingsTile(
                     context,
                     icon: Icons.person_add_alt_1_rounded,
-                    title: 'Save your guest account',
+                    title: 'Save guest account with email',
                     subtitle:
-                        'Add email sign-in and keep your profile and meals',
+                        'Add email & password and keep your profile and meals',
                     onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
                   ),
-                if (_currentUser != null && !_currentUser!.isAnonymous) ...[
+                  const Divider(
+                      height: 1, color: FoodInsightColors.outlineGray),
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.g_mobiledata_rounded,
+                    title: _isLinkingGoogle
+                        ? 'Connecting Google…'
+                        : 'Connect Google Account',
+                    subtitle:
+                        'Link Google sign-in without losing your scans or logs',
+                    onTap: _isLinkingGoogle ? () {} : _handleLinkGoogleAccount,
+                  ),
+                ],
+                if (_currentUser != null &&
+                    !_currentUser!.isAnonymous &&
+                    _authService.hasPasswordProvider) ...[
+                  const Divider(
+                      height: 1, color: FoodInsightColors.outlineGray),
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.password_rounded,
+                    title: 'Change Password',
+                    subtitle: 'Verify current password and set a new one',
+                    onTap: _handleChangePassword,
+                  ),
                   const Divider(
                       height: 1, color: FoodInsightColors.outlineGray),
                   _buildSettingsTile(
                     context,
                     icon: Icons.lock_reset_rounded,
-                    title: 'Reset Password',
+                    title: 'Send Password Reset Email',
                     subtitle: _currentUser?.email ?? '',
                     onTap: () {
                       HapticFeedback.lightImpact();
@@ -417,6 +517,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () {
                     HapticFeedback.lightImpact();
                     Navigator.pushNamed(context, AppRoutes.dietLog);
+                  },
+                ),
+                const Divider(height: 1, color: FoodInsightColors.outlineGray),
+                _buildSettingsTile(
+                  context,
+                  icon: Icons.download_for_offline_rounded,
+                  title: 'Export My Data',
+                  subtitle: 'Download or copy your records in JSON or CSV',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    showDataExportDialog(context);
                   },
                 ),
               ])

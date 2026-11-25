@@ -18,6 +18,7 @@ import '../../data/providers/user_profile_provider.dart';
 import 'package:flutter/rendering.dart';
 import '../../theme/apple_motion.dart';
 import '../../theme/app_design_system.dart';
+import '../../widgets/email_verification_banner.dart';
 import '../../widgets/glass/liquid_glass_nav_bar.dart';
 import '../../routes/app_routes.dart';
 import '../profile/profile_screen.dart';
@@ -374,6 +375,14 @@ class _HomeDashboardState extends State<HomeDashboard>
                             end: 0,
                             duration: 500.ms,
                             curve: Curves.easeOutCubic),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w),
+                      child: EmailVerificationBanner(
+                        onVerified: () {
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                    ),
                     SizedBox(height: 0.5.h),
                     NutritionSummaryCard(
                       nutritionData: summaryData,

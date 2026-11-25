@@ -9,6 +9,7 @@ import '../../../core/utils/input_validators.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/consent_service.dart';
 import '../../../widgets/legal_consent_card.dart';
+import '../../../widgets/password_strength_meter.dart';
 import '../../../widgets/prototype_button.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/user_profile_provider.dart';
@@ -282,21 +283,26 @@ class _SignupScreenState extends State<SignupScreen>
                                   _buildPasswordField(
                                     controller: _passwordController,
                                     label: 'Password',
-                                    hint: 'At least 6 characters',
+                                    hint:
+                                        '8+ chars with upper, lower, digit & symbol',
                                     colorScheme: colorScheme,
                                     obscure: _obscurePassword,
                                     onToggle: () => setState(() =>
                                         _obscurePassword = !_obscurePassword),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter a password';
-                                      }
-                                      if (value.length < 6) {
-                                        return 'Password must be at least 6 characters';
-                                      }
-                                      return null;
-                                    },
+                                    onChanged: (_) => setState(() {}),
+                                    validator: (value) =>
+                                        InputValidators.validateStrongPassword(
+                                      value,
+                                      email: _emailController.text.trim(),
+                                    ),
                                   ),
+                                  if (_passwordController.text.isNotEmpty) ...[
+                                    SizedBox(height: 1.h),
+                                    PasswordStrengthMeter(
+                                      password: _passwordController.text,
+                                      darkSurface: isDark,
+                                    ),
+                                  ],
                                   SizedBox(height: 2.h),
                                   _buildPasswordField(
                                     controller: _confirmPasswordController,
@@ -355,6 +361,19 @@ class _SignupScreenState extends State<SignupScreen>
                                       onPressed: _handleSignUp,
                                     ),
                             ).animate().fadeIn(duration: 500.ms, delay: 400.ms),
+                            if (_authService.isGuest) ...[
+                              SizedBox(height: 1.5.h),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed:
+                                      _isLoading ? null : _handleGoogleLink,
+                                  icon: const Icon(Icons.g_mobiledata_rounded),
+                                  label: const Text(
+                                      'Connect Google Account instead'),
+                                ),
+                              ),
+                            ],
                             const Spacer(),
                             // Already have an account
                             Padding(
@@ -428,6 +447,23 @@ class _SignupScreenState extends State<SignupScreen>
     );
   }
 
+  Future<void> _handleGoogleLink() async {
+    if (_isLoading || !await _ensureConsentAccepted()) return;
+    HapticFeedback.lightImpact();
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.linkAnonymousWithGoogle();
+      if (user == null || !mounted) return;
+      Provider.of<UserProfileProvider>(context, listen: false).fetchProfile();
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.authGate, (_) => false);
+    } catch (e) {
+      _showError(AuthService.getErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
@@ -435,10 +471,12 @@ class _SignupScreenState extends State<SignupScreen>
     required ColorScheme colorScheme,
     required bool obscure,
     required VoidCallback onToggle,
+    ValueChanged<String>? onChanged,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

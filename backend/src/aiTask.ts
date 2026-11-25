@@ -8,7 +8,7 @@ import { requestAi } from "./aiProvider";
 import { aiMessages } from './aiMessages';
 import { nutritionContext } from "./aiContext";
 import { macroBaseline, validateMacroAdjustment } from "./macroSafety";
-import { AiTask, limits, boundedString, profileData, validateOutput } from "./aiValidation";
+import { AiTask, limits, boundedString, profileData, validateOutput, requiresEmailVerification } from "./aiValidation";
 
 if (!getApps().length) initializeApp();
 const db = getFirestore();
@@ -27,6 +27,9 @@ export const aiTask = onCall({ region: "asia-south1", timeoutSeconds: 60,
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to use AI.");
   if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
     throw new HttpsError("permission-denied", "Account deletion is in progress.");
+  }
+  if (requiresEmailVerification(request.auth.token as { email_verified?: unknown; firebase?: { sign_in_provider?: unknown } })) {
+    throw new HttpsError("failed-precondition", "Verify your email address before using AI features.");
   }
   let task: AiTask;
   let content: string;

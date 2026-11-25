@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'ai_response_parser.dart';
+import 'auth_service.dart';
 import 'backend_client.dart';
 import 'allergen_safety_service.dart';
 import 'user_data_service.dart';
@@ -30,6 +31,12 @@ class CloudFunctionService {
   Future<Map<String, dynamic>> _call(
       String name, Map<String, dynamic> data) async {
     final session = UserSession.instance.capture();
+    if (name == 'aiTask' && AuthService().needsEmailVerification) {
+      throw const AiRequestException(
+        'Please verify your email address in Home or Settings to use AI features. Barcode scanning and manual logs remain available.',
+        statusCode: 403,
+      );
+    }
     if (name == 'aiTask') AnalyticsService.record(UsageEvent.aiRequested);
     try {
       final result = await BackendClient.call(name, data);

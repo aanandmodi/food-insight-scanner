@@ -11,6 +11,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/utils/input_validators.dart';
 import 'user_data_service.dart';
 import 'local_database_service.dart';
 import 'product_service.dart';
@@ -106,6 +107,37 @@ class AuthService {
     final usesPassword =
         user.providerData.any((p) => p.providerId == 'password');
     return !usesPassword || user.emailVerified;
+  }
+
+  /// True only when an active password account still needs email verification.
+  bool get needsEmailVerification => currentUser != null && !isEmailVerified;
+
+  List<String> get linkedProviderIds {
+    final user = currentUser;
+    if (user == null) return const [];
+    return user.providerData
+        .map((p) => p.providerId)
+        .where((id) => id.isNotEmpty)
+        .toList();
+  }
+
+  bool get hasPasswordProvider =>
+      currentUser?.providerData.any((p) => p.providerId == 'password') ?? false;
+
+  bool get hasGoogleProvider =>
+      currentUser?.providerData.any((p) => p.providerId == 'google.com') ??
+      false;
+
+  static const Duration verificationResendCooldown = Duration(seconds: 60);
+  DateTime? _lastVerificationEmailSentAt;
+
+  /// Remaining seconds before another verification email can be sent.
+  int verificationResendCooldownSeconds({DateTime? now}) {
+    final lastSent = _lastVerificationEmailSentAt;
+    if (lastSent == null) return 0;
+    final elapsed = (now ?? DateTime.now()).difference(lastSent);
+    final remaining = (verificationResendCooldown - elapsed).inSeconds;
+    return remaining > 0 ? remaining : 0;
   }
 
   /// Take ownership of rows that were written before sign-in (guest usage),
@@ -463,7 +495,7 @@ class AuthService {
     }
   }
 
-  /// Re-sends the verification email to the current user.
+  /// Re-sends the verification email to the current user (enforces 60s cooldown).
   Future<void> sendEmailVerification() async {
     final user = currentUser;
     if (user == null) {
@@ -472,8 +504,16 @@ class AuthService {
         message: 'You need to be signed in to verify your email.',
       );
     }
+    final remaining = verificationResendCooldownSeconds();
+    if (remaining > 0) {
+      throw AuthException(
+        code: 'too-many-requests',
+        message: 'Please wait ${remaining}s before requesting another verification email.',
+      );
+    }
     try {
       await user.sendEmailVerification();
+      _lastVerificationEmailSentAt = DateTime.now();
     } on FirebaseAuthException catch (e) {
       throw AuthException.fromFirebase(e);
     }
@@ -483,10 +523,67 @@ class AuthService {
   Future<bool> reloadUser() async {
     try {
       await currentUser?.reload();
+      _authEvents.add(_auth?.currentUser);
       return isEmailVerified;
     } catch (e) {
       debugPrint('User reload failed: $e');
       return isEmailVerified;
+    }
+  }
+
+  /// Changes the password for an email-password account after current-password reauthentication.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (!isFirebaseReady) await retryInit();
+    final user = currentUser;
+    if (user == null || user.isAnonymous || user.email == null) {
+      throw AuthException(
+        code: 'not-supported',
+        message: 'Password changes are only available for email accounts.',
+      );
+    }
+    if (!hasPasswordProvider) {
+      throw AuthException(
+        code: 'not-supported',
+        message:
+            'Your account signs in with Google. Manage your password in Google Account settings.',
+      );
+    }
+    if (currentPassword.isEmpty) {
+      throw AuthException(
+        code: 'password-required',
+        message: 'Please enter your current password.',
+      );
+    }
+    final passwordError = InputValidators.validateStrongPassword(
+      newPassword,
+      disallowMatch: currentPassword,
+      email: user.email,
+    );
+    if (passwordError != null) {
+      throw AuthException(code: 'weak-password', message: passwordError);
+    }
+
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        ),
+      );
+      await user.updatePassword(newPassword);
+      await user.reload();
+      _authEvents.add(_auth?.currentUser);
+    } on FirebaseAuthException catch (e) {
+      throw AuthException.fromFirebase(e);
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException(
+        code: 'change-password-failed',
+        message: 'Could not update your password. Please try again.',
+      );
     }
   }
 
@@ -495,6 +592,7 @@ class AuthService {
   /// Signs the current user out and clears ALL local cached data.
   /// This is an atomic operation — Firebase signout + Google signout + local purge.
   Future<void> signOut() async {
+    _lastVerificationEmailSentAt = null;
     UserSession.instance.invalidate();
     // UID-scoped caches and unsynced records survive logout for this owner.
     await _auth?.signOut();
@@ -708,7 +806,8 @@ class AuthException implements Exception {
         'Invalid email or password. Please check and try again.',
       'email-already-in-use' => 'An account already exists with this email.',
       'invalid-email' => 'Please enter a valid email address.',
-      'weak-password' => 'Password is too weak. Use at least 6 characters.',
+      'weak-password' =>
+        'Password is too weak. Use at least 8 characters with letters, numbers, and a symbol.',
       'too-many-requests' => 'Too many attempts. Please try again later.',
       'user-disabled' => 'This account has been disabled.',
       'operation-not-allowed' => 'This sign-in method is not enabled.',
