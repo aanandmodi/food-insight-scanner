@@ -41,6 +41,7 @@ class _ProductDetailsState extends State<ProductDetails> {
 
   // User profile loaded from SharedPreferences
   List<String> userAllergies = [];
+  List<String> userConditions = [];
   String dietaryPreference = '';
   String healthGoal = '';
 
@@ -134,6 +135,7 @@ class _ProductDetailsState extends State<ProductDetails> {
         if (!mounted) return;
         setState(() {
           userAllergies = profile.allergies;
+          userConditions = profile.diseases;
           dietaryPreference = profile.dietaryPreferences.join(', ');
           healthGoal = profile.healthGoals;
         });
@@ -144,6 +146,7 @@ class _ProductDetailsState extends State<ProductDetails> {
       if (!mounted) return;
       setState(() {
         userAllergies = prefs.getStringList('user_allergies') ?? [];
+        userConditions = prefs.getStringList('user_diseases') ?? [];
         dietaryPreference =
             (prefs.getStringList('user_dietary_preferences') ?? []).join(', ');
         healthGoal = prefs.getString('user_health_goal') ?? '';
@@ -188,6 +191,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     try {
       final fit = FoodFitService.evaluate(productData,
           allergies: userAllergies,
+          conditions: userConditions,
           dietaryPreference: dietaryPreference,
           healthGoal: healthGoal,
           dailyContext: _dailyContext);
@@ -359,6 +363,7 @@ class _ProductDetailsState extends State<ProductDetails> {
       'product': AIContextBuilder.productFacts(productData),
       'foodFit': FoodFitService.evaluate(productData,
               allergies: userAllergies,
+              conditions: userConditions,
               dietaryPreference: dietaryPreference,
               healthGoal: healthGoal,
               dailyContext: _dailyContext)
@@ -557,6 +562,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                         SizedBox(height: 3.h),
                         SafetyAlertsWidget(
                           userAllergies: userAllergies,
+                          userConditions: userConditions,
                           ingredients: ingredients,
                           dietaryPreference: dietaryPreference,
                           nutritionData: nutrition,

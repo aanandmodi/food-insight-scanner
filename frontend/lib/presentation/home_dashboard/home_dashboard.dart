@@ -39,11 +39,16 @@ class HomeDashboard extends StatefulWidget {
       Map<String, dynamic> scan, UserProfile? profile) {
     final fit = FoodFitService.evaluate(scan,
         allergies: profile?.allergies ?? const [],
+        conditions: profile?.diseases ?? const [],
         dietaryPreference: profile?.dietaryPreferences.join(', ') ?? '',
         healthGoal: profile?.healthGoals ?? '');
-    if (fit.hasCriticalAllergenConflict) return 'danger';
+    if (fit.hasCriticalAllergenConflict || fit.hasCriticalConditionConflict) {
+      return 'danger';
+    }
     if (fit.conflicts.isNotEmpty ||
+        fit.conditionConflicts.isNotEmpty ||
         fit.cautions.isNotEmpty ||
+        fit.conditionCautions.isNotEmpty ||
         fit.allergen.status == AllergenStatus.possibleTrace) {
       return 'warning';
     }

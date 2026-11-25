@@ -1,4 +1,5 @@
 import 'allergen_safety_service.dart';
+import 'condition_safety_service.dart';
 
 enum FoodFitConfidence { high, medium, low, insufficientData }
 
@@ -9,7 +10,11 @@ class FoodFitResult {
   final List<String> cautions;
   final List<String> conflicts;
   final List<String> unknowns;
+  final List<String> conditionConflicts;
+  final List<String> conditionCautions;
+  final List<String> conditionUnknowns;
   final bool hasCriticalAllergenConflict;
+  final bool hasCriticalConditionConflict;
   final AllergenSafetyResult allergen;
   const FoodFitResult(
       {required this.score,
@@ -18,15 +23,23 @@ class FoodFitResult {
       required this.cautions,
       required this.conflicts,
       required this.unknowns,
+      this.conditionConflicts = const [],
+      this.conditionCautions = const [],
+      this.conditionUnknowns = const [],
       required this.hasCriticalAllergenConflict,
+      this.hasCriticalConditionConflict = false,
       required this.allergen});
+
+  /// Safe summary for external AI explanations (never transmits condition names).
   Map<String, dynamic> toMap() => {
         'score': score,
         'scoreStatus': hasCriticalAllergenConflict
             ? 'withheld_due_to_allergen_conflict'
-            : score == null
-                ? 'insufficient_data'
-                : 'available',
+            : hasCriticalConditionConflict
+                ? 'withheld_due_to_dietary_restriction'
+                : score == null
+                    ? 'insufficient_data'
+                    : 'available',
         'confidence': confidence.name,
         'positives': positives,
         'cautions': cautions,
@@ -44,6 +57,7 @@ class FoodFitService {
   /// whose compatibility key is explicitly milligrams. Old ambiguous rows are unknown.
   static FoodFitResult evaluate(Map<String, dynamic> product,
       {required List<String> allergies,
+      List<String> conditions = const [],
       String dietaryPreference = '',
       String healthGoal = '',
       Map<String, num> dailyContext = const {}}) {
@@ -56,8 +70,22 @@ class FoodFitService {
     final sugar = value('sugarGPer100g', 'sugar');
     final protein = value('proteinGPer100g', 'protein');
     final fiber = value('fiberGPer100g', 'fiber');
+    final carbs = value('carbohydratesGPer100g', 'carbs');
+    final fat = value('fatGPer100g', 'fat');
+    final saturatedFat = value('saturatedFatGPer100g', 'saturatedFat');
     final sodium = _number(nutrition['sodiumMgPer100g'] ??
         (product['schemaVersion'] == 2 ? nutrition['sodium'] : null));
+    final conditionResult = ConditionSafetyService.evaluate(
+      product,
+      conditions: conditions,
+      sugarGPer100g: sugar,
+      carbsGPer100g: carbs,
+      fiberGPer100g: fiber,
+      sodiumMgPer100g: sodium,
+      fatGPer100g: fat,
+      saturatedFatGPer100g: saturatedFat,
+      proteinGPer100g: protein,
+    );
     final known =
         [calories, sugar, protein, fiber, sodium].whereType<double>().length;
     final positives = <String>[];
@@ -189,9 +217,13 @@ class FoodFitService {
             '100g exceeds your remaining logged ${entry.key} target; portion size matters');
       }
     }
-    if (conflicts.isNotEmpty) score = score.clamp(0, 25);
+    score += conditionResult.scoreAdjustment;
+    if (conflicts.isNotEmpty || conditionResult.conflicts.isNotEmpty) {
+      score = score.clamp(0, 25);
+    }
     if (allergen.traces.isNotEmpty) score = score.clamp(0, 45);
-    final critical = allergen.status == AllergenStatus.confirmedConflict;
+    final criticalAllergen = allergen.status == AllergenStatus.confirmedConflict;
+    final criticalCondition = conditionResult.hasCriticalConflict;
     final confidence = known < 3
         ? FoodFitConfidence.insufficientData
         : known == 5 &&
@@ -202,7 +234,9 @@ class FoodFitService {
                 ? FoodFitConfidence.medium
                 : FoodFitConfidence.low;
     return FoodFitResult(
-        score: critical || confidence == FoodFitConfidence.insufficientData
+        score: criticalAllergen ||
+                criticalCondition ||
+                confidence == FoodFitConfidence.insufficientData
             ? null
             : score.clamp(0, 100),
         confidence: confidence,
@@ -210,7 +244,11 @@ class FoodFitService {
         cautions: cautions,
         conflicts: conflicts,
         unknowns: unknowns,
-        hasCriticalAllergenConflict: critical,
+        conditionConflicts: conditionResult.conflicts,
+        conditionCautions: conditionResult.cautions,
+        conditionUnknowns: conditionResult.unknowns,
+        hasCriticalAllergenConflict: criticalAllergen,
+        hasCriticalConditionConflict: criticalCondition,
         allergen: allergen);
   }
 }

@@ -8,6 +8,7 @@ import 'ai_response_parser.dart';
 import 'auth_service.dart';
 import 'backend_client.dart';
 import 'allergen_safety_service.dart';
+import 'condition_safety_service.dart';
 import 'user_data_service.dart';
 import 'user_session.dart';
 
@@ -143,20 +144,32 @@ class CloudFunctionService {
       Map<String, dynamic> plan, Map<String, dynamic>? userProfile) {
     final allergies =
         (userProfile?['allergies'] as List? ?? []).whereType<String>().toList();
+    final conditions =
+        (userProfile?['diseases'] as List? ?? []).whereType<String>().toList();
     for (final meal in plan['meals'] as List) {
       final ingredients = meal['ingredients'];
       if (ingredients is! List || ingredients.isEmpty) {
         throw const FormatException(
             'Meal ingredient information is incomplete. Please retry.');
       }
-      final result = AllergenSafetyService.evaluate({
+      final mealProduct = {
         'ingredients': ingredients,
         'ingredientsText': '${meal['name']} ${meal['description']}'
-      }, allergies);
+      };
+      final result = AllergenSafetyService.evaluate(mealProduct, allergies);
       if (result.status == AllergenStatus.confirmedConflict ||
           result.status == AllergenStatus.possibleTrace) {
         throw const AiRequestException(
             'This plan conflicts with a reported allergy. Please retry or plan meals manually.');
+      }
+      final conditionResult = ConditionSafetyService.evaluate(
+        mealProduct,
+        conditions: conditions,
+      );
+      if (conditionResult.hasCriticalConflict ||
+          conditionResult.conflicts.isNotEmpty) {
+        throw const AiRequestException(
+            'This plan may conflict with a saved health condition. Please retry or plan meals manually.');
       }
     }
   }

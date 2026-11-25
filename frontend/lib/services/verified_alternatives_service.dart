@@ -6,10 +6,13 @@ class VerifiedAlternativesService {
       List<Map<String, dynamic>> candidates, Map<String, dynamic> profile) {
     final allergies =
         (profile['allergies'] as List? ?? []).whereType<String>().toList();
+    final conditions =
+        (profile['diseases'] as List? ?? []).whereType<String>().toList();
     final diet =
         (profile['dietaryPreferences'] as List? ?? []).join(' ').toLowerCase();
     FoodFitResult fit(Map<String, dynamic> p) => FoodFitService.evaluate(p,
         allergies: allergies,
+        conditions: conditions,
         dietaryPreference: diet,
         healthGoal: profile['healthGoals']?.toString() ?? '');
     final original = fit(current);
@@ -29,6 +32,8 @@ class VerifiedAlternativesService {
       final result = fit(p);
       if (result.score == null ||
           result.conflicts.isNotEmpty ||
+          result.conditionConflicts.isNotEmpty ||
+          result.hasCriticalConditionConflict ||
           result.allergen.status != AllergenStatus.noDetectedConflict) {
         continue;
       }
