@@ -276,7 +276,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           ).animate().fadeIn(delay: 500.ms),
           SizedBox(height: 4.h),
           ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () =>
+                Navigator.pushNamed(context, '/barcode-scanner'),
             icon:
                 const Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
             label: Text('Scan a Product',
@@ -296,10 +297,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   Widget _buildListItem(Map<String, dynamic> item) {
     final bool checked = item['checked'] == true;
-    final String id = item['id'];
-    final String name = item['name'] ?? 'Unknown Product';
-    final String brand = item['brand'] ?? 'Unknown Brand';
-    final String score = item['score'] ?? '0';
+    final String id = (item['id'] ?? '').toString();
+    final String name = (item['name'] ?? 'Unknown Product').toString();
+    final String rawBrand = (item['brand'] ?? '').toString().trim();
+    final String brand = rawBrand.isEmpty ? 'Saved item' : rawBrand;
+    final String score = (item['score'] ?? '0').toString();
     final String imageUrl =
         (item['image'] ?? item['imageUrl'])?.toString() ?? '';
 

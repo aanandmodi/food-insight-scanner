@@ -8,6 +8,8 @@ class ErrorMessageWidget extends StatelessWidget {
   final String message;
   final String? actionText;
   final VoidCallback? onAction;
+  final String? secondaryActionText;
+  final VoidCallback? onSecondaryAction;
   final VoidCallback? onDismiss;
 
   const ErrorMessageWidget({
@@ -16,6 +18,8 @@ class ErrorMessageWidget extends StatelessWidget {
     required this.message,
     this.actionText,
     this.onAction,
+    this.secondaryActionText,
+    this.onSecondaryAction,
     this.onDismiss,
   });
 
@@ -90,6 +94,19 @@ class ErrorMessageWidget extends StatelessWidget {
               ),
 
               SizedBox(height: 3.h),
+
+              if (onSecondaryAction != null &&
+                  secondaryActionText != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onSecondaryAction,
+                    icon: const Icon(Icons.edit_note_rounded, size: 18),
+                    label: Text(secondaryActionText!),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
 
               // Action buttons
               Row(

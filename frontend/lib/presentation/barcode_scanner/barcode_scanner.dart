@@ -14,6 +14,7 @@ import '../../services/product_service.dart';
 import './widgets/camera_overlay_widget.dart';
 import './widgets/error_message_widget.dart';
 import './widgets/manual_input_widget.dart';
+import './widgets/manual_product_dialog.dart';
 import './widgets/scanning_animation_widget.dart';
 import './widgets/success_flash_widget.dart';
 
@@ -59,6 +60,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
   bool _showSuccessFlash = false;
   String? _errorMessage;
   String? _errorTitle;
+  String? _notFoundBarcode;
   bool _hasPermission = false;
   bool _isInitialized = false;
 
@@ -233,6 +235,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
   /// Shared lookup → save → navigate path for both scanning and manual entry.
   Future<void> _openProduct(String barcode) async {
     final session = UserSession.instance.capture();
+    _notFoundBarcode = null;
     try {
       final product = await _productService.getProductByBarcode(barcode);
       if (!mounted || !widget.isActive || !session.isActive) return;
@@ -240,44 +243,64 @@ class _BarcodeScannerState extends State<BarcodeScanner>
       if (product == null) {
         setState(() {
           _isLoading = false;
+          _notFoundBarcode = barcode;
           _errorTitle = 'Product Not Found';
           _errorMessage =
               "We couldn't find product info for barcode: $barcode.\n"
-              'Try scanning again or enter the barcode manually.';
+              'Add nutrition details from the package label, or try another scan.';
         });
         return;
       }
 
-      // Persisting must never block navigation, but a total failure is worth
-      // telling the user about — it used to fail completely silently.
-      final saveResult = await _productService.saveToScanHistory(product);
-      if (!mounted) return;
-      if (!saveResult.isPersisted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Couldn't save this scan to your history."),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-
-      if (!mounted) return;
-      await Navigator.pushNamed(
-        context,
-        '/product-details',
-        arguments: product,
-      );
-      if (mounted) _resetScanner();
+      await _persistAndOpenProduct(product);
     } catch (error) {
       if (!mounted || !session.isActive) return;
       setState(() {
         _isLoading = false;
+        _notFoundBarcode = null;
         _errorTitle = 'Product lookup unavailable';
         _errorMessage = error is AiRequestException
             ? error.message
             : 'Check your internet connection and retry. Saved products remain available in history.';
       });
     }
+  }
+
+  Future<void> _persistAndOpenProduct(Map<String, dynamic> product) async {
+    final saveResult = await _productService.saveToScanHistory(product);
+    if (!mounted) return;
+    if (!saveResult.isPersisted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't save this scan to your history."),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+
+    if (!mounted) return;
+    await Navigator.pushNamed(
+      context,
+      '/product-details',
+      arguments: product,
+    );
+    if (mounted) _resetScanner();
+  }
+
+  Future<void> _handleManualProductEntry() async {
+    final barcode = _notFoundBarcode;
+    if (barcode == null || barcode.isEmpty) return;
+    final customProduct = await showManualProductDialog(
+      context,
+      barcode: barcode,
+    );
+    if (!mounted || customProduct == null) return;
+    setState(() {
+      _errorMessage = null;
+      _errorTitle = null;
+      _notFoundBarcode = null;
+    });
+    await _persistAndOpenProduct(customProduct);
   }
 
   void _resetScanner() {
@@ -288,6 +311,7 @@ class _BarcodeScannerState extends State<BarcodeScanner>
       _showSuccessFlash = false;
       _errorMessage = null;
       _errorTitle = null;
+      _notFoundBarcode = null;
       _showManualInput = false;
     });
     _lastHandledBarcode = null;
@@ -485,6 +509,11 @@ class _BarcodeScannerState extends State<BarcodeScanner>
               actionText: _hasPermission ? 'Try Again' : 'Open Settings',
               onAction:
                   _hasPermission ? _dismissError : _requestCameraPermission,
+              secondaryActionText:
+                  _notFoundBarcode != null ? 'Add From Package Label' : null,
+              onSecondaryAction: _notFoundBarcode != null
+                  ? _handleManualProductEntry
+                  : null,
               onDismiss: _hasPermission ? _dismissError : _handleClose,
             ),
         ],

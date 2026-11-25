@@ -1,6 +1,5 @@
 import '../../services/analytics_service.dart';
 import '../../services/ai_context_builder.dart';
-import '../../services/product_portion_service.dart';
 import '../../services/feature_flag_service.dart';
 // lib/presentation/product_details/product_details.dart
 
@@ -16,6 +15,7 @@ import '../../services/cloud_function_service.dart';
 import '../../services/product_service.dart';
 import '../../data/providers/user_profile_provider.dart';
 import './widgets/action_bar_widget.dart';
+import './widgets/portion_picker_dialog.dart';
 import '../../services/product_facts_adapter.dart';
 import '../../services/food_fit_service.dart';
 import './widgets/ingredients_widget.dart';
@@ -254,41 +254,66 @@ class _ProductDetailsState extends State<ProductDetails> {
   }
 
   bool _isLogging = false;
+  bool _isAddingToShopping = false;
+
+  Future<void> _onAddToShoppingList() async {
+    if (_isAddingToShopping || productData.isEmpty) return;
+    setState(() => _isAddingToShopping = true);
+    HapticFeedback.lightImpact();
+    try {
+      final barcode = (productData['barcode'] ?? '').toString().trim();
+      final rawBrand = (productData['brand'] ?? '').toString().trim();
+      await UserDataService().addShoppingItem({
+        if (barcode.isNotEmpty) 'id': 'product_$barcode',
+        if (barcode.isNotEmpty) 'barcode': barcode,
+        'name': productData['name'] ?? 'Unknown Product',
+        'brand': rawBrand.isEmpty ? 'Saved product' : rawBrand,
+        'image': productData['image'] ?? '',
+        'score': (productData['nutriscore'] ?? '0').toString(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Added ${productData['name'] ?? 'product'} to Shopping List',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: FoodInsightColors.scannerGreen,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                if (mounted) {
+                  Navigator.pushNamed(context, '/shopping-list');
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not add item to shopping list.'),
+            backgroundColor: FoodInsightColors.healthRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAddingToShopping = false);
+    }
+  }
+
   Future<void> _onAddToDietLog() async {
     if (_isLogging) return;
     setState(() => _isLogging = true);
-    final controller = TextEditingController(text: '100');
-    final grams = await showDialog<double>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-              title: const Text('How much did you eat?'),
-              content: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text(
-                    'Nutrition is calculated from the amount in grams. Check the package for its serving weight.'),
-                TextField(
-                    controller: controller,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                        labelText: 'Portion (grams)', helperText: '1–2,000 g')),
-              ]),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('Cancel')),
-                FilledButton(
-                    onPressed: () {
-                      final value = double.tryParse(controller.text.trim());
-                      if (value != null && value >= 1 && value <= 2000) {
-                        Navigator.pop(dialogContext, value);
-                      }
-                    },
-                    child: const Text('Add meal'))
-              ],
-            ));
-    controller.dispose();
+    final scaledPortion = await showPortionPickerDialog(
+      context,
+      productData: productData,
+    );
     if (!mounted) return;
-    if (grams == null) {
+    if (scaledPortion == null) {
       setState(() => _isLogging = false);
       return;
     }
@@ -301,7 +326,7 @@ class _ProductDetailsState extends State<ProductDetails> {
       final entryData = {
         'name': productData['name'] ?? 'Unknown',
         'brand': productData['brand'] ?? 'Unknown',
-        ...ProductPortionService.nutrients(productData, grams),
+        ...scaledPortion,
         'mealType': _mealTypeForNow(now),
         'date': dateString,
         'time':
@@ -613,7 +638,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                           const Text(
                               "You're offline — showing saved information."),
                         Text(
-                            'Source: Open Food Facts${productData['sourceFetchedAt'] == null ? '' : '\nRetrieved ${productData['sourceFetchedAt'].toString().split('T').first}'}',
+                            'Source: ${productData['source'] == 'user_label' ? 'Entered from package label' : 'Open Food Facts'}${productData['sourceFetchedAt'] == null ? '' : '\nRetrieved ${productData['sourceFetchedAt'].toString().split('T').first}'}',
                             style: Theme.of(context).textTheme.bodySmall),
                         const SizedBox(height: 8),
                         const Text(
@@ -634,6 +659,8 @@ class _ProductDetailsState extends State<ProductDetails> {
             child: ActionBarWidget(
               productData: productData,
               onAddToDietLog: _isLogging ? null : _onAddToDietLog,
+              onAddToShoppingList:
+                  _isAddingToShopping ? null : _onAddToShoppingList,
             ),
           ),
         ],
