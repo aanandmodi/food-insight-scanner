@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../services/user_data_service.dart';
 import '../../theme/app_design_system.dart';
+import '../../widgets/custom_image_widget.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -299,6 +300,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     final String name = item['name'] ?? 'Unknown Product';
     final String brand = item['brand'] ?? 'Unknown Brand';
     final String score = item['score'] ?? '0';
+    final String imageUrl =
+        (item['image'] ?? item['imageUrl'])?.toString() ?? '';
 
     return Dismissible(
       key: Key(id),
@@ -355,17 +358,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               SizedBox(width: 3.w),
 
               // Thumbnail
-              if (item['imageUrl'] != null &&
-                  item['imageUrl'].toString().isNotEmpty)
+              if (imageUrl.isNotEmpty)
                 ClipRRect(
                   borderRadius: FoodInsightRadius.smAll,
-                  child: Image.network(
-                    item['imageUrl'],
+                  child: CustomImageWidget(
+                    imageUrl: imageUrl,
                     width: 12.w,
                     height: 12.w,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildPlaceholderIcon(),
+                    errorWidget: _buildPlaceholderIcon(),
                   ),
                 )
               else

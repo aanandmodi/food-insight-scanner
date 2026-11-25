@@ -1,4 +1,5 @@
 import '../../services/food_fit_service.dart';
+import '../../services/allergen_safety_service.dart';
 import '../../services/feature_flag_service.dart';
 import 'dart:async';
 import '../../services/user_session.dart';
@@ -32,6 +33,25 @@ import './widgets/activity_summary_card.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
+
+  static String determineScanSafety(
+      Map<String, dynamic> scan, UserProfile? profile) {
+    final fit = FoodFitService.evaluate(scan,
+        allergies: profile?.allergies ?? const [],
+        dietaryPreference: profile?.dietaryPreferences.join(', ') ?? '',
+        healthGoal: profile?.healthGoals ?? '');
+    if (fit.hasCriticalAllergenConflict) return 'danger';
+    if (fit.conflicts.isNotEmpty ||
+        fit.cautions.isNotEmpty ||
+        fit.allergen.status == AllergenStatus.possibleTrace) {
+      return 'warning';
+    }
+    if (fit.score == null ||
+        fit.confidence == FoodFitConfidence.insufficientData) {
+      return 'unknown';
+    }
+    return 'safe';
+  }
 
   @override
   State<HomeDashboard> createState() => _HomeDashboardState();
@@ -196,17 +216,19 @@ class _HomeDashboardState extends State<HomeDashboard>
         _syncWidgetData(totalCals, calGoal, totalProtein.round(), proteinGoal,
             carbsGoal, fatGoal);
 
-        // Transform scan history into recent scans format
+        // Transform scan history into recent scans format while preserving full
+        // product facts so tapping opens ProductDetails with complete data.
         _recentScans = scanHistory.take(10).map((scan) {
+          final barcode = (scan['barcode'] ?? scan['id'] ?? '').toString();
           return {
-            'id': scan['barcode'] ?? '',
+            ...scan,
+            'id': barcode,
+            'barcode': barcode,
             'name': scan['name'] ?? 'Unknown',
             'image': scan['image'] ?? '',
             'safetyStatus': _determineSafety(scan, profile),
-            'scannedAt': scan['scannedAt'] != null
-                ? DateTime.tryParse(scan['scannedAt'].toString()) ??
-                    DateTime.now()
-                : DateTime.now(),
+            'scannedAt':
+                scan['scannedAt']?.toString() ?? DateTime.now().toIso8601String(),
           };
         }).toList();
       });
@@ -220,15 +242,8 @@ class _HomeDashboardState extends State<HomeDashboard>
     await WidgetSyncService.syncNow();
   }
 
-  String _determineSafety(Map<String, dynamic> scan, UserProfile? profile) {
-    final fit = FoodFitService.evaluate(scan,
-        allergies: profile?.allergies ?? [],
-        dietaryPreference: profile?.dietaryPreferences.join(', ') ?? '',
-        healthGoal: profile?.healthGoals ?? '');
-    if (fit.hasCriticalAllergenConflict) return 'danger';
-    if (fit.conflicts.isNotEmpty || fit.cautions.isNotEmpty) return 'warning';
-    return 'unknown';
-  }
+  String _determineSafety(Map<String, dynamic> scan, UserProfile? profile) =>
+      HomeDashboard.determineScanSafety(scan, profile);
 
   Future<void> _handleRefresh() async {
     if (_isRefreshing) return;
@@ -291,7 +306,8 @@ class _HomeDashboardState extends State<HomeDashboard>
   /// The Home tab content with staggered cinematic animations
   Widget _buildHomeContent() {
     final profile = context.watch<UserProfileProvider>().profile;
-    // Calculate dynamic goals in build so they reflect the latest profile
+    final summaryData = Map<String, dynamic>.from(_nutritionData);
+    // Calculate dynamic goals in a local copy so they reflect the latest profile
     if (profile != null) {
       final calGoal = UserUtils.calculateTDEE(
         weightKg: profile.weightKg,
@@ -302,16 +318,16 @@ class _HomeDashboardState extends State<HomeDashboard>
         healthGoal: profile.healthGoals,
         customGoal: profile.customCaloriesGoal,
       );
-      _nutritionData['caloriesGoal'] = calGoal;
-      _nutritionData['proteinGoal'] = UserUtils.calculateProteinGoal(
+      summaryData['caloriesGoal'] = calGoal;
+      summaryData['proteinGoal'] = UserUtils.calculateProteinGoal(
         weightKg: profile.weightKg,
         healthGoal: profile.healthGoals,
         customGoal: profile.customProteinGoal,
       );
-      _nutritionData['sugarGoal'] = UserUtils.calculateSugarGoal(calGoal);
-      _nutritionData['carbsGoal'] = UserUtils.calculateCarbsGoal(calGoal,
+      summaryData['sugarGoal'] = UserUtils.calculateSugarGoal(calGoal);
+      summaryData['carbsGoal'] = UserUtils.calculateCarbsGoal(calGoal,
           customGoal: profile.customCarbsGoal);
-      _nutritionData['fatGoal'] = UserUtils.calculateFatGoal(calGoal,
+      summaryData['fatGoal'] = UserUtils.calculateFatGoal(calGoal,
           customGoal: profile.customFatGoal);
     }
 
@@ -360,7 +376,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                             curve: Curves.easeOutCubic),
                     SizedBox(height: 0.5.h),
                     NutritionSummaryCard(
-                      nutritionData: _nutritionData,
+                      nutritionData: summaryData,
                     )
                         .animate()
                         .fadeIn(

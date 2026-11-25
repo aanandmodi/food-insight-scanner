@@ -131,7 +131,14 @@ class RecentScansSection extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          Navigator.pushNamed(context, '/product-details', arguments: scan);
+          final hasFullFacts = scan['nutrition'] is Map &&
+              (scan['nutrition'] as Map).isNotEmpty;
+          final barcode = (scan['barcode'] ?? scan['id'] ?? '').toString();
+          Navigator.pushNamed(
+            context,
+            '/product-details',
+            arguments: hasFullFacts || barcode.isEmpty ? scan : barcode,
+          );
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

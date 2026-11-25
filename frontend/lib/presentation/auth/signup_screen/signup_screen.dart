@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
+import '../../../core/utils/input_validators.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/prototype_button.dart';
 import 'package:provider/provider.dart';
@@ -214,16 +215,8 @@ class _SignupScreenState extends State<SignupScreen>
                                     icon: 'person',
                                     colorScheme: colorScheme,
                                     capitalization: TextCapitalization.words,
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Please enter your name';
-                                      }
-                                      if (value.trim().length < 2) {
-                                        return 'Name must be at least 2 characters';
-                                      }
-                                      return null;
-                                    },
+                                    validator:
+                                        InputValidators.validateDisplayName,
                                   ),
                                   SizedBox(height: 2.h),
                                   _buildField(
@@ -233,18 +226,7 @@ class _SignupScreenState extends State<SignupScreen>
                                     icon: 'email',
                                     colorScheme: colorScheme,
                                     keyboardType: TextInputType.emailAddress,
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Please enter your email';
-                                      }
-                                      if (!RegExp(
-                                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                          .hasMatch(value.trim())) {
-                                        return 'Please enter a valid email';
-                                      }
-                                      return null;
-                                    },
+                                    validator: InputValidators.validateEmail,
                                   ),
                                   SizedBox(height: 2.h),
                                   _buildPasswordField(

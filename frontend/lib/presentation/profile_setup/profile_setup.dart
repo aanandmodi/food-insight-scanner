@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../core/app_export.dart';
+import '../../core/utils/input_validators.dart';
 import '../../services/user_data_service.dart';
 import '../../theme/app_design_system.dart';
 import './widgets/allergy_selection_widget.dart';
@@ -30,6 +31,7 @@ class _ProfileSetupState extends State<ProfileSetup>
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _metricsFormKey = GlobalKey<FormState>();
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -211,7 +213,9 @@ class _ProfileSetupState extends State<ProfileSetup>
   }
 
   Future<void> _saveProfile() async {
-    if (!_isFormValid()) return;
+    final region =
+        context.read<UserProfileProvider>().profile?.region ?? 'All India';
+    if (!await _validateBeforeSave() || !mounted) return;
 
     setState(() {
       _isLoading = true;
@@ -222,8 +226,7 @@ class _ProfileSetupState extends State<ProfileSetup>
       //      provider from Firebase Auth, so we never invent a fake uid. ──
       final userProfile = UserProfile(
         name: _userName,
-        region:
-            context.read<UserProfileProvider>().profile?.region ?? 'All India',
+        region: region,
         gender: _selectedGender,
         dateOfBirth: _dateOfBirth,
         heightCm: _heightCm,
@@ -366,11 +369,69 @@ class _ProfileSetupState extends State<ProfileSetup>
     );
   }
 
-  bool _isFormValid() {
-    return _userName.isNotEmpty && _selectedHealthGoal != null;
+  Future<void> _jumpToStep(int step) async {
+    await _pageController.animateToPage(
+      step - 1,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<bool> _validateBeforeSave() async {
+    final nameError = InputValidators.validateDisplayName(_nameController.text);
+    if (nameError != null) {
+      await _jumpToStep(1);
+      _formKey.currentState?.validate();
+      if (mounted) _showErrorSnackBar(nameError);
+      return false;
+    }
+    final dobError = InputValidators.validateBirthDate(_dateOfBirth);
+    if (dobError != null) {
+      await _jumpToStep(2);
+      if (mounted) _showErrorSnackBar(dobError);
+      return false;
+    }
+    final heightError = InputValidators.validateHeightCm(_heightController.text);
+    final weightError = InputValidators.validateWeightKg(_weightController.text);
+    if (heightError != null || weightError != null) {
+      await _jumpToStep(3);
+      _metricsFormKey.currentState?.validate();
+      if (mounted) _showErrorSnackBar(heightError ?? weightError!);
+      return false;
+    }
+    if (_selectedHealthGoal == null || _selectedHealthGoal!.trim().isEmpty) {
+      _showErrorSnackBar('Please select your primary health goal.');
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateCurrentStep() {
+    switch (_currentStep) {
+      case 1:
+        return _formKey.currentState?.validate() ??
+            InputValidators.validateDisplayName(_nameController.text) == null;
+      case 2:
+        final dobError = InputValidators.validateBirthDate(_dateOfBirth);
+        if (dobError != null) {
+          _showErrorSnackBar(dobError);
+          return false;
+        }
+        return true;
+      case 3:
+        return _metricsFormKey.currentState?.validate() ??
+            (InputValidators.validateHeightCm(_heightController.text) == null &&
+                InputValidators.validateWeightKg(_weightController.text) ==
+                    null);
+      default:
+        return true;
+    }
   }
 
   void _nextStep() {
+    if (!_validateCurrentStep()) return;
     if (_currentStep < _totalSteps) {
       _pageController.nextPage(
         duration: MediaQuery.disableAnimationsOf(context)
@@ -434,11 +495,22 @@ class _ProfileSetupState extends State<ProfileSetup>
   }
 
   Future<void> _pickDateOfBirth() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(1920);
+    final lastDate = DateTime(
+      now.year - InputValidators.minAgeYears,
+      now.month,
+      now.day,
+    );
+    var initial = _dateOfBirth ?? DateTime(2000, 1, 1);
+    if (initial.isBefore(firstDate)) initial = firstDate;
+    if (initial.isAfter(lastDate)) initial = lastDate;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dateOfBirth ?? DateTime(2000, 1, 1),
-      firstDate: DateTime(1920),
-      lastDate: DateTime.now(),
+      initialDate: initial,
+      firstDate: firstDate,
+      lastDate: lastDate,
       helpText: 'Select your date of birth',
       builder: (context, child) {
         return Theme(
@@ -457,16 +529,7 @@ class _ProfileSetupState extends State<ProfileSetup>
     }
   }
 
-  int? get _calculatedAge {
-    if (_dateOfBirth == null) return null;
-    final now = DateTime.now();
-    int age = now.year - _dateOfBirth!.year;
-    if (now.month < _dateOfBirth!.month ||
-        (now.month == _dateOfBirth!.month && now.day < _dateOfBirth!.day)) {
-      age--;
-    }
-    return age;
-  }
+  int? get _calculatedAge => InputValidators.calculateAge(_dateOfBirth);
 
   @override
   Widget build(BuildContext context) {
@@ -599,6 +662,7 @@ class _ProfileSetupState extends State<ProfileSetup>
           decoration: _cardDecoration(),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -626,15 +690,7 @@ class _ProfileSetupState extends State<ProfileSetup>
                   ),
                   keyboardType: TextInputType.name,
                   textCapitalization: TextCapitalization.words,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    if (value.trim().length < 2) {
-                      return 'Name must be at least 2 characters';
-                    }
-                    return null;
-                  },
+                  validator: InputValidators.validateDisplayName,
                   onChanged: (value) {
                     setState(() {
                       _userName = value.trim();
@@ -806,137 +862,146 @@ class _ProfileSetupState extends State<ProfileSetup>
       child: Container(
         padding: EdgeInsets.all(4.w),
         decoration: _cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStepHeader('monitor_weight', 'Body Metrics'),
-            SizedBox(height: 2.h),
-            // Height
-            Text('Height (cm)',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(fontWeight: FontWeight.w500)),
-            SizedBox(height: 1.h),
-            TextFormField(
-              controller: _heightController,
-              decoration: InputDecoration(
-                hintText: 'e.g. 170',
-                suffixText: 'cm',
-                prefixIcon: Padding(
-                  padding: EdgeInsets.all(3.w),
-                  child: CustomIconWidget(
-                    iconName: 'height',
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-              ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _heightCm = double.tryParse(value);
-                  _hasUnsavedChanges = true;
-                });
-              },
-            ),
-            SizedBox(height: 3.h),
-            // Weight
-            Text('Weight (kg)',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(fontWeight: FontWeight.w500)),
-            SizedBox(height: 1.h),
-            TextFormField(
-              controller: _weightController,
-              decoration: InputDecoration(
-                hintText: 'e.g. 65.5',
-                suffixText: 'kg',
-                prefixIcon: Padding(
-                  padding: EdgeInsets.all(3.w),
-                  child: CustomIconWidget(
-                    iconName: 'fitness_center',
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-              ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _weightKg = double.tryParse(value);
-                  _hasUnsavedChanges = true;
-                });
-              },
-            ),
-            SizedBox(height: 3.h),
-            // Activity Level
-            Text('Activity Level',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(fontWeight: FontWeight.w500)),
-            SizedBox(height: 1.h),
-            Wrap(
-              spacing: 2.w,
-              runSpacing: 1.h,
-              children: _activityLevelOptions.map((level) {
-                final isSelected =
-                    _selectedActivityLevel.toLowerCase() == level.toLowerCase();
-                return ChoiceChip(
-                  label: Text(level[0].toUpperCase() + level.substring(1)),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedActivityLevel = level;
-                        _hasUnsavedChanges = true;
-                      });
-                    }
-                  },
-                  selectedColor: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.2),
-                  checkmarkColor: Theme.of(context).colorScheme.primary,
-                  labelStyle: TextStyle(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
+        child: Form(
+          key: _metricsFormKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepHeader('monitor_weight', 'Body Metrics'),
+              SizedBox(height: 2.h),
+              // Height
+              Text('Height (cm)',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500)),
+              SizedBox(height: 1.h),
+              TextFormField(
+                controller: _heightController,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 170',
+                  suffixText: 'cm',
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.all(3.w),
+                    child: CustomIconWidget(
+                      iconName: 'height',
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-            // BMI Preview
-            if (_heightCm != null &&
-                _weightKg != null &&
-                _heightCm! > 0 &&
-                _weightKg! > 0) ...[
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                ],
+                validator: InputValidators.validateHeightCm,
+                onChanged: (value) {
+                  setState(() {
+                    _heightCm = double.tryParse(value.trim());
+                    _hasUnsavedChanges = true;
+                  });
+                },
+              ),
               SizedBox(height: 3.h),
-              _buildBMIPreview(),
+              // Weight
+              Text('Weight (kg)',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500)),
+              SizedBox(height: 1.h),
+              TextFormField(
+                controller: _weightController,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 65.5',
+                  suffixText: 'kg',
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.all(3.w),
+                    child: CustomIconWidget(
+                      iconName: 'fitness_center',
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                ],
+                validator: InputValidators.validateWeightKg,
+                onChanged: (value) {
+                  setState(() {
+                    _weightKg = double.tryParse(value.trim());
+                    _hasUnsavedChanges = true;
+                  });
+                },
+              ),
+              SizedBox(height: 3.h),
+              // Activity Level
+              Text('Activity Level',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500)),
+              SizedBox(height: 1.h),
+              Wrap(
+                spacing: 2.w,
+                runSpacing: 1.h,
+                children: _activityLevelOptions.map((level) {
+                  final isSelected = _selectedActivityLevel.toLowerCase() ==
+                      level.toLowerCase();
+                  return ChoiceChip(
+                    label: Text(level[0].toUpperCase() + level.substring(1)),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedActivityLevel = level;
+                          _hasUnsavedChanges = true;
+                        });
+                      }
+                    },
+                    selectedColor: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.2),
+                    checkmarkColor: Theme.of(context).colorScheme.primary,
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              // BMI Preview
+              if (_heightCm != null &&
+                  _weightKg != null &&
+                  _heightCm! >= InputValidators.minHeightCm &&
+                  _heightCm! <= InputValidators.maxHeightCm &&
+                  _weightKg! >= InputValidators.minWeightKg &&
+                  _weightKg! <= InputValidators.maxWeightKg) ...[
+                SizedBox(height: 3.h),
+                _buildBMIPreview(),
+              ],
+              SizedBox(height: 2.h),
+              _buildInfoTip(
+                  'Height, weight, and activity level help us calculate your BMR, TDEE, and personalize target calories & macros.'),
             ],
-            SizedBox(height: 2.h),
-            _buildInfoTip(
-                'Height, weight, and activity level help us calculate your BMR, TDEE, and personalize target calories & macros.'),
-          ],
+          ),
         ),
       ),
     );

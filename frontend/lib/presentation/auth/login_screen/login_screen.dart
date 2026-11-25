@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
+import '../../../core/utils/input_validators.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_design_system.dart';
 import 'package:provider/provider.dart';
@@ -165,8 +166,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      _showSnackBar('Please enter your email first.');
+    final emailError = InputValidators.validateEmail(email);
+    if (emailError != null) {
+      _showSnackBar(email.isEmpty ? 'Please enter your email first.' : emailError);
       return;
     }
     try {
@@ -338,16 +340,7 @@ class _LoginScreenState extends State<LoginScreen>
             hint: 'you@example.com',
             icon: Icons.email_rounded,
             keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter your email';
-              }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                  .hasMatch(value.trim())) {
-                return 'Please enter a valid email';
-              }
-              return null;
-            },
+            validator: InputValidators.validateEmail,
           ),
           SizedBox(height: 1.5.h),
 

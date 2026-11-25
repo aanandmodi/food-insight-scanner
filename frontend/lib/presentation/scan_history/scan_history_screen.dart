@@ -217,12 +217,12 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
               if (imageUrl != null && imageUrl.toString().isNotEmpty)
                 ClipRRect(
                   borderRadius: FoodInsightRadius.smAll,
-                  child: Image.network(
-                    imageUrl,
+                  child: CustomImageWidget(
+                    imageUrl: imageUrl.toString(),
                     width: 14.w,
                     height: 14.w,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
+                    errorWidget: _buildPlaceholderIcon(),
                   ),
                 )
               else
