@@ -17,6 +17,7 @@ import 'services/local_database_service.dart';
 // Corrected Path
 import 'widgets/custom_error_widget.dart';
 import 'theme/apple_motion.dart';
+import 'services/widget_sync_service.dart';
 
 import 'package:provider/provider.dart';
 import 'data/providers/user_profile_provider.dart';
@@ -51,6 +52,7 @@ Future<void> main() async {
       await AnalyticsService.initialize();
     } catch (_) {}
   }
+  // Clear any legacy client-side Groq keys from older builds.
   final preferences = await SharedPreferences.getInstance();
   for (final key in preferences
       .getKeys()
@@ -58,6 +60,8 @@ Future<void> main() async {
       .toList()) {
     await preferences.remove(key);
   }
+  // Automatically synchronize Android home screen widgets
+  WidgetSyncService.initialize();
 
   try {
     // Initialize local SQLite database for offline persistence

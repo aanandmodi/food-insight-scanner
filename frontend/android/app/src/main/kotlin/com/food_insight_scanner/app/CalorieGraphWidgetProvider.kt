@@ -2,6 +2,7 @@ package com.food_insight_scanner.app
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -9,9 +10,22 @@ import android.graphics.*
 import android.net.Uri
 import android.util.Log
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetProvider
 
 class CalorieGraphWidgetProvider : HomeWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        try {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val ids = appWidgetManager.getAppWidgetIds(ComponentName(context, CalorieGraphWidgetProvider::class.java))
+            if (ids != null && ids.isNotEmpty()) {
+                onUpdate(context, appWidgetManager, ids, HomeWidgetPlugin.getData(context))
+            }
+        } catch (e: Throwable) {
+            Log.e("CalorieGraphWidget", "onReceive error: ${e.message}", e)
+        }
+    }
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,

@@ -21,9 +21,14 @@
             android:label="${appLabel}"
             android:name="${applicationName}"
             android:icon="@mipmap/ic_launcher"
+            android:appCategory="productivity"
             android:usesCleartextTraffic="false"
             android:allowBackup="false"
             android:enableOnBackInvokedCallback="true">
+        <!-- Health Connect metadata declaration -->
+        <meta-data
+            android:name="health_permissions"
+            android:resource="@array/health_permissions" />
         <!-- Flutter 3.29 Impeller regresses long-chat rendering on the tested
              Android device; Skia passes the measured 120 Hz scroll budget.
              Re-evaluate this compatibility choice when upgrading Flutter. -->

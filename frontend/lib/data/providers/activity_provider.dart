@@ -199,7 +199,7 @@ class ActivityProvider extends ChangeNotifier {
       await HomeWidget.saveWidgetData<double>('distance_km', _distanceKm);
       session.check();
       await HomeWidget.updateWidget(
-          androidName:
+          qualifiedAndroidName:
               'com.food_insight_scanner.app.CalorieGraphWidgetProvider');
     } catch (_) {}
   }

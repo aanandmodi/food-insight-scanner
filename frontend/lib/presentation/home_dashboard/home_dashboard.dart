@@ -8,9 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import 'package:provider/provider.dart';
-import 'package:home_widget/home_widget.dart';
 
 import '../../services/user_data_service.dart';
+import '../../services/widget_sync_service.dart';
 import '../../core/utils/user_utils.dart';
 import '../../models/user_profile.dart';
 import '../../data/providers/user_profile_provider.dart';
@@ -217,39 +217,7 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   Future<void> _syncWidgetData(int calConsumed, int calGoal,
       int proteinConsumed, int proteinGoal, int carbsGoal, int fatGoal) async {
-    final session = UserSession.instance.capture();
-    try {
-      session.check();
-      session.check();
-      await HomeWidget.saveWidgetData<int>('calories_consumed', calConsumed);
-      session.check();
-      await HomeWidget.saveWidgetData<int>('calories_goal', calGoal);
-      session.check();
-      await HomeWidget.saveWidgetData<int>(
-          'carbs_consumed', (_nutritionData['carbs'] as num?)?.toInt() ?? 0);
-      session.check();
-      await HomeWidget.saveWidgetData<int>('carbs_goal', carbsGoal);
-      session.check();
-      await HomeWidget.saveWidgetData<int>('protein_consumed', proteinConsumed);
-      session.check();
-      await HomeWidget.saveWidgetData<int>('protein_goal', proteinGoal);
-      session.check();
-      await HomeWidget.saveWidgetData<int>(
-          'fat_consumed', (_nutritionData['fat'] as num?)?.toInt() ?? 0);
-      session.check();
-      await HomeWidget.saveWidgetData<int>('fat_goal', fatGoal);
-      session.check();
-      for (final name in [
-        'MacroWidgetProvider',
-        'SmallWidgetProvider',
-        'LargeWidgetProvider'
-      ]) {
-        await HomeWidget.updateWidget(
-            androidName: 'com.food_insight_scanner.app.$name');
-      }
-    } catch (e) {
-      debugPrint('Failed to sync widget data: $e');
-    }
+    await WidgetSyncService.syncNow();
   }
 
   String _determineSafety(Map<String, dynamic> scan, UserProfile? profile) {
