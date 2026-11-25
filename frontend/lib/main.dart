@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/user_session.dart';
+import 'services/consent_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'services/analytics_service.dart';
 import 'services/feature_flag_service.dart';
@@ -46,6 +47,7 @@ Future<void> main() async {
   };
 
   UserSession.instance;
+  ConsentService.instance;
   if (await FirebaseBootstrap.ensureReady()) {
     try {
       await CrashReportingService.initialize();
@@ -105,6 +107,7 @@ Future<void> main() async {
           ChangeNotifierProvider(create: (_) => UserProfileProvider()),
           ChangeNotifierProvider(create: (_) => ActivityProvider()),
           ChangeNotifierProvider(create: (_) => FeatureFlagService()),
+          ChangeNotifierProvider.value(value: ConsentService.instance),
         ],
         child: const MyApp(),
       ),

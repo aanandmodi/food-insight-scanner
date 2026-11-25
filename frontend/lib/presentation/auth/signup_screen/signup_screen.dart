@@ -7,6 +7,8 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../core/utils/input_validators.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/consent_service.dart';
+import '../../../widgets/legal_consent_card.dart';
 import '../../../widgets/prototype_button.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/user_profile_provider.dart';
@@ -30,6 +32,9 @@ class _SignupScreenState extends State<SignupScreen>
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  final _consentKey = GlobalKey();
+  bool _consentAccepted = false;
+  bool _showConsentError = false;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -37,6 +42,10 @@ class _SignupScreenState extends State<SignupScreen>
   @override
   void initState() {
     super.initState();
+    _consentAccepted = ConsentService.instance.hasPendingPreAuthConsent ||
+        (_authService.isGuest &&
+            ConsentService.instance.currentConsent != null &&
+            !ConsentService.instance.requiresConsentForCurrentUser);
     _animController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -72,8 +81,49 @@ class _SignupScreenState extends State<SignupScreen>
     );
   }
 
+  Future<void> _onConsentChanged(bool accepted) async {
+    setState(() {
+      _consentAccepted = accepted;
+      if (accepted) _showConsentError = false;
+    });
+    if (!_authService.isGuest) {
+      if (accepted) {
+        await ConsentService.instance.acceptPreAuthConsent();
+      } else {
+        await ConsentService.instance.clearPendingConsent();
+      }
+    }
+  }
+
+  Future<bool> _ensureConsentAccepted() async {
+    if (_consentAccepted) {
+      if (_authService.isGuest) {
+        await ConsentService.instance.acceptForCurrentUser();
+      } else {
+        await ConsentService.instance.acceptPreAuthConsent();
+      }
+      return true;
+    }
+    setState(() => _showConsentError = true);
+    final ctx = _consentKey.currentContext;
+    if (ctx != null) {
+      await Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.35,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    _showError(
+      'Please review and accept the Terms of Use, Privacy Policy, and Health Data Notice before creating your account.',
+    );
+    return false;
+  }
+
   Future<void> _handleSignUp() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    final consentOk = await _ensureConsentAccepted();
+    if (!formValid || !consentOk) return;
     HapticFeedback.lightImpact();
 
     setState(() => _isLoading = true);
@@ -270,7 +320,15 @@ class _SignupScreenState extends State<SignupScreen>
                                 .animate()
                                 .fadeIn(duration: 500.ms, delay: 300.ms)
                                 .slideY(begin: 0.05, end: 0),
-                            SizedBox(height: 4.h),
+                            SizedBox(height: 2.h),
+                            LegalConsentCard(
+                              key: _consentKey,
+                              accepted: _consentAccepted,
+                              showError: _showConsentError,
+                              darkSurface: isDark,
+                              onChanged: _onConsentChanged,
+                            ),
+                            SizedBox(height: 3.h),
                             // Sign Up Button
                             SizedBox(
                               width: double.infinity,

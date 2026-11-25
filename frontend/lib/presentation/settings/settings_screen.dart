@@ -15,6 +15,7 @@ import '../../theme/app_design_system.dart';
 import '../../services/crash_reporting_service.dart';
 import '../../services/analytics_service.dart';
 import '../../data/providers/activity_provider.dart';
+import '../../services/consent_service.dart';
 import '../../widgets/health_connection_prompt.dart';
 import 'legal_information_screen.dart';
 
@@ -448,6 +449,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Terms of Use',
                     subtitle: 'Food and health information terms',
                     onTap: () => _openLegal(LegalPage.terms)),
+                const Divider(height: 1, color: FoodInsightColors.outlineGray),
+                ListenableBuilder(
+                  listenable: ConsentService.instance,
+                  builder: (context, _) {
+                    final record = ConsentService.instance.currentConsent;
+                    final subtitle = record == null
+                        ? 'Terms ${ConsentService.instance.requiredTermsVersion} · Pending confirmation'
+                        : 'Terms ${record.termsVersion} · Privacy ${record.privacyVersion} · Accepted ${record.acceptedAt.toLocal().toIso8601String().split('T').first}';
+                    return ListTile(
+                      leading: const Icon(Icons.verified_user_outlined),
+                      title: const Text('Legal & Health Data Consent'),
+                      subtitle: Text(subtitle),
+                    );
+                  },
+                ),
                 const Divider(height: 1, color: FoodInsightColors.outlineGray),
                 _buildSettingsTile(context,
                     icon: Icons.dataset_rounded,

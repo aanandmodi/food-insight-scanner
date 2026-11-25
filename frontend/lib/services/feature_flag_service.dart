@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'consent_service.dart';
 import 'user_session.dart';
 
 /// Server values may disable shipped AI features. Unimplemented features stay off.
@@ -12,6 +13,8 @@ class FeatureFlagService extends ChangeNotifier {
   bool aiRecalibrationEnabled = false;
   bool aiQuickRepliesEnabled = false;
   bool additiveInsightsEnabled = true;
+  String requiredTermsVersion = ConsentService.currentTermsVersion;
+  String requiredPrivacyVersion = ConsentService.currentPrivacyVersion;
   bool _disposed = false;
   int _revision = 0;
   bool alternativesEnabled = false;
@@ -34,6 +37,12 @@ class FeatureFlagService extends ChangeNotifier {
     aiRecalibrationEnabled = false;
     aiQuickRepliesEnabled = false;
     alternativesEnabled = false;
+    requiredTermsVersion = ConsentService.currentTermsVersion;
+    requiredPrivacyVersion = ConsentService.currentPrivacyVersion;
+    ConsentService.instance.updateRequiredVersions(
+      termsVersion: requiredTermsVersion,
+      privacyVersion: requiredPrivacyVersion,
+    );
     notifyListeners();
     if (uid == null) return;
     try {
@@ -61,6 +70,14 @@ class FeatureFlagService extends ChangeNotifier {
           aiEnabled && flags['aiQuickRepliesEnabled'] != false;
       additiveInsightsEnabled = flags['additiveInsightsEnabled'] != false;
       alternativesEnabled = flags['alternativesEnabled'] == true;
+      final terms = flags['requiredTermsVersion']?.toString().trim() ?? '';
+      final privacy = flags['requiredPrivacyVersion']?.toString().trim() ?? '';
+      if (terms.isNotEmpty) requiredTermsVersion = terms;
+      if (privacy.isNotEmpty) requiredPrivacyVersion = privacy;
+      ConsentService.instance.updateRequiredVersions(
+        termsVersion: requiredTermsVersion,
+        privacyVersion: requiredPrivacyVersion,
+      );
       notifyListeners();
     } catch (_) {/* Stay disabled until a current server flag can be read. */}
   }

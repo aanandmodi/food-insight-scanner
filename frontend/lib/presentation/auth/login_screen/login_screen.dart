@@ -6,7 +6,9 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../core/utils/input_validators.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/consent_service.dart';
 import '../../../theme/app_design_system.dart';
+import '../../../widgets/legal_consent_card.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/user_profile_provider.dart';
 
@@ -29,6 +31,9 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   _AuthMethod _activeMethod = _AuthMethod.none;
   bool _obscurePassword = true;
+  final _consentKey = GlobalKey();
+  bool _consentAccepted = false;
+  bool _showConsentError = false;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -36,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _consentAccepted = ConsentService.instance.hasPendingPreAuthConsent;
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -116,8 +122,44 @@ class _LoginScreenState extends State<LoginScreen>
     Navigator.pushReplacementNamed(context, AppRoutes.authGate);
   }
 
+  Future<void> _onConsentChanged(bool accepted) async {
+    setState(() {
+      _consentAccepted = accepted;
+      if (accepted) _showConsentError = false;
+    });
+    if (accepted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      await ConsentService.instance.acceptPreAuthConsent();
+    } else {
+      await ConsentService.instance.clearPendingConsent();
+    }
+  }
+
+  Future<bool> _ensureConsentAccepted() async {
+    if (_consentAccepted) {
+      await ConsentService.instance.acceptPreAuthConsent();
+      return true;
+    }
+    setState(() => _showConsentError = true);
+    final ctx = _consentKey.currentContext;
+    if (ctx != null) {
+      await Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.35,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    _showSnackBar(
+      'Please review and accept the Terms of Use, Privacy Policy, and Health Data Notice to continue.',
+    );
+    return false;
+  }
+
   Future<void> _handleEmailSignIn() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    final consentOk = await _ensureConsentAccepted();
+    if (!formValid || !consentOk) return;
     HapticFeedback.lightImpact();
 
     _setLoading(true, _AuthMethod.email);
@@ -135,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (!await _ensureConsentAccepted()) return;
     HapticFeedback.lightImpact();
     _setLoading(true, _AuthMethod.google);
     try {
@@ -153,6 +196,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleGuestSignIn() async {
     if (_isLoading) return;
+    if (!await _ensureConsentAccepted()) return;
     _setLoading(true, _AuthMethod.guest);
     try {
       await _authService.signInAnonymously();
@@ -389,6 +433,15 @@ class _LoginScreenState extends State<LoginScreen>
           ),
 
           SizedBox(height: 1.h),
+
+          LegalConsentCard(
+            key: _consentKey,
+            accepted: _consentAccepted,
+            showError: _showConsentError,
+            onChanged: _onConsentChanged,
+          ),
+
+          SizedBox(height: 1.5.h),
 
           // Sign In button
           _buildPrimaryButton(
@@ -661,9 +714,16 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           GestureDetector(
-            onTap: () {
+            onTap: () async {
               HapticFeedback.lightImpact();
-              Navigator.pushNamed(context, AppRoutes.signup);
+              await Navigator.pushNamed(context, AppRoutes.signup);
+              if (mounted) {
+                setState(() {
+                  _consentAccepted =
+                      ConsentService.instance.hasPendingPreAuthConsent;
+                  if (_consentAccepted) _showConsentError = false;
+                });
+              }
             },
             child: Text(
               'Sign Up',

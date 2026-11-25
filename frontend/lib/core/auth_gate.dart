@@ -4,10 +4,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../data/providers/user_profile_provider.dart';
+import '../presentation/auth/legal_consent_gate_screen.dart';
 import '../presentation/auth/login_screen/login_screen.dart';
 import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/profile_setup/profile_setup.dart';
 import '../services/auth_service.dart';
+import '../services/consent_service.dart';
 import '../theme/app_design_system.dart';
 
 /// Decides what the user sees on launch: login, onboarding, or the dashboard.
@@ -34,18 +36,31 @@ class AuthGate extends StatelessWidget {
           return const LoginScreen();
         }
 
-        return Consumer<UserProfileProvider>(
-          builder: (context, provider, child) {
-            return AuthGateContent(
-              uid: snapshot.data!.uid,
-              boundUid: provider.boundUid,
-              loading: provider.isLoading,
-              hasProfile: provider.profile != null,
-              hasError: provider.hasError,
-              complete: provider.isProfileComplete,
-              onRetry: provider.fetchProfile,
-              dashboard: () => HomeDashboard(key: ValueKey(snapshot.data!.uid)),
-              onboarding: () => ProfileSetup(key: ValueKey(snapshot.data!.uid)),
+        return ListenableBuilder(
+          listenable: ConsentService.instance,
+          builder: (context, _) {
+            final consent = ConsentService.instance;
+            final uid = snapshot.data!.uid;
+            return Consumer<UserProfileProvider>(
+              builder: (context, provider, child) {
+                return AuthGateContent(
+                  uid: uid,
+                  boundUid: provider.boundUid,
+                  loading: provider.isLoading,
+                  hasProfile: provider.profile != null,
+                  hasError: provider.hasError,
+                  complete: provider.isProfileComplete,
+                  consentLoading: consent.boundUid != uid || consent.isLoading,
+                  requiresConsent: consent.requiresConsentForCurrentUser,
+                  onRetry: provider.fetchProfile,
+                  consentGate: () => LegalConsentGateScreen(
+                    key: ValueKey('consent-$uid'),
+                    isVersionUpdate: consent.currentConsent != null,
+                  ),
+                  dashboard: () => HomeDashboard(key: ValueKey(uid)),
+                  onboarding: () => ProfileSetup(key: ValueKey(uid)),
+                );
+              },
             );
           },
         );
@@ -67,18 +82,27 @@ class AuthGateContent extends StatelessWidget {
       required this.complete,
       required this.onRetry,
       required this.dashboard,
-      required this.onboarding});
+      required this.onboarding,
+      this.consentLoading = false,
+      this.requiresConsent = false,
+      this.consentGate});
   final String uid;
   final String? boundUid;
   final bool loading, hasProfile, hasError, complete;
+  final bool consentLoading, requiresConsent;
   final Future<void> Function() onRetry;
   final Widget Function() dashboard, onboarding;
+  final Widget Function()? consentGate;
   @override
   Widget build(BuildContext context) {
-    if (boundUid != uid || (loading && !hasProfile)) {
+    if (boundUid != uid || consentLoading || (loading && !hasProfile)) {
       return const _GateSplash(label: 'Loading your profile…');
     }
     if (hasError && !hasProfile) return _GateError(onRetry: onRetry);
+    if (requiresConsent) {
+      return consentGate?.call() ??
+          LegalConsentGateScreen(key: ValueKey('consent-$uid'));
+    }
     return complete ? dashboard() : onboarding();
   }
 }
