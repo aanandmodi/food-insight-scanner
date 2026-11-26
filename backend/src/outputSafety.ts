@@ -55,6 +55,26 @@ const RENAL_PHOS_K_REGEX = /\b(phosphoric acid|sodium phosphate|monosodium phosp
 const RENAL_INS_REGEX = /\b(?:INS\s*|E)(?:338|339|340|341|343|450|451|452|508)[a-z]?\b/i;
 const NEGATION_CONTEXT_REGEX = /\b(avoid|skip|without|free|allerg(?:y|ies|ic)|intoleran\w*|conflict\w*|warning|caution|unsafe|danger|exclude|not\s+(?:suitable|recommended|safe)|do\s+not\s+eat|steer\s+clear|instead\s+of|replace)\b/i;
 
+// Non-dairy culinary substitutes that share dairy nouns ("Soy Milk", "Peanut Butter", "Soy Paneer")
+// must not trigger false-positive dairy conflicts, while retaining nut/soy detection on their first word.
+const NON_DAIRY_COMPOUND_REGEX =
+  /\b(?:(?:soy|soya|tofu|oat|oats|rice|almond|cashew|hazelnut|walnut|pistachio|coconut|hemp|pea|flax|plant(?:[\s\u00A0\-\u2010-\u2014]*based)?|vegan|non[\s\u00A0\-\u2010-\u2014]*dairy|dairy[\s\u00A0\-\u2010-\u2014]*free)[\s\u00A0\-\u2010-\u2014]+(?:milk|mylk|paneer|curd|yogurt|yoghurt|butter|cheese|cream|ghee)|(?:peanut|almond|cashew|hazelnut|walnut|pistachio|sunflower|pumpkin(?:[\s\u00A0\-\u2010-\u2014]+seed)?|sesame|seed|nut|cocoa|shea|apple)[\s\u00A0\-\u2010-\u2014]+butter|tofu[\s\u00A0]*\([\s\u00A0]*soy[\s\u00A0\-\u2010-\u2014]+paneer[\s\u00A0]*\)|coconut[\s\u00A0\-\u2010-\u2014]+cream|cream[\s\u00A0]+of[\s\u00A0]+tartar|(?:dairy|milk)[\s\u00A0\-\u2010-\u2014]*free)\b/gi;
+
+function stripNonDairyCompounds(text: string): string {
+  return text.replace(NON_DAIRY_COMPOUND_REGEX, (match) => {
+    const first = match.trim().split(/[\s(]+/)[0]?.toLowerCase() ?? "";
+    if (["soy", "soya", "oat", "rice", "almond", "cashew", "hazelnut", "walnut", "pistachio", "peanut", "sesame", "coconut", "hemp", "pea", "flax", "tofu"].includes(first)) {
+      return `${first} [plant-substitute]`;
+    }
+    return "[plant-substitute]";
+  });
+}
+
+function isDairyAllergy(allergy: string): boolean {
+  const lower = allergy.toLowerCase().trim();
+  return ALLERGEN_GROUPS.milk.includes(lower);
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -106,9 +126,12 @@ export function evaluateAllergensServer(
     const allergy = rawAllergy.trim();
     if (!allergy) continue;
     const terms = allergenTerms(allergy);
-    if (terms.some((t) => containsTerm(declared, t) || containsTerm(ingredients, t))) {
+    const dairyCheck = isDairyAllergy(allergy);
+    const ingTarget = dairyCheck ? stripNonDairyCompounds(ingredients) : ingredients;
+    const traceTarget = dairyCheck ? stripNonDairyCompounds(traces) : traces;
+    if (terms.some((t) => containsTerm(declared, t) || containsTerm(ingTarget, t))) {
       confirmed.push(allergy);
-    } else if (terms.some((t) => containsTerm(traces, t))) {
+    } else if (terms.some((t) => containsTerm(traceTarget, t))) {
       possible.push(allergy);
     }
   }
@@ -136,7 +159,8 @@ function evaluateDietaryConflict(
   const wantsVegan = diet.includes("vegan") && !diet.includes("non vegan");
   const wantsVeg = diet.includes("vegetarian") && !diet.includes("non vegetarian");
 
-  if (wantsVegan && (tags.includes("non vegan") || /\b(milk|whey|casein|egg|honey|cheese|butter|ghee|paneer|curd|yogurt|fish|meat|chicken|prawn|mutton)\b/i.test(combined))) {
+  const dairyStripped = stripNonDairyCompounds(combined);
+  if (wantsVegan && (tags.includes("non vegan") || /\b(milk|whey|casein|egg|honey|cheese|butter|ghee|paneer|curd|yogurt|fish|meat|chicken|prawn|mutton)\b/i.test(dairyStripped))) {
     return "Ingredients may not fit a vegan diet";
   }
   if (wantsVeg && (tags.includes("non vegetarian") || /\b(fish|meat|chicken|beef|pork|mutton|gelatin|prawn|shrimp)\b/i.test(combined))) {
@@ -162,7 +186,7 @@ function evaluateConditionConflictsServer(
       conflicts.push("Contains gluten-related ingredients");
       hasCritical = true;
     }
-    if ((cond.includes("lactose") || cond.includes("dairy")) && !/lactose[\s-]?free/i.test(combined) && LACTOSE_REGEX.test(combined)) {
+    if ((cond.includes("lactose") || cond.includes("dairy")) && !/lactose[\s-]?free/i.test(combined) && LACTOSE_REGEX.test(stripNonDairyCompounds(combined))) {
       conflicts.push("Contains milk or lactose ingredients");
     }
     if (cond.includes("diabet")) {
@@ -410,10 +434,12 @@ export function enforceOutputSafety(
       const unqualifiedAllergens = new Set<string>();
       for (const allergy of allergies) {
         const terms = allergenTerms(allergy);
+        const dairyCheck = isDairyAllergy(allergy);
         for (const clause of clauses) {
           const trimmed = clause.trim();
           if (!trimmed) continue;
-          const mentionsTerm = terms.some((term) => containsTerm(trimmed, term));
+          const clauseTarget = dairyCheck ? stripNonDairyCompounds(trimmed) : trimmed;
+          const mentionsTerm = terms.some((term) => containsTerm(clauseTarget, term));
           if (mentionsTerm && !NEGATION_CONTEXT_REGEX.test(trimmed)) {
             unqualifiedAllergens.add(allergy);
           }

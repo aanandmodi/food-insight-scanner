@@ -21,6 +21,41 @@ class AllergenSafetyService {
     'sesame': {'sesame', 'tahini', 'til'},
   };
 
+  static bool _isDairyAllergy(String allergy) =>
+      _groups['milk']!.contains(allergy.toLowerCase().trim());
+
+  static final _nonDairyCompound = RegExp(
+    r'\b(?:(?:soy|soya|tofu|oat|oats|rice|almond|cashew|hazelnut|walnut|pistachio|coconut|hemp|pea|flax|plant(?:[\s\u00A0\-\u2010-\u2014]*based)?|vegan|non[\s\u00A0\-\u2010-\u2014]*dairy|dairy[\s\u00A0\-\u2010-\u2014]*free)[\s\u00A0\-\u2010-\u2014]+(?:milk|mylk|paneer|curd|yogurt|yoghurt|butter|cheese|cream|ghee)|(?:peanut|almond|cashew|hazelnut|walnut|pistachio|sunflower|pumpkin(?:[\s\u00A0\-\u2010-\u2014]+seed)?|sesame|seed|nut|cocoa|shea|apple)[\s\u00A0\-\u2010-\u2014]+butter|tofu[\s\u00A0]*\([\s\u00A0]*soy[\s\u00A0\-\u2010-\u2014]+paneer[\s\u00A0]*\)|coconut[\s\u00A0\-\u2010-\u2014]+cream|cream[\s\u00A0]+of[\s\u00A0]+tartar|(?:dairy|milk)[\s\u00A0\-\u2010-\u2014]*free)\b',
+    caseSensitive: false,
+  );
+
+  static String _stripNonDairyCompounds(String text) =>
+      text.replaceAllMapped(_nonDairyCompound, (match) {
+        final raw = match.group(0) ?? '';
+        final first = raw.trim().split(RegExp(r'[\s(]+')).first.toLowerCase();
+        if (const {
+          'soy',
+          'soya',
+          'oat',
+          'rice',
+          'almond',
+          'cashew',
+          'hazelnut',
+          'walnut',
+          'pistachio',
+          'peanut',
+          'sesame',
+          'coconut',
+          'hemp',
+          'pea',
+          'flax',
+          'tofu',
+        }.contains(first)) {
+          return '$first [plant-substitute]';
+        }
+        return '[plant-substitute]';
+      });
+
   static Set<String> _terms(String allergy) {
     final lower = allergy.toLowerCase().trim();
     if (lower == 'nuts') return {..._groups['tree nuts']!, ..._groups['peanut']!};
@@ -55,9 +90,12 @@ class AllergenSafetyService {
     final possible = <String>[];
     for (final allergy in userAllergies.where((item) => item.trim().isNotEmpty)) {
       final terms = _terms(allergy);
-      if (terms.any((term) => _containsTerm(declared, term) || _containsTerm(ingredients, term))) {
+      final dairyCheck = _isDairyAllergy(allergy);
+      final ingTarget = dairyCheck ? _stripNonDairyCompounds(ingredients) : ingredients;
+      final traceTarget = dairyCheck ? _stripNonDairyCompounds(traces) : traces;
+      if (terms.any((term) => _containsTerm(declared, term) || _containsTerm(ingTarget, term))) {
         confirmed.add(allergy);
-      } else if (terms.any((term) => _containsTerm(traces, term))) {
+      } else if (terms.any((term) => _containsTerm(traceTarget, term))) {
         possible.add(allergy);
       }
     }

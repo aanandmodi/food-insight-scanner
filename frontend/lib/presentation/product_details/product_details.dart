@@ -432,7 +432,9 @@ class _ProductDetailsState extends State<ProductDetails> {
 
     final String productName =
         productData['name'] as String? ?? 'Unknown Product';
-    final String brand = productData['brand'] as String? ?? 'Unknown Brand';
+    final rawDisplayBrand = productData['brand']?.toString().trim() ?? '';
+    final String brand =
+        rawDisplayBrand.isEmpty ? 'Unknown Brand' : rawDisplayBrand;
     final String category = productData['category'] as String? ?? '';
     final String? imageUrl = productData['image'] as String?;
     final Map<String, dynamic> nutrition =

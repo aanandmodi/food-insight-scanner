@@ -46,12 +46,13 @@ function calculateServerTargets(profile: Record<string, any>): Record<string, nu
     const multiplier =
       activity.includes("sedentary") ? 1.2
       : activity.includes("light") ? 1.375
-      : activity.includes("very") || activity.includes("extra") ? 1.725
+      : activity.includes("very") || activity.includes("extra") ? 1.9
+      : activity.includes("active") ? 1.725
       : 1.55;
     let tdee = bmr * multiplier;
-    if (healthGoal.includes("loss") || healthGoal.includes("lose")) tdee -= 400;
-    else if (healthGoal.includes("muscle") || healthGoal.includes("gain")) tdee += 300;
-    calories = Math.max(1200, Math.round(tdee));
+    if (healthGoal.includes("loss") || healthGoal.includes("lose")) tdee -= 500;
+    else if (healthGoal.includes("muscle") || healthGoal.includes("bulk") || healthGoal.includes("gain")) tdee += 300;
+    calories = Math.max(1200, Math.min(5000, Math.round(tdee)));
   }
 
   const out: Record<string, number> = {};
@@ -61,22 +62,26 @@ function calculateServerTargets(profile: Record<string, any>): Record<string, nu
   if (customProtein !== null && customProtein > 0) {
     out.protein = Math.round(customProtein);
   } else if (weight !== null) {
-    const factor = healthGoal.includes("muscle") ? 1.8 : 1.2;
-    out.protein = Math.round(weight * factor);
+    const factor = (healthGoal.includes("muscle") || healthGoal.includes("bulk") || healthGoal.includes("gain"))
+      ? 2.0
+      : (healthGoal.includes("loss") || healthGoal.includes("lose"))
+      ? 1.2
+      : 0.8;
+    out.protein = Math.max(30, Math.min(400, Math.round(weight * factor)));
   }
 
   const customCarbs = cleanNumber(profile.customCarbsGoal);
   if (customCarbs !== null && customCarbs > 0) {
     out.carbs = Math.round(customCarbs);
   } else if (calories !== null) {
-    out.carbs = Math.round((calories * 0.45) / 4);
+    out.carbs = Math.max(100, Math.min(600, Math.round((calories * 0.50) / 4)));
   }
 
   const customFat = cleanNumber(profile.customFatGoal);
   if (customFat !== null && customFat > 0) {
     out.fat = Math.round(customFat);
   } else if (calories !== null) {
-    out.fat = Math.round((calories * 0.30) / 9);
+    out.fat = Math.max(30, Math.min(200, Math.round((calories * 0.25) / 9)));
   }
 
   return out;
@@ -374,7 +379,7 @@ export async function resolveServerContext(
         const filteredChat = chatRows
           .map((r) => r?.data)
           .filter((d) => {
-            if (!d || typeof d !== "object" || d.isGreeting === true || d.isError === true) {
+            if (!d || typeof d !== "object" || d.isGreeting === true || d.isError === true || d.isRejected === true) {
               return false;
             }
             if (!sessionId) return true;

@@ -187,12 +187,22 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
   }
 
   String _buildConversationHistory() {
-    final meaningful = _messages
-        .where((m) =>
-            m['isGreeting'] != true &&
-            m['isError'] != true &&
-            m['isStreaming'] != true)
-        .toList();
+    final meaningful = <Map<String, dynamic>>[];
+    for (var i = 0; i < _messages.length; i++) {
+      final m = _messages[i];
+      if (m['isGreeting'] == true ||
+          m['isError'] == true ||
+          m['isStreaming'] == true ||
+          m['isRejected'] == true) {
+        continue;
+      }
+      final nextIsError =
+          i + 1 < _messages.length && _messages[i + 1]['isError'] == true;
+      if (m['isUser'] == true && nextIsError) {
+        continue;
+      }
+      meaningful.add(m);
+    }
     final historyMessages =
         meaningful.isNotEmpty && meaningful.last['isUser'] == true
             ? meaningful.sublist(0, meaningful.length - 1)
@@ -315,15 +325,6 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
     _scrollToBottom();
 
     try {
-      if (!retry) {
-        await UserDataService().saveChatMessage({
-          'id': userMsgId,
-          'sessionId': _sessionId,
-          'message': message,
-          'isUser': true,
-          'timestamp': DateTime.now().toIso8601String(),
-        }, session);
-      }
       session.check();
       if (!mounted) return;
       final conversationHistory = _buildConversationHistory();
@@ -377,6 +378,13 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       session.check();
       _lastFailedMessage = null;
       await UserDataService().saveChatMessage({
+        'id': userMsgId,
+        'sessionId': _sessionId,
+        'message': message,
+        'isUser': true,
+        'timestamp': DateTime.now().toIso8601String(),
+      }, session);
+      await UserDataService().saveChatMessage({
         'id': assistantMsgId,
         'sessionId': _sessionId,
         'message': displayMessage,
@@ -413,22 +421,37 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
         }
       }
     } catch (e) {
+      debugPrint('AI chat error (${e.runtimeType}): $e');
       if (mounted) {
         setState(() {
           _messages.removeWhere((m) => m['id'] == assistantMsgId);
+          final isRetryable = e is AiRequestException ? e.isRetryable : true;
           final userMsg = e is AiRequestException
               ? e.message
               : 'AI could not complete this request. Please retry.';
-          _lastFailedMessage = message;
-          _messages.add({
-            "id": 'err_${UserDataService.newId()}',
-            "message": userMsg,
-            "isError": true,
-            "isStreaming": false,
-            "isUser": false,
-            "timestamp": DateTime.now(),
-          });
-          _errorMessage = userMsg;
+          if (isRetryable) {
+            _lastFailedMessage = message;
+            _errorMessage = userMsg;
+          } else {
+            final userIdx = _messages.lastIndexWhere(
+                (m) => m['isUser'] == true && m['message'] == message);
+            if (userIdx >= 0) {
+              _messages[userIdx] = {
+                ..._messages[userIdx],
+                'isRejected': true,
+              };
+            }
+            _lastFailedMessage = null;
+            _errorMessage = null;
+            _messages.add({
+              "id": 'err_${UserDataService.newId()}',
+              "message": userMsg,
+              "isError": true,
+              "isStreaming": false,
+              "isUser": false,
+              "timestamp": DateTime.now(),
+            });
+          }
         });
       }
     } finally {

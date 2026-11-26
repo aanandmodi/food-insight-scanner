@@ -221,6 +221,17 @@ class _MealEntryDialogState extends State<MealEntryDialog> {
                 icon: const Icon(Icons.auto_awesome_rounded),
                 label: const Text('Estimate with AI'),
               ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
+              ),
             if (!isEditing) ...[
               const SizedBox(height: 6),
               Text(
@@ -259,14 +270,6 @@ class _MealEntryDialogState extends State<MealEntryDialog> {
             const Text(
               'Calories are required. Leave other unknown values blank. Daily totals include only recorded nutrients.',
             ),
-            if (_error != null)
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
             if (_busy)
               const Padding(
                 padding: EdgeInsets.all(12),

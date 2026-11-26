@@ -26,10 +26,12 @@ class _VerifiedAlternativesWidgetState
       final rows = await CloudFunctionService().getAlternatives(
           productData: widget.product, userProfile: widget.profile);
       if (mounted) setState(() => _rows = rows);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Verified alternatives error (${e.runtimeType}): $e');
       if (mounted) {
-        setState(() =>
-            _error = 'Could not load verified alternatives. Please retry.');
+        setState(() => _error = e is AiRequestException
+            ? e.message
+            : 'Could not load verified alternatives. Please retry.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

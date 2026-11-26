@@ -9,7 +9,7 @@ if (credentials.project_id !== 'food-insight-scanner-app') throw new Error('Back
 const app = initializeApp({ credential: cert(credentials), projectId: credentials.project_id,
   storageBucket: 'food-insight-scanner-app.firebasestorage.app' });
 // REST transport avoids gRPC native dependencies in the Edge runtime.
-initializeFirestore(app, { preferRest: true });
+initializeFirestore(app, { preferRest: true, ignoreUndefinedProperties: true });
 // Load only after the explicit Admin credential is configured.
 const handlers = await import('./backend.js');
 const supabaseUrl = (Deno.env.get('SUPABASE_URL') ?? 'https://tslcgavpkujkfexzmisk.supabase.co').replace(/\/+$/, '');

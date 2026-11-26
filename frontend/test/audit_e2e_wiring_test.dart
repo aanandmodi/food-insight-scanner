@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_insight_scanner/core/app_export.dart';
 import 'package:food_insight_scanner/services/allergen_safety_service.dart';
+import 'package:food_insight_scanner/services/cloud_function_service.dart';
 import 'package:food_insight_scanner/services/consent_service.dart';
 import 'package:food_insight_scanner/services/feature_flag_service.dart';
 
@@ -122,6 +123,58 @@ void main() {
         valid.matchesRequired('2026-12-01', ConsentService.currentPrivacyVersion),
         isFalse,
       );
+    });
+
+    test('plant-based milks avoid dairy false positive while retaining nut/soy and lactose-free dairy checks',
+        () {
+      expect(
+        AllergenSafetyService.evaluate({
+          'ingredientsText': 'Besan, Soy Milk, Oat-Milk, Soy\u2011Yogurt, Tofu-Paneer, Peanut Butter, Cocoa Butter'
+        }, [
+          'Dairy'
+        ]).status,
+        AllergenStatus.noDetectedConflict,
+      );
+      expect(
+        AllergenSafetyService.evaluate({
+          'ingredientsText': 'Almond Milk, Oats'
+        }, [
+          'Nuts'
+        ]).status,
+        AllergenStatus.confirmedConflict,
+      );
+      expect(
+        AllergenSafetyService.evaluate({
+          'ingredientsText': 'Soy Milk'
+        }, [
+          'Soy'
+        ]).status,
+        AllergenStatus.confirmedConflict,
+      );
+      expect(
+        AllergenSafetyService.evaluate({
+          'ingredientsText': 'lactose-free milk, live cultures'
+        }, [
+          'Milk'
+        ]).status,
+        AllergenStatus.confirmedConflict,
+      );
+    });
+
+    test('AiRequestException marks 400 and 403 non-retryable while 429 and 503 remain retryable',
+        () {
+      expect(const AiRequestException('Blocked', statusCode: 400).isRetryable,
+          isFalse);
+      expect(const AiRequestException('Denied', statusCode: 403).isRetryable,
+          isFalse);
+      expect(
+          const AiRequestException('Unavailable', statusCode: 412).isRetryable,
+          isFalse);
+      expect(
+          const AiRequestException('Limited', statusCode: 429).isRetryable,
+          isTrue);
+      expect(const AiRequestException('Busy', statusCode: 503).isRetryable,
+          isTrue);
     });
   });
 }

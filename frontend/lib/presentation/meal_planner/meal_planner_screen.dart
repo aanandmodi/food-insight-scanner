@@ -136,8 +136,11 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
       });
       HapticFeedback.lightImpact();
     } catch (e) {
+      debugPrint('Meal planner error (${e.runtimeType}): $e');
       if (mounted) {
-        setState(() => _error = 'Could not reach the planner. $e');
+        setState(() => _error = e is AiRequestException
+            ? e.message
+            : 'Could not reach the planner. Please retry.');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

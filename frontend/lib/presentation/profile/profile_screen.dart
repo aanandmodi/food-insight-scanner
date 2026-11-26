@@ -697,12 +697,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Show Result Dialog
       _showRecalibrationResult(context, profile, newMacros);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Macro recalibration error (${e.runtimeType}): $e');
       if (!context.mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-              Text('AI analysis is unavailable. Please try again later.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e is AiRequestException
+              ? e.message
+              : 'AI analysis is unavailable. Please try again later.')));
     }
   }
 

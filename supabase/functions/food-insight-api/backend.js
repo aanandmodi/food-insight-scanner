@@ -950,6 +950,20 @@ var ADDED_SUGAR_REGEX = /\b(sugar|sucrose|glucose|fructose|high fructose|corn sy
 var RENAL_PHOS_K_REGEX = /\b(phosphoric acid|sodium phosphate|monosodium phosphate|disodium phosphate|trisodium phosphate|pyrophosphate|triphosphate|polyphosphate|potassium chloride)\b/i;
 var RENAL_INS_REGEX = /\b(?:INS\s*|E)(?:338|339|340|341|343|450|451|452|508)[a-z]?\b/i;
 var NEGATION_CONTEXT_REGEX = /\b(avoid|skip|without|free|allerg(?:y|ies|ic)|intoleran\w*|conflict\w*|warning|caution|unsafe|danger|exclude|not\s+(?:suitable|recommended|safe)|do\s+not\s+eat|steer\s+clear|instead\s+of|replace)\b/i;
+var NON_DAIRY_COMPOUND_REGEX = /\b(?:(?:soy|soya|tofu|oat|oats|rice|almond|cashew|hazelnut|walnut|pistachio|coconut|hemp|pea|flax|plant(?:[\s\u00A0\-\u2010-\u2014]*based)?|vegan|non[\s\u00A0\-\u2010-\u2014]*dairy|dairy[\s\u00A0\-\u2010-\u2014]*free)[\s\u00A0\-\u2010-\u2014]+(?:milk|mylk|paneer|curd|yogurt|yoghurt|butter|cheese|cream|ghee)|(?:peanut|almond|cashew|hazelnut|walnut|pistachio|sunflower|pumpkin(?:[\s\u00A0\-\u2010-\u2014]+seed)?|sesame|seed|nut|cocoa|shea|apple)[\s\u00A0\-\u2010-\u2014]+butter|tofu[\s\u00A0]*\([\s\u00A0]*soy[\s\u00A0\-\u2010-\u2014]+paneer[\s\u00A0]*\)|coconut[\s\u00A0\-\u2010-\u2014]+cream|cream[\s\u00A0]+of[\s\u00A0]+tartar|(?:dairy|milk)[\s\u00A0\-\u2010-\u2014]*free)\b/gi;
+function stripNonDairyCompounds(text2) {
+  return text2.replace(NON_DAIRY_COMPOUND_REGEX, (match) => {
+    const first = match.trim().split(/[\s(]+/)[0]?.toLowerCase() ?? "";
+    if (["soy", "soya", "oat", "rice", "almond", "cashew", "hazelnut", "walnut", "pistachio", "peanut", "sesame", "coconut", "hemp", "pea", "flax", "tofu"].includes(first)) {
+      return `${first} [plant-substitute]`;
+    }
+    return "[plant-substitute]";
+  });
+}
+function isDairyAllergy(allergy) {
+  const lower = allergy.toLowerCase().trim();
+  return ALLERGEN_GROUPS.milk.includes(lower);
+}
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -989,9 +1003,12 @@ function evaluateAllergensServer(product, userAllergies) {
     const allergy = rawAllergy.trim();
     if (!allergy) continue;
     const terms = allergenTerms(allergy);
-    if (terms.some((t) => containsTerm(declared, t) || containsTerm(ingredients, t))) {
+    const dairyCheck = isDairyAllergy(allergy);
+    const ingTarget = dairyCheck ? stripNonDairyCompounds(ingredients) : ingredients;
+    const traceTarget = dairyCheck ? stripNonDairyCompounds(traces) : traces;
+    if (terms.some((t) => containsTerm(declared, t) || containsTerm(ingTarget, t))) {
       confirmed.push(allergy);
-    } else if (terms.some((t) => containsTerm(traces, t))) {
+    } else if (terms.some((t) => containsTerm(traceTarget, t))) {
       possible.push(allergy);
     }
   }
@@ -1013,7 +1030,8 @@ function evaluateDietaryConflict(product, preferences) {
   const tags2 = joinTagList(product.ingredientsAnalysisTags).toLowerCase();
   const wantsVegan = diet.includes("vegan") && !diet.includes("non vegan");
   const wantsVeg = diet.includes("vegetarian") && !diet.includes("non vegetarian");
-  if (wantsVegan && (tags2.includes("non vegan") || /\b(milk|whey|casein|egg|honey|cheese|butter|ghee|paneer|curd|yogurt|fish|meat|chicken|prawn|mutton)\b/i.test(combined))) {
+  const dairyStripped = stripNonDairyCompounds(combined);
+  if (wantsVegan && (tags2.includes("non vegan") || /\b(milk|whey|casein|egg|honey|cheese|butter|ghee|paneer|curd|yogurt|fish|meat|chicken|prawn|mutton)\b/i.test(dairyStripped))) {
     return "Ingredients may not fit a vegan diet";
   }
   if (wantsVeg && (tags2.includes("non vegetarian") || /\b(fish|meat|chicken|beef|pork|mutton|gelatin|prawn|shrimp)\b/i.test(combined))) {
@@ -1032,7 +1050,7 @@ function evaluateConditionConflictsServer(product, conditions, nutrition = {}) {
       conflicts.push("Contains gluten-related ingredients");
       hasCritical = true;
     }
-    if ((cond.includes("lactose") || cond.includes("dairy")) && !/lactose[\s-]?free/i.test(combined) && LACTOSE_REGEX.test(combined)) {
+    if ((cond.includes("lactose") || cond.includes("dairy")) && !/lactose[\s-]?free/i.test(combined) && LACTOSE_REGEX.test(stripNonDairyCompounds(combined))) {
       conflicts.push("Contains milk or lactose ingredients");
     }
     if (cond.includes("diabet")) {
@@ -1221,10 +1239,12 @@ function enforceOutputSafety(task, validated, profile, serverFoodFit) {
       const unqualifiedAllergens = /* @__PURE__ */ new Set();
       for (const allergy of allergies) {
         const terms = allergenTerms(allergy);
+        const dairyCheck = isDairyAllergy(allergy);
         for (const clause of clauses) {
           const trimmed = clause.trim();
           if (!trimmed) continue;
-          const mentionsTerm = terms.some((term) => containsTerm(trimmed, term));
+          const clauseTarget = dairyCheck ? stripNonDairyCompounds(trimmed) : trimmed;
+          const mentionsTerm = terms.some((term) => containsTerm(clauseTarget, term));
           if (mentionsTerm && !NEGATION_CONTEXT_REGEX.test(trimmed)) {
             unqualifiedAllergens.add(allergy);
           }
@@ -1286,11 +1306,11 @@ function calculateServerTargets(profile) {
     calories = Math.round(customCal);
   } else if (age !== null && age >= 18 && weight !== null && height !== null) {
     const bmr = gender === "female" ? 10 * weight + 6.25 * height - 5 * age - 161 : 10 * weight + 6.25 * height - 5 * age + 5;
-    const multiplier = activity.includes("sedentary") ? 1.2 : activity.includes("light") ? 1.375 : activity.includes("very") || activity.includes("extra") ? 1.725 : 1.55;
+    const multiplier = activity.includes("sedentary") ? 1.2 : activity.includes("light") ? 1.375 : activity.includes("very") || activity.includes("extra") ? 1.9 : activity.includes("active") ? 1.725 : 1.55;
     let tdee = bmr * multiplier;
-    if (healthGoal.includes("loss") || healthGoal.includes("lose")) tdee -= 400;
-    else if (healthGoal.includes("muscle") || healthGoal.includes("gain")) tdee += 300;
-    calories = Math.max(1200, Math.round(tdee));
+    if (healthGoal.includes("loss") || healthGoal.includes("lose")) tdee -= 500;
+    else if (healthGoal.includes("muscle") || healthGoal.includes("bulk") || healthGoal.includes("gain")) tdee += 300;
+    calories = Math.max(1200, Math.min(5e3, Math.round(tdee)));
   }
   const out = {};
   if (calories !== null) out.calories = calories;
@@ -1298,20 +1318,20 @@ function calculateServerTargets(profile) {
   if (customProtein !== null && customProtein > 0) {
     out.protein = Math.round(customProtein);
   } else if (weight !== null) {
-    const factor = healthGoal.includes("muscle") ? 1.8 : 1.2;
-    out.protein = Math.round(weight * factor);
+    const factor = healthGoal.includes("muscle") || healthGoal.includes("bulk") || healthGoal.includes("gain") ? 2 : healthGoal.includes("loss") || healthGoal.includes("lose") ? 1.2 : 0.8;
+    out.protein = Math.max(30, Math.min(400, Math.round(weight * factor)));
   }
   const customCarbs = cleanNumber(profile.customCarbsGoal);
   if (customCarbs !== null && customCarbs > 0) {
     out.carbs = Math.round(customCarbs);
   } else if (calories !== null) {
-    out.carbs = Math.round(calories * 0.45 / 4);
+    out.carbs = Math.max(100, Math.min(600, Math.round(calories * 0.5 / 4)));
   }
   const customFat = cleanNumber(profile.customFatGoal);
   if (customFat !== null && customFat > 0) {
     out.fat = Math.round(customFat);
   } else if (calories !== null) {
-    out.fat = Math.round(calories * 0.3 / 9);
+    out.fat = Math.max(30, Math.min(200, Math.round(calories * 0.25 / 9)));
   }
   return out;
 }
@@ -1525,7 +1545,7 @@ async function resolveServerContext(uid, task, content, clientData, deps = {}) {
       }
       if (chatRows.length > 0) {
         const filteredChat = chatRows.map((r) => r?.data).filter((d) => {
-          if (!d || typeof d !== "object" || d.isGreeting === true || d.isError === true) {
+          if (!d || typeof d !== "object" || d.isGreeting === true || d.isError === true || d.isRejected === true) {
             return false;
           }
           if (!sessionId) return true;
@@ -2001,11 +2021,16 @@ var alternatives = onCall2({ region: "asia-south1", enforceAppCheck: true, timeo
   const barcode = request.data?.barcode;
   if (typeof barcode !== "string" || !/^\d{8,14}$/.test(barcode)) throw new HttpsError4("invalid-argument", "Invalid barcode.");
   const product = (await db2.doc(`products/${barcode}`).get()).data();
-  const category = product?.categoryTags?.at(-1);
-  if (typeof category !== "string" || !/^en:[a-z0-9-]{1,100}$/.test(category)) return { candidates: [] };
+  const tagsRaw = Array.isArray(product?.categoryTags) ? product.categoryTags : [];
+  const candidateCategories = [tagsRaw.at(-1), tagsRaw.at(-2)].filter((tag) => typeof tag === "string" && /^en:[a-z0-9-]{1,100}$/.test(tag));
+  const uniqueCategories = Array.from(new Set(candidateCategories));
+  const category = uniqueCategories[0];
+  if (!category) return { candidates: [] };
   const ref = db2.doc(`alternativeCategories/${category}`);
   const cached = (await ref.get()).data();
-  if (cached && Date.now() - Number(cached.fetchedAt) < 7 * 864e5) return { candidates: cached.candidates };
+  if (cached && Array.isArray(cached.candidates) && cached.candidates.length > 0 && Date.now() - Number(cached.fetchedAt) < 7 * 864e5) {
+    return { candidates: cached.candidates };
+  }
   const quota = db2.doc("serviceLimits/offSearch");
   const minute = Math.floor(Date.now() / 6e4);
   const day = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -2016,21 +2041,42 @@ var alternatives = onCall2({ region: "asia-south1", enforceAppCheck: true, timeo
     if (count >= 5 || daily >= 100) throw new HttpsError4("resource-exhausted", "Product comparisons are busy. Please retry later.");
     tx.set(quota, { minute, count: count + 1, day, daily: daily + 1 });
   });
+  const fields = "code,product_name,brands,categories,categories_tags,image_front_url,nutriments,ingredients_text,allergens_tags,traces_tags,ingredients_analysis_tags,serving_size,quantity,nutriscore_grade,nova_group,additives_tags";
+  const fetchCategory = async (cat) => {
+    const query = new URLSearchParams({ categories_tags: cat, countries_tags: "en:india", page_size: "20", fields });
+    let lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(`https://world.openfoodfacts.org/api/v2/search?${query}`, {
+          headers: { "User-Agent": "FoodInsightScanner/1.0 (aanandmodi09@gmail.com)" },
+          signal: AbortSignal.timeout(15e3)
+        });
+        if (!response.ok) throw Error(`Lookup failed: ${response.status}`);
+        const payload = await response.json();
+        if (!Array.isArray(payload.products)) throw Error("Invalid catalog");
+        return payload.products.slice(0, 20).filter((p) => typeof p.code === "string" && /^\d{8,14}$/.test(p.code) && p.categories_tags?.includes(cat)).map((p) => normalizeOpenFoodFacts(p, p.code));
+      } catch (err) {
+        lastErr = err;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    throw lastErr;
+  };
   try {
-    const query = new URLSearchParams({
-      categories_tags: category,
-      countries_tags: "en:india",
-      page_size: "20",
-      fields: "code,product_name,brands,categories,categories_tags,image_front_url,nutriments,ingredients_text,allergens_tags,traces_tags,ingredients_analysis_tags,serving_size,quantity,nutriscore_grade,nova_group,additives_tags"
-    });
-    const response = await fetch(`https://world.openfoodfacts.org/api/v2/search?${query}`, {
-      headers: { "User-Agent": "FoodInsightScanner/1.0 (aanandmodi09@gmail.com)" },
-      signal: AbortSignal.timeout(12e3)
-    });
-    if (!response.ok) throw Error("Lookup failed");
-    const payload = await response.json();
-    if (!Array.isArray(payload.products)) throw Error("Invalid catalog");
-    const candidates = payload.products.slice(0, 20).filter((p) => typeof p.code === "string" && /^\d{8,14}$/.test(p.code) && p.categories_tags?.includes(category)).map((p) => normalizeOpenFoodFacts(p, p.code));
+    let candidates = [];
+    for (const cat of uniqueCategories) {
+      try {
+        const rows = await fetchCategory(cat);
+        if (rows.length > 0) {
+          candidates = rows;
+          break;
+        }
+      } catch {
+      }
+    }
+    if (candidates.length === 0) {
+      candidates = await fetchCategory(category);
+    }
     await ref.set({ fetchedAt: Date.now(), candidates });
     return { candidates };
   } catch {

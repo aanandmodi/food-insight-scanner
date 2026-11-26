@@ -3,7 +3,9 @@ import 'verified_alternatives_service.dart';
 import 'analytics_service.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'ai_response_parser.dart';
 import 'auth_service.dart';
 import 'backend_client.dart';
@@ -18,6 +20,11 @@ class AiRequestException implements Exception {
   const AiRequestException(this.message, {this.statusCode});
   bool get isRateLimited => statusCode == 429;
   bool get isAuthFailure => statusCode == 401 || statusCode == 403;
+  bool get isRetryable =>
+      statusCode == null ||
+      statusCode == 408 ||
+      statusCode == 429 ||
+      statusCode! >= 500;
   @override
   String toString() => message;
 }
@@ -67,6 +74,8 @@ class CloudFunctionService {
           'resource-exhausted' => 429,
           'unauthenticated' => 401,
           'permission-denied' => 403,
+          'invalid-argument' => 400,
+          'failed-precondition' => 412,
           _ => 503,
         });
   }
@@ -88,10 +97,26 @@ class CloudFunctionService {
       // Callable maps can have nested platform map generic types.
       return Map<String, dynamic>.from(jsonDecode(jsonEncode(result)) as Map);
     } on FirebaseFunctionsException catch (error) {
+      debugPrint('Backend call $name error (${error.code}): ${error.message}');
       if (error.code == 'not-found') rethrow;
       throw _mapFunctionsException(error, name);
     } on TimeoutException {
-      throw const AiRequestException('The request timed out. Please retry.');
+      throw const AiRequestException('The request timed out. Please retry.',
+          statusCode: 408);
+    } on SocketException {
+      throw const AiRequestException(
+          'No internet connection. Please check your network and retry.',
+          statusCode: 503);
+    } on HttpException catch (error) {
+      debugPrint('Backend call $name HttpException: $error');
+      throw const AiRequestException(
+          'Connection interrupted. Please check your connection and retry.',
+          statusCode: 503);
+    } on FormatException catch (error) {
+      debugPrint('Backend call $name FormatException: $error');
+      throw const AiRequestException(
+          'Unexpected response from server. Please retry.',
+          statusCode: 503);
     }
   }
 
@@ -339,9 +364,25 @@ class CloudFunctionService {
         yield ChatStreamChunk(reply: buffer.toString(), isFinal: true);
       }
     } on FirebaseFunctionsException catch (error) {
+      debugPrint('Stream aiTask error (${error.code}): ${error.message}');
       throw _mapFunctionsException(error, 'aiTask');
     } on TimeoutException {
-      throw const AiRequestException('The request timed out. Please retry.');
+      throw const AiRequestException('The request timed out. Please retry.',
+          statusCode: 408);
+    } on SocketException {
+      throw const AiRequestException(
+          'No internet connection. Please check your network and retry.',
+          statusCode: 503);
+    } on HttpException catch (error) {
+      debugPrint('Stream aiTask HttpException: $error');
+      throw const AiRequestException(
+          'Stream interrupted. Please check your connection and retry.',
+          statusCode: 503);
+    } on FormatException catch (error) {
+      debugPrint('Stream aiTask FormatException: $error');
+      throw const AiRequestException(
+          'Unexpected response from AI stream. Please retry.',
+          statusCode: 503);
     }
   }
 
