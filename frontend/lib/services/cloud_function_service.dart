@@ -79,7 +79,7 @@ class CloudFunctionService {
   }
 
   Future<Map<String, dynamic>> _request(String task, Object content,
-      {Map<String, dynamic>? profile}) async {
+      {Map<String, dynamic>? profile, String? barcode}) async {
     final session = UserSession.instance.capture();
     final db = UserDataService();
     profile ??= await db.getUserProfile() ?? {};
@@ -99,9 +99,13 @@ class CloudFunctionService {
         logs: logs,
         scans: scans,
         activity: activity);
+    final normalizedBarcode = barcode?.trim();
     return _call('aiTask', {
       'task': task,
       'content': content is String ? content : jsonEncode(content),
+      if (normalizedBarcode != null &&
+          RegExp(r'^\d{8,14}$').hasMatch(normalizedBarcode))
+        'barcode': normalizedBarcode,
       'context': context,
       'profile': context['profile'],
     });
@@ -207,7 +211,8 @@ class CloudFunctionService {
             'product': AIContextBuilder.productFacts(productData),
             'foodFit': fitResult
           },
-          profile: userProfile);
+          profile: userProfile,
+          barcode: productData['barcode']?.toString());
 
   Future<Map<String, dynamic>> chatWithAI(
       {required String message,
@@ -236,13 +241,15 @@ class CloudFunctionService {
         'chat',
         {
           'message': message,
-          if (currentProduct != null) 'currentProduct': AIContextBuilder.productFacts(currentProduct),
+          if (currentProduct != null)
+            'currentProduct': AIContextBuilder.productFacts(currentProduct),
           if (foodFit != null) 'foodFit': foodFit,
           'history': bounded(conversationHistory, 7000),
           'contextNote':
               'Use the structured nutrition context for current logged intake.'
         },
-        profile: userProfile);
+        profile: userProfile,
+        barcode: currentProduct?['barcode']?.toString());
     AnalyticsService.record(UsageEvent.aiChatUsed);
     if (result['reply'] is! String) {
       throw const FormatException('Invalid chat reply');

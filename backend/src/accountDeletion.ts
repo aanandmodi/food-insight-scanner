@@ -3,11 +3,11 @@ import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
 
-import { defineSecret } from "firebase-functions/params";
+import { supabaseAdminKey } from "./secrets";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 
 if (!getApps().length) initializeApp();
-export const supabaseAdminKey = defineSecret("SUPABASE_SERVICE_ROLE_KEY");
+export { supabaseAdminKey };
 const supabaseUrl = "https://tslcgavpkujkfexzmisk.supabase.co";
 
 async function supabaseRequest(path: string, body: unknown, method = "POST", optionalMissingBucket = false): Promise<any> {

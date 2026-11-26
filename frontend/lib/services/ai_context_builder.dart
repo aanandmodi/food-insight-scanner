@@ -4,7 +4,10 @@ import '../core/utils/user_utils.dart';
 class AIContextBuilder {
   static Map<String, dynamic> productFacts(Map<String, dynamic> input) {
     final nutrition = input['nutrition'] as Map? ?? {};
+    final barcode = input['barcode']?.toString().trim();
     return {
+      if (barcode != null && RegExp(r'^\d{8,14}$').hasMatch(barcode))
+        'barcode': barcode,
       for (final key in [
         'name',
         'productName',

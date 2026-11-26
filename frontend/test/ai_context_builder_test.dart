@@ -75,5 +75,11 @@ void main() {
         activity: {'source': 'none', 'steps': 9000});
     expect(analysis.containsKey('recentMeals'), false);
     expect(analysis.containsKey('activity'), false);
+    final withBarcode = AIContextBuilder.productFacts({
+      'barcode': '8901234567890',
+      'name': 'Masala Oats',
+      'nutrition': {'calories': 380},
+    });
+    expect(withBarcode['barcode'], '8901234567890');
   });
 }
