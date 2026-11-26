@@ -45,7 +45,7 @@ jobs:
         working-directory: backend
       - run: npm run build:edge
         working-directory: backend
-      - run: git diff --exit-code -- supabase/functions/food-insight-api/backend.js
+      - run: git diff --exit-code -- supabase/functions/food-insight-api/backend.js supabase/functions/food-insight-admin/backend.js
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.6
@@ -53,6 +53,10 @@ jobs:
         working-directory: supabase/functions/food-insight-api
       - run: deno test --allow-env --allow-read --allow-sys handler_test.ts runtime_test.ts
         working-directory: supabase/functions/food-insight-api
+      - run: deno check index.ts
+        working-directory: supabase/functions/food-insight-admin
+      - run: deno test --allow-env --allow-read --allow-sys handler_test.ts runtime_test.ts
+        working-directory: supabase/functions/food-insight-admin
 
   android-build:
     runs-on: ubuntu-latest

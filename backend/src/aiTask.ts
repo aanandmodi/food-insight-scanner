@@ -3,6 +3,8 @@ import { Buffer } from "node:buffer";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
+import { assertAccountActive } from "./accountStatus";
+
 import { requestAi, requestAiStream } from "./aiProvider";
 import { aiMessages } from "./aiMessages";
 import { macroBaseline, validateMacroAdjustment } from "./macroSafety";
@@ -68,9 +70,7 @@ async function prepareAndAuthorizeAiTask(request: {
   rawRequest?: { ip?: string; headers?: Record<string, string | string[] | undefined> };
 }): Promise<PreparedAiRequest> {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to use AI.");
-  if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
-    throw new HttpsError("permission-denied", "Account deletion is in progress.");
-  }
+  await assertAccountActive(db, request.auth.uid);
   if (requiresEmailVerification(request.auth.token as { email_verified?: unknown; firebase?: { sign_in_provider?: unknown } })) {
     throw new HttpsError("failed-precondition", "Verify your email address before using AI features.");
   }

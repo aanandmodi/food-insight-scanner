@@ -1,13 +1,14 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { assertAccountActive } from './accountStatus';
 import { normalizeOpenFoodFacts } from './productNormalizer';
 if (!getApps().length) initializeApp();
 const db = getFirestore();
 
 export const alternatives = onCall({region:'asia-south1',enforceAppCheck:true,timeoutSeconds:30},async request => {
   if (!request.auth) throw new HttpsError('unauthenticated','Sign in to compare products.');
-  if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) throw new HttpsError('permission-denied','Account deletion is in progress.');
+  await assertAccountActive(db, request.auth.uid);
   if ((await db.doc('config/featureFlags').get()).data()?.alternativesEnabled !== true) return {candidates:[]};
   const barcode = request.data?.barcode;
   if (typeof barcode !== 'string' || !/^\d{8,14}$/.test(barcode)) throw new HttpsError('invalid-argument','Invalid barcode.');

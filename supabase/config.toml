@@ -6,3 +6,7 @@ verify_jwt = false
 # Both Firebase Auth and App Check are verified in the handler. Supabase's
 # gateway JWT verification only understands Supabase Auth tokens.
 verify_jwt = false
+
+[functions.food-insight-admin]
+# Verified via Firebase Admin JWT (checkRevoked=true) + admin claim + strict CORS allowlist.
+verify_jwt = false

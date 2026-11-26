@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { assertAccountActive } from "./accountStatus";
 
 import { normalizeOpenFoodFacts, ProductFacts } from "./productNormalizer";
 
@@ -25,9 +26,7 @@ export const scanProduct = onCall(
   { region: "asia-south1", timeoutSeconds: 20, enforceAppCheck: true, maxInstances: 3 },
   async (request): Promise<ProductFacts> => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to scan products.");
-    if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
-      throw new HttpsError("permission-denied", "Account deletion is in progress.");
-    }
+    await assertAccountActive(db, request.auth.uid);
     const barcode = request.data?.barcode;
     if (typeof barcode !== "string" || !BARCODE.test(barcode)) {
       throw new HttpsError("invalid-argument", "Enter an 8–14 digit barcode.");
