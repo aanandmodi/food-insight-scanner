@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_insight_scanner/core/auth_gate.dart';
@@ -106,6 +110,44 @@ void main() {
       CloudFunctionService.permissionDeniedMessage('App Check failed'),
       'This installation could not be verified. Reinstall from Google Play.',
     );
+  });
+
+  test('CloudFunctionService.mapClientError maps client & Firebase exceptions deterministically',
+      () {
+    final blocked = CloudFunctionService.mapClientError(
+      FirebaseFunctionsException(
+        code: 'invalid-argument',
+        message: 'Your request could not be processed.',
+      ),
+      StackTrace.current,
+      isStream: true,
+    );
+    expect(blocked.statusCode, 400);
+    expect(blocked.isRetryable, isFalse);
+    expect(blocked.message, 'Your request could not be processed.');
+
+    final appCheckErr = CloudFunctionService.mapClientError(
+      FirebaseException(plugin: 'firebase_app_check', code: 'unknown'),
+      StackTrace.current,
+      isStream: true,
+    );
+    expect(appCheckErr.statusCode, 503);
+    expect(appCheckErr.isRetryable, isTrue);
+
+    final tlsErr = CloudFunctionService.mapClientError(
+      const HandshakeException('TLS fail'),
+      StackTrace.current,
+      isStream: true,
+    );
+    expect(tlsErr.statusCode, 503);
+    expect(tlsErr.isRetryable, isTrue);
+
+    final fallback = CloudFunctionService.mapClientError(
+      StateError('unexpected'),
+      StackTrace.current,
+    );
+    expect(fallback.statusCode, 503);
+    expect(fallback.isRetryable, isTrue);
   });
 
   testWidgets('AuthGateContent shows maintenance and update-required blocks cleanly',

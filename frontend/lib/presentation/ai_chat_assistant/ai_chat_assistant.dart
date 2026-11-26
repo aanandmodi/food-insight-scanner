@@ -8,6 +8,7 @@ import 'package:sizer/sizer.dart';
 import '../../data/providers/user_profile_provider.dart';
 import '../../models/user_profile.dart';
 import '../../services/cloud_function_service.dart';
+import '../../services/crash_reporting_service.dart';
 import '../../services/feature_flag_service.dart';
 import '../../services/user_data_service.dart';
 import '../../services/user_session.dart';
@@ -193,7 +194,8 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
       if (m['isGreeting'] == true ||
           m['isError'] == true ||
           m['isStreaming'] == true ||
-          m['isRejected'] == true) {
+          m['isRejected'] == true ||
+          m['isFailed'] == true) {
         continue;
       }
       final nextIsError =
@@ -307,6 +309,15 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
           "isStreaming": false,
           "timestamp": DateTime.now(),
         });
+      } else {
+        final retryIdx = _messages.lastIndexWhere(
+            (m) => m['isUser'] == true && m['message'] == message);
+        if (retryIdx >= 0) {
+          _messages[retryIdx] = {
+            ..._messages[retryIdx],
+            'isFailed': false,
+          };
+        }
       }
       _messages.add({
         "id": assistantMsgId,
@@ -420,8 +431,11 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
           await _confirmMeal(finalChunk!.mealData!, session);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('AI chat error (${e.runtimeType}): $e');
+      if (e is! AiRequestException) {
+        CrashReportingService.record(e, st);
+      }
       if (mounted) {
         setState(() {
           _messages.removeWhere((m) => m['id'] == assistantMsgId);
@@ -429,12 +443,18 @@ class _AiChatAssistantState extends State<AiChatAssistant> {
           final userMsg = e is AiRequestException
               ? e.message
               : 'AI could not complete this request. Please retry.';
+          final userIdx = _messages.lastIndexWhere(
+              (m) => m['isUser'] == true && m['message'] == message);
           if (isRetryable) {
+            if (userIdx >= 0) {
+              _messages[userIdx] = {
+                ..._messages[userIdx],
+                'isFailed': true,
+              };
+            }
             _lastFailedMessage = message;
             _errorMessage = userMsg;
           } else {
-            final userIdx = _messages.lastIndexWhere(
-                (m) => m['isUser'] == true && m['message'] == message);
             if (userIdx >= 0) {
               _messages[userIdx] = {
                 ..._messages[userIdx],

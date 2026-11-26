@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import 'user_session.dart';
@@ -130,31 +131,47 @@ class BackendClient {
   static Stream<AiStreamEvent> streamAiTask(
     Map<String, dynamic> data, {
     HttpClient? httpClient,
+    @visibleForTesting Uri? endpointUri,
+    @visibleForTesting String? idTokenOverride,
+    @visibleForTesting String? appCheckOverride,
   }) async* {
-    if (transport == 'firebase') {
+    if (transport == 'firebase' && endpointUri == null) {
       yield AiStreamDone(await call('aiTask', data));
       return;
     }
 
-    final session = UserSession.instance.capture();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw FirebaseFunctionsException(
-          code: 'unauthenticated', message: 'Sign in to use AI.');
-    }
-    final idToken = await user.getIdToken();
-    session.check();
-    final appCheck = await FirebaseAppCheck.instance.getToken();
-    if (appCheck == null || idToken == null || idToken.isEmpty) {
-      throw FirebaseFunctionsException(
-          code: 'permission-denied', message: 'App verification unavailable.');
+    final useOverrides =
+        endpointUri != null && idTokenOverride != null && appCheckOverride != null;
+    SessionToken? session;
+    late final String idToken;
+    late final String appCheck;
+    if (useOverrides) {
+      idToken = idTokenOverride;
+      appCheck = appCheckOverride;
+    } else {
+      session = UserSession.instance.capture();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw FirebaseFunctionsException(
+            code: 'unauthenticated', message: 'Sign in to use AI.');
+      }
+      final fetchedId = await user.getIdToken();
+      session.check();
+      final fetchedAppCheck = await FirebaseAppCheck.instance.getToken();
+      if (fetchedAppCheck == null || fetchedId == null || fetchedId.isEmpty) {
+        throw FirebaseFunctionsException(
+            code: 'permission-denied',
+            message: 'App verification unavailable.');
+      }
+      idToken = fetchedId;
+      appCheck = fetchedAppCheck;
     }
 
     final ownedClient = httpClient == null;
     final client = httpClient ?? HttpClient();
     client.connectionTimeout = const Duration(seconds: 20);
     try {
-      final uri =
+      final uri = endpointUri ??
           Uri.parse('${SupabaseService.url}/functions/v1/food-insight-api');
       final request = await client.postUrl(uri);
       request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $idToken');
@@ -169,7 +186,7 @@ class BackendClient {
       }));
 
       final response = await request.close().timeout(const Duration(seconds: 110));
-      session.check();
+      session?.check();
 
       if (response.statusCode != 200) {
         final rawBody = await response.transform(utf8.decoder).join();

@@ -5,12 +5,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'ai_response_parser.dart';
 import 'auth_service.dart';
 import 'backend_client.dart';
 import 'allergen_safety_service.dart';
 import 'condition_safety_service.dart';
+import 'crash_reporting_service.dart';
 import 'user_data_service.dart';
 import 'user_session.dart';
 
@@ -58,7 +60,78 @@ class CloudFunctionService {
     return 'This installation could not be verified. Reinstall from Google Play.';
   }
 
-  AiRequestException _mapFunctionsException(
+  @visibleForTesting
+  static AiRequestException mapClientError(
+    Object error,
+    StackTrace stack, {
+    String operation = 'aiTask',
+    bool isStream = false,
+  }) {
+    if (error is AiRequestException) return error;
+    if (error is FirebaseFunctionsException) {
+      return _mapFunctionsException(error, operation);
+    }
+    if (error is FirebaseAuthException || error is SessionChangedException) {
+      return const AiRequestException(
+        'Your session changed or expired. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+    if (error is FirebaseException) {
+      if (error.plugin == 'firebase_app_check') {
+        return const AiRequestException(
+          'Security verification timed out. Please retry shortly.',
+          statusCode: 503,
+        );
+      }
+      CrashReportingService.record(error, stack);
+      return const AiRequestException(
+        'The service is temporarily unavailable. Please retry.',
+        statusCode: 503,
+      );
+    }
+    if (error is TimeoutException) {
+      return const AiRequestException(
+        'The request timed out. Please retry.',
+        statusCode: 408,
+      );
+    }
+    if (error is SocketException) {
+      return const AiRequestException(
+        'No internet connection. Please check your network and retry.',
+        statusCode: 503,
+      );
+    }
+    if (error is TlsException) {
+      return const AiRequestException(
+        'Secure connection failed. Check your connection and retry.',
+        statusCode: 503,
+      );
+    }
+    if (error is HttpException) {
+      return AiRequestException(
+        isStream
+            ? 'Stream interrupted. Please check your connection and retry.'
+            : 'Connection interrupted. Please check your connection and retry.',
+        statusCode: 503,
+      );
+    }
+    if (error is FormatException) {
+      return AiRequestException(
+        isStream
+            ? 'Unexpected response from AI stream. Please retry.'
+            : 'Unexpected response from server. Please retry.',
+        statusCode: 503,
+      );
+    }
+    CrashReportingService.record(error, stack);
+    return const AiRequestException(
+      'The service is temporarily unavailable. Check your connection and retry.',
+      statusCode: 503,
+    );
+  }
+
+  static AiRequestException _mapFunctionsException(
       FirebaseFunctionsException error, String name) {
     if (name == 'aiTask') {
       AnalyticsService.record(error.code == 'resource-exhausted'
@@ -109,23 +182,9 @@ class CloudFunctionService {
       debugPrint('Backend call $name error (${error.code}): ${error.message}');
       if (error.code == 'not-found') rethrow;
       throw _mapFunctionsException(error, name);
-    } on TimeoutException {
-      throw const AiRequestException('The request timed out. Please retry.',
-          statusCode: 408);
-    } on SocketException {
-      throw const AiRequestException(
-          'No internet connection. Please check your network and retry.',
-          statusCode: 503);
-    } on HttpException catch (error) {
-      debugPrint('Backend call $name HttpException: $error');
-      throw const AiRequestException(
-          'Connection interrupted. Please check your connection and retry.',
-          statusCode: 503);
-    } on FormatException catch (error) {
-      debugPrint('Backend call $name FormatException: $error');
-      throw const AiRequestException(
-          'Unexpected response from server. Please retry.',
-          statusCode: 503);
+    } catch (error, stack) {
+      debugPrint('Backend call $name error (${error.runtimeType}): $error');
+      throw mapClientError(error, stack, operation: name);
     }
   }
 
@@ -174,14 +233,18 @@ class CloudFunctionService {
       {Map<String, dynamic>? profile,
       String? barcode,
       String? sessionId}) async {
-    final payload = await _buildTaskPayload(
-      task,
-      content,
-      profile: profile,
-      barcode: barcode,
-      sessionId: sessionId,
-    );
-    return _call('aiTask', payload);
+    try {
+      final payload = await _buildTaskPayload(
+        task,
+        content,
+        profile: profile,
+        barcode: barcode,
+        sessionId: sessionId,
+      );
+      return await _call('aiTask', payload);
+    } catch (error, stack) {
+      throw mapClientError(error, stack, operation: 'aiTask');
+    }
   }
 
   Future<Map<String, dynamic>?> scanProduct(String barcode) =>
@@ -321,28 +384,29 @@ class CloudFunctionService {
           : text.substring(text.length - length);
     }
 
-    final payload = await _buildTaskPayload(
-      'chat',
-      {
-        'message': message,
-        if (currentProduct != null)
-          'currentProduct': AIContextBuilder.productFacts(currentProduct),
-        if (foodFit != null) 'foodFit': foodFit,
-        'history': bounded(conversationHistory, 7000),
-        'contextNote':
-            'Use the structured nutrition context for current logged intake.'
-      },
-      profile: userProfile,
-      barcode: currentProduct?['barcode']?.toString(),
-      sessionId: sessionId,
-    );
-
-    final session = UserSession.instance.capture();
-    AnalyticsService.record(UsageEvent.aiRequested);
     final buffer = StringBuffer();
     var receivedDone = false;
 
     try {
+      final payload = await _buildTaskPayload(
+        'chat',
+        {
+          'message': message,
+          if (currentProduct != null)
+            'currentProduct': AIContextBuilder.productFacts(currentProduct),
+          if (foodFit != null) 'foodFit': foodFit,
+          'history': bounded(conversationHistory, 7000),
+          'contextNote':
+              'Use the structured nutrition context for current logged intake.'
+        },
+        profile: userProfile,
+        barcode: currentProduct?['barcode']?.toString(),
+        sessionId: sessionId,
+      );
+
+      final session = UserSession.instance.capture();
+      AnalyticsService.record(UsageEvent.aiRequested);
+
       await for (final event in BackendClient.streamAiTask(payload)) {
         session.check();
         if (event is AiStreamDelta) {
@@ -372,26 +436,9 @@ class CloudFunctionService {
         AnalyticsService.record(UsageEvent.aiChatUsed);
         yield ChatStreamChunk(reply: buffer.toString(), isFinal: true);
       }
-    } on FirebaseFunctionsException catch (error) {
-      debugPrint('Stream aiTask error (${error.code}): ${error.message}');
-      throw _mapFunctionsException(error, 'aiTask');
-    } on TimeoutException {
-      throw const AiRequestException('The request timed out. Please retry.',
-          statusCode: 408);
-    } on SocketException {
-      throw const AiRequestException(
-          'No internet connection. Please check your network and retry.',
-          statusCode: 503);
-    } on HttpException catch (error) {
-      debugPrint('Stream aiTask HttpException: $error');
-      throw const AiRequestException(
-          'Stream interrupted. Please check your connection and retry.',
-          statusCode: 503);
-    } on FormatException catch (error) {
-      debugPrint('Stream aiTask FormatException: $error');
-      throw const AiRequestException(
-          'Unexpected response from AI stream. Please retry.',
-          statusCode: 503);
+    } catch (error, stack) {
+      debugPrint('Stream aiTask error (${error.runtimeType}): $error');
+      throw mapClientError(error, stack, operation: 'aiTask', isStream: true);
     }
   }
 
