@@ -8,6 +8,7 @@ import '../presentation/auth/legal_consent_gate_screen.dart';
 import '../presentation/auth/login_screen/login_screen.dart';
 import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/profile_setup/profile_setup.dart';
+import '../services/app_governance_service.dart';
 import '../services/auth_service.dart';
 import '../services/consent_service.dart';
 import '../theme/app_design_system.dart';
@@ -37,9 +38,13 @@ class AuthGate extends StatelessWidget {
         }
 
         return ListenableBuilder(
-          listenable: ConsentService.instance,
+          listenable: Listenable.merge([
+            ConsentService.instance,
+            AppGovernanceService.instance,
+          ]),
           builder: (context, _) {
             final consent = ConsentService.instance;
+            final gov = AppGovernanceService.instance;
             final uid = snapshot.data!.uid;
             return Consumer<UserProfileProvider>(
               builder: (context, provider, child) {
@@ -52,6 +57,12 @@ class AuthGate extends StatelessWidget {
                   complete: provider.isProfileComplete,
                   consentLoading: consent.boundUid != uid || consent.isLoading,
                   requiresConsent: consent.requiresConsentForCurrentUser,
+                  maintenanceMode: gov.maintenanceMode,
+                  maintenanceMessage: gov.maintenanceMessage,
+                  updateRequired: gov.updateRequired,
+                  minAppVersion: gov.minAppVersion,
+                  currentAppVersion: gov.currentAppVersion,
+                  onRefreshGovernance: gov.refresh,
                   onRetry: provider.fetchProfile,
                   consentGate: () => LegalConsentGateScreen(
                     key: ValueKey('consent-$uid'),
@@ -85,16 +96,44 @@ class AuthGateContent extends StatelessWidget {
       required this.onboarding,
       this.consentLoading = false,
       this.requiresConsent = false,
-      this.consentGate});
+      this.consentGate,
+      this.maintenanceMode = false,
+      this.maintenanceMessage = '',
+      this.updateRequired = false,
+      this.minAppVersion = '',
+      this.currentAppVersion = '',
+      this.onRefreshGovernance});
   final String uid;
   final String? boundUid;
   final bool loading, hasProfile, hasError, complete;
   final bool consentLoading, requiresConsent;
+  final bool maintenanceMode, updateRequired;
+  final String maintenanceMessage, minAppVersion, currentAppVersion;
   final Future<void> Function() onRetry;
+  final Future<void> Function()? onRefreshGovernance;
   final Widget Function() dashboard, onboarding;
   final Widget Function()? consentGate;
   @override
   Widget build(BuildContext context) {
+    if (maintenanceMode) {
+      return _GateNotice(
+        icon: Icons.engineering_rounded,
+        title: 'Scheduled Maintenance',
+        message: maintenanceMessage.trim().isNotEmpty
+            ? maintenanceMessage
+            : 'Food Insight is undergoing scheduled maintenance. Please check back shortly.',
+        onRefresh: onRefreshGovernance,
+      );
+    }
+    if (updateRequired) {
+      return _GateNotice(
+        icon: Icons.system_update_rounded,
+        title: 'Update Required',
+        message:
+            'Please update Food Insight to version $minAppVersion or newer to continue (installed: ${currentAppVersion.isEmpty ? 'outdated' : currentAppVersion}).',
+        onRefresh: onRefreshGovernance,
+      );
+    }
     if (boundUid != uid || consentLoading || (loading && !hasProfile)) {
       return const _GateSplash(label: 'Loading your profile…');
     }
@@ -104,6 +143,100 @@ class AuthGateContent extends StatelessWidget {
           LegalConsentGateScreen(key: ValueKey('consent-$uid'));
     }
     return complete ? dashboard() : onboarding();
+  }
+}
+
+class _GateNotice extends StatelessWidget {
+  const _GateNotice({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.onRefresh,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Future<void> Function()? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: FoodInsightColors.warmWhite,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: FoodInsightColors.matteCard,
+                    borderRadius: FoodInsightRadius.xlAll,
+                    boxShadow: FoodInsightShadows.raisedCard,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: FoodInsightColors.scannerGreen,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: FoodInsightTypography.heading(size: 20),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: FoodInsightTypography.body(
+                    color: FoodInsightColors.midGray,
+                  ),
+                ),
+                if (onRefresh != null) ...[
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: onRefresh,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: FoodInsightColors.scannerGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: FoodInsightRadius.lgAll,
+                        ),
+                      ),
+                      child: Text(
+                        'Check again',
+                        style: FoodInsightTypography.body(
+                          color: Colors.white,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => AuthService().signOut(),
+                  child: Text(
+                    'Sign out',
+                    style: FoodInsightTypography.caption(
+                      color: FoodInsightColors.midGray,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

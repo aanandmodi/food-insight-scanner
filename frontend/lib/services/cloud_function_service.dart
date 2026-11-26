@@ -48,6 +48,16 @@ class CloudFunctionService {
   factory CloudFunctionService() => _instance;
   CloudFunctionService._();
 
+  @visibleForTesting
+  static String permissionDeniedMessage(String? raw) {
+    final msg = raw?.trim() ?? '';
+    final lower = msg.toLowerCase();
+    if (lower.contains('suspended') || lower.contains('deletion')) {
+      return msg;
+    }
+    return 'This installation could not be verified. Reinstall from Google Play.';
+  }
+
   AiRequestException _mapFunctionsException(
       FirebaseFunctionsException error, String name) {
     if (name == 'aiTask') {
@@ -60,8 +70,7 @@ class CloudFunctionService {
           'resource-exhausted' =>
             error.message ?? 'Daily AI limit reached. Try again tomorrow.',
           'unauthenticated' => 'Your session expired. Please sign in again.',
-          'permission-denied' =>
-            'This installation could not be verified. Reinstall from Google Play.',
+          'permission-denied' => permissionDeniedMessage(error.message),
           'failed-precondition' =>
             error.message ?? 'AI is temporarily unavailable.',
           'invalid-argument' => error.message ??

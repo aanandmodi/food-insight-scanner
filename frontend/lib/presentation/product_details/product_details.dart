@@ -20,6 +20,8 @@ import '../../services/product_facts_adapter.dart';
 import '../../services/food_fit_service.dart';
 import './widgets/ingredients_widget.dart';
 import './widgets/food_additives_widget.dart';
+import './widgets/report_product_sheet.dart';
+import '../../services/product_report_service.dart';
 import './widgets/verified_alternatives_widget.dart';
 import './widgets/nutrition_bars_widget.dart';
 import './widgets/product_image_widget.dart';
@@ -227,6 +229,23 @@ class _ProductDetailsState extends State<ProductDetails> {
         'foodFit': fit.toMap(),
       },
     );
+  }
+
+  Future<void> _reportProduct() async {
+    final barcode = productData['barcode']?.toString().trim() ?? '';
+    final productName = productData['name']?.toString().trim() ?? 'Unknown Product';
+    final submitted = await ReportProductSheet.show(
+      context,
+      barcode: barcode,
+      productName: productName,
+    );
+    if (submitted == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report submitted — thank you for helping keep labels accurate.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -660,6 +679,18 @@ class _ProductDetailsState extends State<ProductDetails> {
                         const SizedBox(height: 8),
                         const Text(
                             'General nutrition information. Food Insight is not a substitute for professional medical advice.'),
+                        if (ProductReportService.canReportBarcode(
+                            productData['barcode']?.toString())) ...[
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              onPressed: _reportProduct,
+                              icon: const Icon(Icons.flag_outlined, size: 18),
+                              label: const Text('Report inaccurate info'),
+                            ),
+                          ),
+                        ],
                         SizedBox(height: 12.h),
                       ],
                     ),
