@@ -3,9 +3,10 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { HttpsError } from "firebase-functions/v2/https";
 
-import { cleanupUserData, supabaseAdminKey } from "./accountDeletion";
+import { cleanupUserData } from "./accountDeletion";
 import { AiTask } from "./aiValidation";
 import { resetProviderCircuitsForTest } from "./aiProvider";
+import { readSecretOrEnv, supabaseAdminKey } from "./secrets";
 
 if (!getApps().length) initializeApp();
 
@@ -65,14 +66,8 @@ function defaultDeps(overrides: AdminDeps = {}): Required<AdminDeps> {
   const auth = getAuth();
   const key =
     overrides.supabaseServiceKey ??
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ??
-    (() => {
-      try {
-        return supabaseAdminKey.value().trim();
-      } catch {
-        return "";
-      }
-    })();
+    readSecretOrEnv(supabaseAdminKey, "SUPABASE_SERVICE_ROLE_KEY") ??
+    "";
 
   return {
     supabaseUrl: (overrides.supabaseUrl || process.env.SUPABASE_URL || SUPABASE_DEFAULT_URL).replace(/\/+$/, ""),

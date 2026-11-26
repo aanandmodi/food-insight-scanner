@@ -17,6 +17,16 @@ import { defineSecret } from "firebase-functions/params";
 var groqApiKey = defineSecret("GROQ_API_KEY");
 var geminiApiKey = defineSecret("GEMINI_API_KEY");
 var supabaseAdminKey = defineSecret("SUPABASE_SERVICE_ROLE_KEY");
+function readSecretOrEnv(secret, envName) {
+  const fromEnv = process.env[envName]?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const val = secret.value()?.trim();
+    return val || void 0;
+  } catch {
+    return void 0;
+  }
+}
 
 // src/accountDeletion.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -129,13 +139,7 @@ var BOOLEAN_FLAGS = [
 function defaultDeps(overrides = {}) {
   const db = getFirestore2();
   const auth = getAuth2();
-  const key = overrides.supabaseServiceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? (() => {
-    try {
-      return supabaseAdminKey.value().trim();
-    } catch {
-      return "";
-    }
-  })();
+  const key = overrides.supabaseServiceKey ?? readSecretOrEnv(supabaseAdminKey, "SUPABASE_SERVICE_ROLE_KEY") ?? "";
   return {
     supabaseUrl: (overrides.supabaseUrl || process.env.SUPABASE_URL || SUPABASE_DEFAULT_URL).replace(/\/+$/, ""),
     supabaseServiceKey: key,

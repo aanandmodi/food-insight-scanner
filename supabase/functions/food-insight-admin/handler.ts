@@ -129,7 +129,11 @@ export function createAdminEdgeHandler(deps: AdminEdgeDeps) {
     let verified: { uid: string; token: Record<string, unknown> };
     try {
       verified = await deps.verifyAdminToken(bearerMatch[1].trim());
-    } catch {
+    } catch (error) {
+      console.error(
+        "Admin token verification failed:",
+        error instanceof Error ? error.message : String(error),
+      );
       return errorResponse(401, "UNAUTHENTICATED", "Invalid or revoked admin session.", headers);
     }
 
