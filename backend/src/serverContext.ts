@@ -339,11 +339,14 @@ export async function resolveServerContext(
             fetcher,
           )
         : Promise.resolve([]);
+      const sessionId = typeof clientData?.sessionId === "string"
+        ? clientData.sessionId.trim().slice(0, 128)
+        : "";
       const chatPromise = task === "chat"
         ? querySupabaseRest(
             baseUrl,
             serviceKey,
-            `chat_messages?user_id=eq.${encodedUid}&deleted=eq.false&select=data&order=updated_at.desc&limit=12`,
+            `chat_messages?user_id=eq.${encodedUid}&deleted=eq.false&select=data&order=updated_at.desc&limit=40`,
             fetcher,
           )
         : Promise.resolve([]);
@@ -368,9 +371,18 @@ export async function resolveServerContext(
         serverActivity = rawAct as Record<string, any>;
       }
       if (chatRows.length > 0) {
-        const lines = chatRows
+        const filteredChat = chatRows
           .map((r) => r?.data)
-          .filter((d) => d && typeof d === "object" && d.isGreeting !== true && d.isError !== true)
+          .filter((d) => {
+            if (!d || typeof d !== "object" || d.isGreeting === true || d.isError === true) {
+              return false;
+            }
+            if (!sessionId) return true;
+            const rowSession = typeof d.sessionId === "string" ? d.sessionId.trim() : "";
+            return rowSession === sessionId || (!rowSession && sessionId === "default");
+          })
+          .slice(0, 12);
+        const lines = filteredChat
           .reverse()
           .map((d) => `${d.isUser ? "User" : "Assistant"}: ${String(d.message ?? "").slice(0, 600)}`)
           .filter(Boolean);

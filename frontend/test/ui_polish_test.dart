@@ -60,8 +60,7 @@ void main() {
         tester,
         ChatInputWidget(
             textController: controller,
-            onSendMessage: sent.add,
-            onVoiceMessage: (_) {}),
+            onSendMessage: sent.add),
         2);
     expect(find.byTooltip('Send message'), findsOneWidget);
     await tester.tap(find.byTooltip('Send message'));

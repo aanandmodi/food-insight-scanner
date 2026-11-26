@@ -124,6 +124,186 @@ function parseJsonModelText(rawText: string): unknown {
   return JSON.parse(cleaned);
 }
 
+/**
+ * Progressive streaming parser that extracts clean human-readable text deltas
+ * inside the top-level `"reply"` JSON field without leaking raw JSON syntax.
+ */
+export function createJsonReplyStreamExtractor(): {
+  feed: (chunk: string) => string;
+  rawText: () => string;
+} {
+  let fullRaw = "";
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+  let unicodeLeft = 0;
+  let unicodeBuf = "";
+  let stringKind: "none" | "key" | "otherValue" | "replyValue" = "none";
+  let currentKey = "";
+  let expectKeyAtDepth1 = false;
+  let lastKeyAtDepth1 = "";
+  let expectingColon = false;
+  let expectingValue = false;
+  let doneReply = false;
+
+  const feed = (chunk: string): string => {
+    let deltaOut = "";
+    for (let i = 0; i < chunk.length; i++) {
+      const ch = chunk[i];
+      fullRaw += ch;
+
+      if (!inString) {
+        if (ch === "{") {
+          depth++;
+          expectKeyAtDepth1 = depth === 1;
+          expectingColon = false;
+          expectingValue = false;
+        } else if (ch === "}") {
+          depth = Math.max(0, depth - 1);
+          expectingColon = false;
+          expectingValue = false;
+        } else if (ch === "[") {
+          depth++;
+        } else if (ch === "]") {
+          depth = Math.max(0, depth - 1);
+        } else if (ch === ":" && depth === 1 && expectingColon) {
+          expectingColon = false;
+          expectingValue = true;
+        } else if (ch === "," && depth === 1) {
+          expectKeyAtDepth1 = true;
+          expectingValue = false;
+          expectingColon = false;
+        } else if (ch === '"') {
+          inString = true;
+          escaping = false;
+          if (depth === 1 && expectKeyAtDepth1) {
+            stringKind = "key";
+            currentKey = "";
+            expectKeyAtDepth1 = false;
+          } else if (depth === 1 && expectingValue && lastKeyAtDepth1 === "reply" && !doneReply) {
+            stringKind = "replyValue";
+            expectingValue = false;
+          } else {
+            stringKind = "otherValue";
+            expectingValue = false;
+          }
+        } else if (!/\s/.test(ch) && depth === 1 && expectingValue) {
+          // Primitive/non-string value (number/boolean/null)
+          expectingValue = false;
+        }
+        continue;
+      }
+
+      if (unicodeLeft > 0) {
+        unicodeBuf += ch;
+        unicodeLeft--;
+        if (unicodeLeft === 0) {
+          const code = Number.parseInt(unicodeBuf, 16);
+          const decoded = Number.isFinite(code) ? String.fromCharCode(code) : "";
+          if (stringKind === "key") currentKey += decoded;
+          else if (stringKind === "replyValue") deltaOut += decoded;
+          unicodeBuf = "";
+        }
+        continue;
+      }
+
+      if (escaping) {
+        escaping = false;
+        let decoded = ch;
+        if (ch === "n") decoded = "\n";
+        else if (ch === "r") decoded = "\r";
+        else if (ch === "t") decoded = "\t";
+        else if (ch === "b") decoded = "\b";
+        else if (ch === "f") decoded = "\f";
+        else if (ch === "u") {
+          unicodeLeft = 4;
+          unicodeBuf = "";
+          continue;
+        }
+        if (stringKind === "key") currentKey += decoded;
+        else if (stringKind === "replyValue") deltaOut += decoded;
+        continue;
+      }
+
+      if (ch === "\\") {
+        escaping = true;
+        continue;
+      }
+
+      if (ch === '"') {
+        inString = false;
+        if (stringKind === "key") {
+          lastKeyAtDepth1 = currentKey;
+          expectingColon = true;
+        } else if (stringKind === "replyValue") {
+          doneReply = true;
+        }
+        stringKind = "none";
+        continue;
+      }
+
+      if (stringKind === "key") currentKey += ch;
+      else if (stringKind === "replyValue") deltaOut += ch;
+    }
+    return deltaOut;
+  };
+
+  return {
+    feed,
+    rawText: () => fullRaw,
+  };
+}
+
+async function consumeUpstreamSse(
+  body: ReadableStream<Uint8Array>,
+  extractContent: (parsedEvent: any) => { token?: string; stopReason?: string },
+  onDelta: (token: string) => void,
+): Promise<string> {
+  const extractor = createJsonReplyStreamExtractor();
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let stopReason = "";
+
+  const processLines = (lines: string[]) => {
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      let parsed: any;
+      try {
+        parsed = JSON.parse(payload);
+      } catch {
+        continue;
+      }
+      const { token, stopReason: reason } = extractContent(parsed);
+      if (reason) stopReason = reason;
+      if (token) {
+        const readableDelta = extractor.feed(token);
+        if (readableDelta) onDelta(readableDelta);
+      }
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split(/\r?\n/);
+    buffer = parts.pop() ?? "";
+    processLines(parts);
+  }
+  const tail = decoder.decode();
+  if (tail) buffer += tail;
+  if (buffer.trim()) processLines(buffer.split(/\r?\n/));
+
+  if (stopReason && stopReason !== "stop" && stopReason !== "STOP") {
+    throw new Error("Incomplete model response");
+  }
+  return extractor.rawText();
+}
+
 async function callGeminiFlash(
   task: AiTask,
   geminiKey: string,
@@ -131,22 +311,24 @@ async function callGeminiFlash(
   fetcher: typeof fetch,
   env: Environment,
   options?: RequestAiOptions,
+  onDelta?: (token: string) => void,
 ): Promise<unknown> {
   const model = geminiModelFor(task, env);
+  const endpoint = onDelta
+    ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`
+    : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
   let response: Response;
   try {
-    response = await fetcher(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": geminiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(toGeminiPayload(task, messages)),
-        signal: AbortSignal.timeout(22000),
+    response = await fetcher(endpoint, {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": geminiKey,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(toGeminiPayload(task, messages)),
+      signal: AbortSignal.timeout(22000),
+    });
   } catch {
     circuitCooldownUntil.gemini = Date.now() + 30000;
     void reportProviderHealth("gemini", false, 504, 30, options, fetcher);
@@ -170,6 +352,26 @@ async function callGeminiFlash(
       void reportProviderHealth("gemini", false, response.status, 30, options, fetcher);
     }
     throw new HttpsError("unavailable", "AI is temporarily unavailable.");
+  }
+
+  if (onDelta && response.body) {
+    const rawJson = await consumeUpstreamSse(
+      response.body,
+      (ev) => {
+        const cand = ev?.candidates?.[0];
+        const parts = Array.isArray(cand?.content?.parts) ? cand.content.parts : [];
+        const text = parts.map((p: any) => String(p?.text ?? "")).join("");
+        return {
+          token: text || undefined,
+          stopReason: cand?.finishReason ? String(cand.finishReason) : undefined,
+        };
+      },
+      onDelta,
+    );
+    if (!rawJson.trim()) throw new Error("Empty model response");
+    circuitCooldownUntil.gemini = 0;
+    void reportProviderHealth("gemini", true, 200, 0, options, fetcher);
+    return parseJsonModelText(rawJson);
   }
 
   const payload = (await response.json()) as any;
@@ -199,6 +401,31 @@ export async function requestAi(
   env: Environment = process.env,
   options?: RequestAiOptions,
 ): Promise<unknown> {
+  return executeAiRequest(task, apiKey, messages, fetcher, env, options);
+}
+
+/** Streaming version emitting human-readable `"reply"` deltas while retaining full JSON + safety validation. */
+export async function requestAiStream(
+  task: AiTask,
+  apiKey: string,
+  messages: unknown[],
+  onDelta: (token: string) => void,
+  fetcher: typeof fetch = fetch,
+  env: Environment = process.env,
+  options?: RequestAiOptions,
+): Promise<unknown> {
+  return executeAiRequest(task, apiKey, messages, fetcher, env, options, onDelta);
+}
+
+async function executeAiRequest(
+  task: AiTask,
+  apiKey: string,
+  messages: unknown[],
+  fetcher: typeof fetch = fetch,
+  env: Environment = process.env,
+  options?: RequestAiOptions,
+  onDelta?: (token: string) => void,
+): Promise<unknown> {
   const geminiKey = options?.geminiApiKey?.trim() || env.GEMINI_API_KEY?.trim() || "";
   const hasGeminiFallback = geminiKey.length > 0;
   const groqKey = apiKey?.trim() || "";
@@ -207,6 +434,13 @@ export async function requestAi(
     (options?.bypassCircuit || !hasGeminiFallback || !isProviderCircuitOpen("groq"));
 
   let groqFailure: HttpsError | null = null;
+  let emittedAnyDelta = false;
+  const emitDelta = onDelta
+    ? (text: string) => {
+        emittedAnyDelta = true;
+        onDelta(text);
+      }
+    : undefined;
 
   if (shouldTryGroq) {
     const models = modelsFor(task, env);
@@ -221,6 +455,7 @@ export async function requestAi(
             temperature: 0.2,
             max_completion_tokens: task === "plan" ? 4000 : 2500,
             response_format: { type: "json_object" },
+            ...(emitDelta ? { stream: true } : {}),
             messages,
           }),
           signal: AbortSignal.timeout(22000),
@@ -255,6 +490,23 @@ export async function requestAi(
         break;
       }
 
+      if (emitDelta && response.body) {
+        const rawJson = await consumeUpstreamSse(
+          response.body,
+          (ev) => {
+            const choice = ev?.choices?.[0];
+            return {
+              token: typeof choice?.delta?.content === "string" ? choice.delta.content : undefined,
+              stopReason: choice?.finish_reason ? String(choice.finish_reason) : undefined,
+            };
+          },
+          emitDelta,
+        );
+        circuitCooldownUntil.groq = 0;
+        void reportProviderHealth("groq", true, 200, 0, options, fetcher);
+        return parseJsonModelText(rawJson);
+      }
+
       // Invalid JSON or incomplete output does not trigger another billable request.
       const result = (await response.json()) as any;
       const choice = result.choices?.[0];
@@ -265,8 +517,8 @@ export async function requestAi(
     }
   }
 
-  if (hasGeminiFallback && (options?.bypassCircuit || !isProviderCircuitOpen("gemini"))) {
-    return callGeminiFlash(task, geminiKey, messages, fetcher, env, options);
+  if (!emittedAnyDelta && hasGeminiFallback && (options?.bypassCircuit || !isProviderCircuitOpen("gemini"))) {
+    return callGeminiFlash(task, geminiKey, messages, fetcher, env, options, emitDelta);
   }
 
   if (groqFailure) throw groqFailure;

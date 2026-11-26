@@ -29,6 +29,7 @@ class UserDataService {
     'shopping_items',
     'meal_plans',
     'chat_messages',
+    'chat_sessions',
     'activity_logs'
   ];
   static String newId() {
@@ -380,16 +381,51 @@ class UserDataService {
     await _save(session, 'meal_plans', 'latest', plan);
   }
 
-  Future<List<Map<String, dynamic>>> getChatMessages() async {
+  Future<List<Map<String, dynamic>>> getChatMessages({String? sessionId}) async {
     final rows = await _read(UserSession.instance.capture(), 'chat_messages');
-    rows.sort((a, b) => '${a['timestamp']}'.compareTo('${b['timestamp']}'));
-    return rows;
+    final filtered = sessionId == null
+        ? rows
+        : rows.where((row) {
+            final rowSession = row['sessionId']?.toString().trim() ?? '';
+            if (rowSession.isEmpty) return sessionId == 'default';
+            return rowSession == sessionId;
+          }).toList();
+    filtered.sort((a, b) => '${a['timestamp']}'.compareTo('${b['timestamp']}'));
+    return filtered;
   }
 
   Future<void> saveChatMessage(
       Map<String, dynamic> message, SessionToken session) async {
     await _save(session, 'chat_messages', (message['id'] ?? newId()).toString(),
         message);
+  }
+
+  Future<List<Map<String, dynamic>>> getChatSessions() async {
+    final rows = await _read(UserSession.instance.capture(), 'chat_sessions');
+    rows.sort((a, b) => '${b['updatedAt'] ?? b['createdAt'] ?? ''}'
+        .compareTo('${a['updatedAt'] ?? a['createdAt'] ?? ''}'));
+    return rows;
+  }
+
+  Future<void> saveChatSession(
+      Map<String, dynamic> chatSession, SessionToken session) async {
+    final id = (chatSession['id'] ?? newId()).toString();
+    await _save(session, 'chat_sessions', id, {...chatSession, 'id': id});
+  }
+
+  Future<void> deleteChatSession(String sessionId, SessionToken session) async {
+    await _save(session, 'chat_sessions', sessionId, {}, deleted: true);
+    final rows = await _store.read(session.uid, 'chat_messages');
+    for (final row in rows) {
+      final rowSession = row['sessionId']?.toString().trim() ?? '';
+      if (rowSession == sessionId ||
+          (rowSession.isEmpty && sessionId == 'default')) {
+        final msgId = row['id']?.toString();
+        if (msgId != null && msgId.isNotEmpty) {
+          await _save(session, 'chat_messages', msgId, {}, deleted: true);
+        }
+      }
+    }
   }
 
   Future<Map<String, int>> getDailyCalorieTotals({int days = 7}) async {

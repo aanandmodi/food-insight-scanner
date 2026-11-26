@@ -22,12 +22,54 @@ class AiRequestException implements Exception {
   String toString() => message;
 }
 
+class ChatStreamChunk {
+  const ChatStreamChunk({
+    required this.reply,
+    required this.isFinal,
+    this.mealData,
+  });
+
+  final String reply;
+  final bool isFinal;
+  final Map<String, dynamic>? mealData;
+}
+
 /// Authenticated, App Check protected backend interface. No provider key or
 /// model instructions are accepted from consumer devices.
 class CloudFunctionService {
   static final _instance = CloudFunctionService._();
   factory CloudFunctionService() => _instance;
   CloudFunctionService._();
+
+  AiRequestException _mapFunctionsException(
+      FirebaseFunctionsException error, String name) {
+    if (name == 'aiTask') {
+      AnalyticsService.record(error.code == 'resource-exhausted'
+          ? UsageEvent.aiLimited
+          : UsageEvent.aiFailed);
+    }
+    return AiRequestException(
+        switch (error.code) {
+          'resource-exhausted' =>
+            error.message ?? 'Daily AI limit reached. Try again tomorrow.',
+          'unauthenticated' => 'Your session expired. Please sign in again.',
+          'permission-denied' =>
+            'This installation could not be verified. Reinstall from Google Play.',
+          'failed-precondition' =>
+            error.message ?? 'AI is temporarily unavailable.',
+          'invalid-argument' => error.message ??
+              'This request is too large or contains invalid values.',
+          'deadline-exceeded' => 'The request timed out. Please retry.',
+          _ =>
+            'The service is temporarily unavailable. Check your connection and retry.',
+        },
+        statusCode: switch (error.code) {
+          'resource-exhausted' => 429,
+          'unauthenticated' => 401,
+          'permission-denied' => 403,
+          _ => 503,
+        });
+  }
 
   Future<Map<String, dynamic>> _call(
       String name, Map<String, dynamic> data) async {
@@ -46,40 +88,20 @@ class CloudFunctionService {
       // Callable maps can have nested platform map generic types.
       return Map<String, dynamic>.from(jsonDecode(jsonEncode(result)) as Map);
     } on FirebaseFunctionsException catch (error) {
-      if (name == 'aiTask') {
-        AnalyticsService.record(error.code == 'resource-exhausted'
-            ? UsageEvent.aiLimited
-            : UsageEvent.aiFailed);
-      }
       if (error.code == 'not-found') rethrow;
-      throw AiRequestException(
-          switch (error.code) {
-            'resource-exhausted' =>
-              error.message ?? 'Daily AI limit reached. Try again tomorrow.',
-            'unauthenticated' => 'Your session expired. Please sign in again.',
-            'permission-denied' =>
-              'This installation could not be verified. Reinstall from Google Play.',
-            'failed-precondition' =>
-              error.message ?? 'AI is temporarily unavailable.',
-            'invalid-argument' =>
-              'This request is too large or contains invalid values.',
-            'deadline-exceeded' => 'The request timed out. Please retry.',
-            _ =>
-              'The service is temporarily unavailable. Check your connection and retry.',
-          },
-          statusCode: switch (error.code) {
-            'resource-exhausted' => 429,
-            'unauthenticated' => 401,
-            'permission-denied' => 403,
-            _ => 503,
-          });
+      throw _mapFunctionsException(error, name);
     } on TimeoutException {
       throw const AiRequestException('The request timed out. Please retry.');
     }
   }
 
-  Future<Map<String, dynamic>> _request(String task, Object content,
-      {Map<String, dynamic>? profile, String? barcode}) async {
+  Future<Map<String, dynamic>> _buildTaskPayload(
+    String task,
+    Object content, {
+    Map<String, dynamic>? profile,
+    String? barcode,
+    String? sessionId,
+  }) async {
     final session = UserSession.instance.capture();
     final db = UserDataService();
     profile ??= await db.getUserProfile() ?? {};
@@ -100,15 +122,32 @@ class CloudFunctionService {
         scans: scans,
         activity: activity);
     final normalizedBarcode = barcode?.trim();
-    return _call('aiTask', {
+    final normalizedSessionId = sessionId?.trim();
+    return {
       'task': task,
       'content': content is String ? content : jsonEncode(content),
       if (normalizedBarcode != null &&
           RegExp(r'^\d{8,14}$').hasMatch(normalizedBarcode))
         'barcode': normalizedBarcode,
+      if (normalizedSessionId != null && normalizedSessionId.isNotEmpty)
+        'sessionId': normalizedSessionId,
       'context': context,
       'profile': context['profile'],
-    });
+    };
+  }
+
+  Future<Map<String, dynamic>> _request(String task, Object content,
+      {Map<String, dynamic>? profile,
+      String? barcode,
+      String? sessionId}) async {
+    final payload = await _buildTaskPayload(
+      task,
+      content,
+      profile: profile,
+      barcode: barcode,
+      sessionId: sessionId,
+    );
+    return _call('aiTask', payload);
   }
 
   Future<Map<String, dynamic>?> scanProduct(String barcode) =>
@@ -137,8 +176,10 @@ class CloudFunctionService {
       throw const AiRequestException(
           'Set up your profile before generating a meal plan.');
     }
-    final plan = AiResponseParser.plan(
-        await _request('plan', 'Plan balanced Indian meals using the structured targets, logged intake and recent meals. All nutrition is estimated.', profile: userProfile));
+    final plan = AiResponseParser.plan(await _request(
+        'plan',
+        'Plan balanced Indian meals using the structured targets, logged intake and recent meals. All nutrition is estimated.',
+        profile: userProfile));
     validatePlanSafety(plan, userProfile);
     AnalyticsService.record(UsageEvent.mealPlanGenerated);
     return plan;
@@ -181,7 +222,8 @@ class CloudFunctionService {
   Future<Map<String, dynamic>> recalibrateMacrosWithAI(
           {required Map<String, dynamic> userProfile,
           required List<Map<String, dynamic>> recentDietLogs}) =>
-      _request('macros',
+      _request(
+          'macros',
           'Review the structured seven-day aggregate. Keep current targets when evidence is insufficient.',
           profile: userProfile);
 
@@ -214,13 +256,103 @@ class CloudFunctionService {
           profile: userProfile,
           barcode: productData['barcode']?.toString());
 
+  Stream<ChatStreamChunk> streamChatWithAI({
+    required String message,
+    String? conversationHistory,
+    Map<String, dynamic>? userProfile,
+    Map<String, dynamic>? currentProduct,
+    Map<String, dynamic>? foodFit,
+    String? sessionId,
+    String? imageDataUrl,
+  }) async* {
+    if (message.trim().isEmpty || message.length > 2000) {
+      throw const AiRequestException(
+          'Please keep messages between 1 and 2,000 characters.');
+    }
+    if (imageDataUrl != null) {
+      throw const AiRequestException(
+          'Photo analysis is unavailable in this beta. Describe the meal in text.');
+    }
+    if (AuthService().needsEmailVerification) {
+      throw const AiRequestException(
+        'Please verify your email address in Home or Settings to use AI features. Barcode scanning and manual logs remain available.',
+        statusCode: 403,
+      );
+    }
+
+    String bounded(String? value, int length) {
+      final text = value ?? '';
+      return text.length <= length
+          ? text
+          : text.substring(text.length - length);
+    }
+
+    final payload = await _buildTaskPayload(
+      'chat',
+      {
+        'message': message,
+        if (currentProduct != null)
+          'currentProduct': AIContextBuilder.productFacts(currentProduct),
+        if (foodFit != null) 'foodFit': foodFit,
+        'history': bounded(conversationHistory, 7000),
+        'contextNote':
+            'Use the structured nutrition context for current logged intake.'
+      },
+      profile: userProfile,
+      barcode: currentProduct?['barcode']?.toString(),
+      sessionId: sessionId,
+    );
+
+    final session = UserSession.instance.capture();
+    AnalyticsService.record(UsageEvent.aiRequested);
+    final buffer = StringBuffer();
+    var receivedDone = false;
+
+    try {
+      await for (final event in BackendClient.streamAiTask(payload)) {
+        session.check();
+        if (event is AiStreamDelta) {
+          buffer.write(event.text);
+          yield ChatStreamChunk(reply: buffer.toString(), isFinal: false);
+        } else if (event is AiStreamDone) {
+          receivedDone = true;
+          final raw = Map<String, dynamic>.from(
+              jsonDecode(jsonEncode(event.data)) as Map);
+          if (raw['reply'] is! String) {
+            throw const FormatException('Invalid chat reply');
+          }
+          AnalyticsService.record(UsageEvent.aiSucceeded);
+          AnalyticsService.record(UsageEvent.aiChatUsed);
+          yield ChatStreamChunk(
+            reply: raw['reply'] as String,
+            isFinal: true,
+            mealData: raw['mealData'] is Map
+                ? AiResponseParser.meal(
+                    Map<String, dynamic>.from(raw['mealData'] as Map))
+                : null,
+          );
+        }
+      }
+      if (!receivedDone && buffer.isNotEmpty) {
+        AnalyticsService.record(UsageEvent.aiSucceeded);
+        AnalyticsService.record(UsageEvent.aiChatUsed);
+        yield ChatStreamChunk(reply: buffer.toString(), isFinal: true);
+      }
+    } on FirebaseFunctionsException catch (error) {
+      throw _mapFunctionsException(error, 'aiTask');
+    } on TimeoutException {
+      throw const AiRequestException('The request timed out. Please retry.');
+    }
+  }
+
   Future<Map<String, dynamic>> chatWithAI(
       {required String message,
       String? conversationHistory,
       Map<String, dynamic>? userProfile,
       String? mealLogContext,
-      Map<String,dynamic>? currentProduct,
-      Map<String,dynamic>? foodFit,
+      Map<String, dynamic>? currentProduct,
+      Map<String, dynamic>? foodFit,
+      String? sessionId,
       String? imageDataUrl}) async {
     if (message.trim().isEmpty || message.length > 2000) {
       throw const AiRequestException(
@@ -249,7 +381,8 @@ class CloudFunctionService {
               'Use the structured nutrition context for current logged intake.'
         },
         profile: userProfile,
-        barcode: currentProduct?['barcode']?.toString());
+        barcode: currentProduct?['barcode']?.toString(),
+        sessionId: sessionId);
     AnalyticsService.record(UsageEvent.aiChatUsed);
     if (result['reply'] is! String) {
       throw const FormatException('Invalid chat reply');

@@ -74,3 +74,31 @@ Deno.test('IP flood shield hashes client IP and blocks >30 req/min before invoki
   assert(capturedHash.length === 64);
   assert(!capturedHash.includes('198.51.100.77'));
 });
+Deno.test('streaming aiTask requests route to invokeStream with text/event-stream headers', async () => {
+  const encoder = new TextEncoder();
+  const handler = createHandler({
+    authenticate: async () => ({ uid: 'alice', token: {} }),
+    attest: async () => ({ appId: 'app' }),
+    invoke: async () => { throw new Error('Should stream instead'); },
+    invokeStream: async () => new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('event: delta\ndata: {"text":"Hi"}\n\n'));
+        controller.enqueue(encoder.encode('event: done\ndata: {"data":{"reply":"Hi"}}\n\n'));
+        controller.close();
+      },
+    }),
+  });
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer valid-user',
+      'x-firebase-appcheck': 'valid-app',
+    },
+    body: JSON.stringify({ operation: 'aiTask', stream: true, data: { task: 'chat', content: 'Hi' } }),
+  }));
+  assert(res.status === 200);
+  assert((res.headers.get('content-type') ?? '').includes('text/event-stream'));
+  const text = await res.text();
+  assert(text.includes('event: delta') && text.includes('event: done'));
+});

@@ -4,10 +4,18 @@ import '../../../theme/app_design_system.dart';
 
 class ChatHeaderWidget extends StatelessWidget {
   final VoidCallback onBackPressed;
+  final VoidCallback? onHistoryPressed;
+  final VoidCallback? onNewChatPressed;
+  final String title;
+  final String subtitle;
 
   const ChatHeaderWidget({
     super.key,
     required this.onBackPressed,
+    this.onHistoryPressed,
+    this.onNewChatPressed,
+    this.title = 'Food Insight AI',
+    this.subtitle = 'Nutrition assistant',
   });
 
   @override
@@ -15,7 +23,7 @@ class ChatHeaderWidget extends StatelessWidget {
     return Container(
       padding: EdgeInsets.only(
           left: 4.w,
-          right: 4.w,
+          right: 3.w,
           top: MediaQuery.of(context).padding.top + 1.h,
           bottom: 1.5.h),
       decoration: BoxDecoration(
@@ -75,7 +83,7 @@ class ChatHeaderWidget extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Food Insight AI',
+                  title,
                   style: FoodInsightTypography.heading(
                     size: 17,
                     weight: FontWeight.w800,
@@ -95,12 +103,16 @@ class ChatHeaderWidget extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 1.5.w),
-                    Text(
-                      'Nutrition assistant',
-                      style: FoodInsightTypography.caption(
-                        size: 13,
-                        color: FoodInsightColors.scannerGreen,
-                        weight: FontWeight.w700,
+                    Flexible(
+                      child: Text(
+                        subtitle,
+                        style: FoodInsightTypography.caption(
+                          size: 13,
+                          color: FoodInsightColors.scannerGreen,
+                          weight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -108,6 +120,24 @@ class ChatHeaderWidget extends StatelessWidget {
               ],
             ),
           ),
+          if (onHistoryPressed != null)
+            IconButton(
+              tooltip: 'Chat history',
+              onPressed: onHistoryPressed,
+              icon: const Icon(
+                Icons.history_rounded,
+                color: FoodInsightColors.deepCharcoal,
+              ),
+            ),
+          if (onNewChatPressed != null)
+            IconButton(
+              tooltip: 'New chat',
+              onPressed: onNewChatPressed,
+              icon: const Icon(
+                Icons.add_comment_outlined,
+                color: FoodInsightColors.scannerGreenDark,
+              ),
+            ),
         ],
       ),
     );

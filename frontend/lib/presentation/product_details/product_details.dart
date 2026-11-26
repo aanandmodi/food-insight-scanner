@@ -26,6 +26,7 @@ import './widgets/product_image_widget.dart';
 import './widgets/product_info_widget.dart';
 import './widgets/safety_alerts_widget.dart';
 import './widgets/ai_analysis_widget.dart';
+import '../../routes/app_routes.dart';
 import '../../theme/app_design_system.dart';
 
 class ProductDetails extends StatefulWidget {
@@ -208,6 +209,23 @@ class _ProductDetailsState extends State<ProductDetails> {
     } finally {
       if (mounted) setState(() => _explaining = false);
     }
+  }
+
+  void _discussProduct() {
+    final fit = FoodFitService.evaluate(productData,
+        allergies: userAllergies,
+        conditions: userConditions,
+        dietaryPreference: dietaryPreference,
+        healthGoal: healthGoal,
+        dailyContext: _dailyContext);
+    Navigator.pushNamed(
+      context,
+      AppRoutes.aiChatAssistant,
+      arguments: {
+        'product': productData,
+        'foodFit': fit.toMap(),
+      },
+    );
   }
 
   @override
@@ -622,6 +640,16 @@ class _ProductDetailsState extends State<ProductDetails> {
                             label: Text(_explaining
                                 ? 'Preparing explanation…'
                                 : 'Explain my Food Fit'),
+                          ),
+                        if (context.watch<FeatureFlagService>().aiChatEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: OutlinedButton.icon(
+                              onPressed: _discussProduct,
+                              icon: const Icon(
+                                  Icons.chat_bubble_outline_rounded),
+                              label: const Text('Discuss this product with AI'),
+                            ),
                           ),
                         const SizedBox(height: 16),
                         if (context

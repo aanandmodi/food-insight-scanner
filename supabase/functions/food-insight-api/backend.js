@@ -83,22 +83,175 @@ function parseJsonModelText(rawText) {
   const cleaned = rawText.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   return JSON.parse(cleaned);
 }
-async function callGeminiFlash(task, geminiKey, messages, fetcher, env, options) {
+function createJsonReplyStreamExtractor() {
+  let fullRaw = "";
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+  let unicodeLeft = 0;
+  let unicodeBuf = "";
+  let stringKind = "none";
+  let currentKey = "";
+  let expectKeyAtDepth1 = false;
+  let lastKeyAtDepth1 = "";
+  let expectingColon = false;
+  let expectingValue = false;
+  let doneReply = false;
+  const feed = (chunk) => {
+    let deltaOut = "";
+    for (let i = 0; i < chunk.length; i++) {
+      const ch = chunk[i];
+      fullRaw += ch;
+      if (!inString) {
+        if (ch === "{") {
+          depth++;
+          expectKeyAtDepth1 = depth === 1;
+          expectingColon = false;
+          expectingValue = false;
+        } else if (ch === "}") {
+          depth = Math.max(0, depth - 1);
+          expectingColon = false;
+          expectingValue = false;
+        } else if (ch === "[") {
+          depth++;
+        } else if (ch === "]") {
+          depth = Math.max(0, depth - 1);
+        } else if (ch === ":" && depth === 1 && expectingColon) {
+          expectingColon = false;
+          expectingValue = true;
+        } else if (ch === "," && depth === 1) {
+          expectKeyAtDepth1 = true;
+          expectingValue = false;
+          expectingColon = false;
+        } else if (ch === '"') {
+          inString = true;
+          escaping = false;
+          if (depth === 1 && expectKeyAtDepth1) {
+            stringKind = "key";
+            currentKey = "";
+            expectKeyAtDepth1 = false;
+          } else if (depth === 1 && expectingValue && lastKeyAtDepth1 === "reply" && !doneReply) {
+            stringKind = "replyValue";
+            expectingValue = false;
+          } else {
+            stringKind = "otherValue";
+            expectingValue = false;
+          }
+        } else if (!/\s/.test(ch) && depth === 1 && expectingValue) {
+          expectingValue = false;
+        }
+        continue;
+      }
+      if (unicodeLeft > 0) {
+        unicodeBuf += ch;
+        unicodeLeft--;
+        if (unicodeLeft === 0) {
+          const code = Number.parseInt(unicodeBuf, 16);
+          const decoded = Number.isFinite(code) ? String.fromCharCode(code) : "";
+          if (stringKind === "key") currentKey += decoded;
+          else if (stringKind === "replyValue") deltaOut += decoded;
+          unicodeBuf = "";
+        }
+        continue;
+      }
+      if (escaping) {
+        escaping = false;
+        let decoded = ch;
+        if (ch === "n") decoded = "\n";
+        else if (ch === "r") decoded = "\r";
+        else if (ch === "t") decoded = "	";
+        else if (ch === "b") decoded = "\b";
+        else if (ch === "f") decoded = "\f";
+        else if (ch === "u") {
+          unicodeLeft = 4;
+          unicodeBuf = "";
+          continue;
+        }
+        if (stringKind === "key") currentKey += decoded;
+        else if (stringKind === "replyValue") deltaOut += decoded;
+        continue;
+      }
+      if (ch === "\\") {
+        escaping = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        if (stringKind === "key") {
+          lastKeyAtDepth1 = currentKey;
+          expectingColon = true;
+        } else if (stringKind === "replyValue") {
+          doneReply = true;
+        }
+        stringKind = "none";
+        continue;
+      }
+      if (stringKind === "key") currentKey += ch;
+      else if (stringKind === "replyValue") deltaOut += ch;
+    }
+    return deltaOut;
+  };
+  return {
+    feed,
+    rawText: () => fullRaw
+  };
+}
+async function consumeUpstreamSse(body, extractContent, onDelta) {
+  const extractor = createJsonReplyStreamExtractor();
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let stopReason = "";
+  const processLines = (lines) => {
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      let parsed;
+      try {
+        parsed = JSON.parse(payload);
+      } catch {
+        continue;
+      }
+      const { token, stopReason: reason } = extractContent(parsed);
+      if (reason) stopReason = reason;
+      if (token) {
+        const readableDelta = extractor.feed(token);
+        if (readableDelta) onDelta(readableDelta);
+      }
+    }
+  };
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split(/\r?\n/);
+    buffer = parts.pop() ?? "";
+    processLines(parts);
+  }
+  const tail = decoder.decode();
+  if (tail) buffer += tail;
+  if (buffer.trim()) processLines(buffer.split(/\r?\n/));
+  if (stopReason && stopReason !== "stop" && stopReason !== "STOP") {
+    throw new Error("Incomplete model response");
+  }
+  return extractor.rawText();
+}
+async function callGeminiFlash(task, geminiKey, messages, fetcher, env, options, onDelta) {
   const model = geminiModelFor(task, env);
+  const endpoint = onDelta ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse` : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   let response;
   try {
-    response = await fetcher(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": geminiKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(toGeminiPayload(task, messages)),
-        signal: AbortSignal.timeout(22e3)
-      }
-    );
+    response = await fetcher(endpoint, {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": geminiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(toGeminiPayload(task, messages)),
+      signal: AbortSignal.timeout(22e3)
+    });
   } catch {
     circuitCooldownUntil.gemini = Date.now() + 3e4;
     void reportProviderHealth("gemini", false, 504, 30, options, fetcher);
@@ -121,6 +274,25 @@ async function callGeminiFlash(task, geminiKey, messages, fetcher, env, options)
     }
     throw new HttpsError("unavailable", "AI is temporarily unavailable.");
   }
+  if (onDelta && response.body) {
+    const rawJson = await consumeUpstreamSse(
+      response.body,
+      (ev) => {
+        const cand = ev?.candidates?.[0];
+        const parts2 = Array.isArray(cand?.content?.parts) ? cand.content.parts : [];
+        const text3 = parts2.map((p) => String(p?.text ?? "")).join("");
+        return {
+          token: text3 || void 0,
+          stopReason: cand?.finishReason ? String(cand.finishReason) : void 0
+        };
+      },
+      onDelta
+    );
+    if (!rawJson.trim()) throw new Error("Empty model response");
+    circuitCooldownUntil.gemini = 0;
+    void reportProviderHealth("gemini", true, 200, 0, options, fetcher);
+    return parseJsonModelText(rawJson);
+  }
   const payload = await response.json();
   const candidate = payload?.candidates?.[0];
   const finishReason = String(candidate?.finishReason ?? "").toUpperCase();
@@ -135,11 +307,22 @@ async function callGeminiFlash(task, geminiKey, messages, fetcher, env, options)
   return parseJsonModelText(text2);
 }
 async function requestAi(task, apiKey, messages, fetcher = fetch, env = process.env, options) {
+  return executeAiRequest(task, apiKey, messages, fetcher, env, options);
+}
+async function requestAiStream(task, apiKey, messages, onDelta, fetcher = fetch, env = process.env, options) {
+  return executeAiRequest(task, apiKey, messages, fetcher, env, options, onDelta);
+}
+async function executeAiRequest(task, apiKey, messages, fetcher = fetch, env = process.env, options, onDelta) {
   const geminiKey = options?.geminiApiKey?.trim() || env.GEMINI_API_KEY?.trim() || "";
   const hasGeminiFallback = geminiKey.length > 0;
   const groqKey = apiKey?.trim() || "";
   const shouldTryGroq = groqKey.length > 0 && (options?.bypassCircuit || !hasGeminiFallback || !isProviderCircuitOpen("groq"));
   let groqFailure = null;
+  let emittedAnyDelta = false;
+  const emitDelta = onDelta ? (text2) => {
+    emittedAnyDelta = true;
+    onDelta(text2);
+  } : void 0;
   if (shouldTryGroq) {
     const models = modelsFor(task, env);
     for (let index = 0; index < models.length; index++) {
@@ -153,6 +336,7 @@ async function requestAi(task, apiKey, messages, fetcher = fetch, env = process.
             temperature: 0.2,
             max_completion_tokens: task === "plan" ? 4e3 : 2500,
             response_format: { type: "json_object" },
+            ...emitDelta ? { stream: true } : {},
             messages
           }),
           signal: AbortSignal.timeout(22e3)
@@ -184,6 +368,22 @@ async function requestAi(task, apiKey, messages, fetcher = fetch, env = process.
         groqFailure = new HttpsError("unavailable", "AI is temporarily unavailable.");
         break;
       }
+      if (emitDelta && response.body) {
+        const rawJson = await consumeUpstreamSse(
+          response.body,
+          (ev) => {
+            const choice2 = ev?.choices?.[0];
+            return {
+              token: typeof choice2?.delta?.content === "string" ? choice2.delta.content : void 0,
+              stopReason: choice2?.finish_reason ? String(choice2.finish_reason) : void 0
+            };
+          },
+          emitDelta
+        );
+        circuitCooldownUntil.groq = 0;
+        void reportProviderHealth("groq", true, 200, 0, options, fetcher);
+        return parseJsonModelText(rawJson);
+      }
       const result = await response.json();
       const choice = result.choices?.[0];
       if (choice?.finish_reason !== "stop") throw new Error("Incomplete model response");
@@ -192,8 +392,8 @@ async function requestAi(task, apiKey, messages, fetcher = fetch, env = process.
       return JSON.parse(choice.message.content);
     }
   }
-  if (hasGeminiFallback && (options?.bypassCircuit || !isProviderCircuitOpen("gemini"))) {
-    return callGeminiFlash(task, geminiKey, messages, fetcher, env, options);
+  if (!emittedAnyDelta && hasGeminiFallback && (options?.bypassCircuit || !isProviderCircuitOpen("gemini"))) {
+    return callGeminiFlash(task, geminiKey, messages, fetcher, env, options, emitDelta);
   }
   if (groqFailure) throw groqFailure;
   throw new HttpsError("unavailable", "AI is temporarily unavailable.");
@@ -1290,10 +1490,11 @@ async function resolveServerContext(uid, task, content, clientData, deps = {}) {
         `activity_logs?user_id=eq.${encodedUid}&id=eq.${todayKey}&deleted=eq.false&select=data&limit=1`,
         fetcher
       ) : Promise.resolve([]);
+      const sessionId = typeof clientData?.sessionId === "string" ? clientData.sessionId.trim().slice(0, 128) : "";
       const chatPromise = task === "chat" ? querySupabaseRest(
         baseUrl,
         serviceKey,
-        `chat_messages?user_id=eq.${encodedUid}&deleted=eq.false&select=data&order=updated_at.desc&limit=12`,
+        `chat_messages?user_id=eq.${encodedUid}&deleted=eq.false&select=data&order=updated_at.desc&limit=40`,
         fetcher
       ) : Promise.resolve([]);
       const [profileRows, dietRows, scanRows, activityRows, chatRows] = await Promise.all([
@@ -1315,7 +1516,15 @@ async function resolveServerContext(uid, task, content, clientData, deps = {}) {
         serverActivity = rawAct;
       }
       if (chatRows.length > 0) {
-        const lines = chatRows.map((r) => r?.data).filter((d) => d && typeof d === "object" && d.isGreeting !== true && d.isError !== true).reverse().map((d) => `${d.isUser ? "User" : "Assistant"}: ${String(d.message ?? "").slice(0, 600)}`).filter(Boolean);
+        const filteredChat = chatRows.map((r) => r?.data).filter((d) => {
+          if (!d || typeof d !== "object" || d.isGreeting === true || d.isError === true) {
+            return false;
+          }
+          if (!sessionId) return true;
+          const rowSession = typeof d.sessionId === "string" ? d.sessionId.trim() : "";
+          return rowSession === sessionId || !rowSession && sessionId === "default";
+        }).slice(0, 12);
+        const lines = filteredChat.reverse().map((d) => `${d.isUser ? "User" : "Assistant"}: ${String(d.message ?? "").slice(0, 600)}`).filter(Boolean);
         if (lines.length > 0) {
           serverChatHistory = lines.join("\n").slice(-7e3);
         }
@@ -1414,13 +1623,7 @@ function compactProductForModel(product) {
     ...product.nutrition && typeof product.nutrition === "object" ? { nutrition: product.nutrition } : {}
   };
 }
-var aiTask = onCall({
-  region: "asia-south1",
-  timeoutSeconds: 60,
-  enforceAppCheck: true,
-  secrets: [groqApiKey, geminiApiKey, supabaseAdminKey],
-  maxInstances: 10
-}, async (request) => {
+async function prepareAndAuthorizeAiTask(request) {
   if (!request.auth) throw new HttpsError3("unauthenticated", "Sign in to use AI.");
   if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
     throw new HttpsError3("permission-denied", "Account deletion is in progress.");
@@ -1553,11 +1756,11 @@ var aiTask = onCall({
   } catch {
     throw new HttpsError3("invalid-argument", "The request is too large or has invalid fields.");
   }
-  const bridgeReq = request;
-  const forwarded = bridgeReq.rawRequest?.headers?.["x-forwarded-for"];
-  const rawIp = bridgeReq.rawRequest?.ip || (Array.isArray(forwarded) ? forwarded[0] : forwarded);
-  const ipHashForQuota = bridgeReq.ipCheckedAtGateway ? null : bridgeReq.ipHash || await hashClientIp(rawIp);
-  const isGuest = request.auth.token.firebase?.sign_in_provider === "anonymous";
+  const forwarded = request.rawRequest?.headers?.["x-forwarded-for"];
+  const rawIp = request.rawRequest?.ip || (Array.isArray(forwarded) ? forwarded[0] : forwarded);
+  const ipHashForQuota = request.ipCheckedAtGateway ? null : request.ipHash || await hashClientIp(rawIp);
+  const firebaseMeta = request.auth.token?.firebase;
+  const isGuest = firebaseMeta?.sign_in_provider === "anonymous";
   await consumeAiQuota({
     uid: request.auth.uid,
     task,
@@ -1567,59 +1770,133 @@ var aiTask = onCall({
     ipPerMinuteLimit: config.aiIpPerMinuteLimit,
     serviceRoleKey
   });
-  try {
-    const result = await requestAi(task, aiApiKey, messages, fetch, process.env, {
-      geminiApiKey: geminiKey,
-      serviceRoleKey
-    });
-    const validated = validateOutput(task, result);
-    const targetValidated = task === "macros" ? validateMacroAdjustment(validated, authoritative.contextForModel, config.macroMaxAdjustmentPercent) : validated;
-    const safetyEvaluation = enforceOutputSafety(
-      task,
-      targetValidated,
+  return {
+    uid: request.auth.uid,
+    task,
+    config,
+    serviceRoleKey,
+    aiApiKey,
+    geminiKey,
+    authoritative,
+    messages
+  };
+}
+async function finalizeAiOutput(prepared, rawResult) {
+  const validated = validateOutput(prepared.task, rawResult);
+  const targetValidated = prepared.task === "macros" ? validateMacroAdjustment(
+    validated,
+    prepared.authoritative.contextForModel,
+    prepared.config.macroMaxAdjustmentPercent
+  ) : validated;
+  const safetyEvaluation = enforceOutputSafety(
+    prepared.task,
+    targetValidated,
+    {
+      allergies: prepared.authoritative.profileForModel.allergies,
+      dietaryPreferences: prepared.authoritative.profileForModel.dietaryPreferences,
+      diseases: prepared.authoritative.diseasesForSafety
+    },
+    prepared.authoritative.foodFit ?? void 0
+  );
+  if (safetyEvaluation.blocked) {
+    await recordAbuseEvent(
       {
-        allergies: authoritative.profileForModel.allergies,
-        dietaryPreferences: authoritative.profileForModel.dietaryPreferences,
-        diseases: authoritative.diseasesForSafety
+        userId: prepared.uid,
+        task: prepared.task,
+        category: "unsafe_output",
+        severity: "high",
+        ruleId: safetyEvaluation.ruleId || "output-safety-conflict",
+        snippet: safetyEvaluation.reason || "Output conflicted with user safety rules"
       },
-      authoritative.foodFit ?? void 0
+      { serviceRoleKey: prepared.serviceRoleKey }
     );
-    if (safetyEvaluation.blocked) {
-      await recordAbuseEvent(
-        {
-          userId: request.auth.uid,
-          task,
-          category: "unsafe_output",
-          severity: "high",
-          ruleId: safetyEvaluation.ruleId || "output-safety-conflict",
-          snippet: safetyEvaluation.reason || "Output conflicted with user safety rules"
-        },
-        { serviceRoleKey }
-      );
-      throw new HttpsError3(
-        "failed-precondition",
-        safetyEvaluation.reason || "This suggestion conflicted with your dietary or allergy settings. Please retry."
-      );
-    }
-    if (safetyEvaluation.safetyFlags.some((f) => f.includes("removed") || f.includes("override"))) {
-      await recordAbuseEvent(
-        {
-          userId: request.auth.uid,
-          task,
-          category: "unsafe_output",
-          severity: "medium",
-          ruleId: safetyEvaluation.safetyFlags.join(",").slice(0, 64),
-          snippet: "AI output adjusted by server safety cross-check"
-        },
-        { serviceRoleKey }
-      );
-    }
-    return safetyEvaluation.value;
+    throw new HttpsError3(
+      "failed-precondition",
+      safetyEvaluation.reason || "This suggestion conflicted with your dietary or allergy settings. Please retry."
+    );
+  }
+  if (safetyEvaluation.safetyFlags.some((f) => f.includes("removed") || f.includes("override"))) {
+    await recordAbuseEvent(
+      {
+        userId: prepared.uid,
+        task: prepared.task,
+        category: "unsafe_output",
+        severity: "medium",
+        ruleId: safetyEvaluation.safetyFlags.join(",").slice(0, 64),
+        snippet: "AI output adjusted by server safety cross-check"
+      },
+      { serviceRoleKey: prepared.serviceRoleKey }
+    );
+  }
+  return safetyEvaluation.value;
+}
+var aiTask = onCall({
+  region: "asia-south1",
+  timeoutSeconds: 60,
+  enforceAppCheck: true,
+  secrets: [groqApiKey, geminiApiKey, supabaseAdminKey],
+  maxInstances: 10
+}, async (request) => {
+  const prepared = await prepareAndAuthorizeAiTask(
+    request
+  );
+  try {
+    const result = await requestAi(
+      prepared.task,
+      prepared.aiApiKey,
+      prepared.messages,
+      fetch,
+      process.env,
+      {
+        geminiApiKey: prepared.geminiKey,
+        serviceRoleKey: prepared.serviceRoleKey
+      }
+    );
+    return await finalizeAiOutput(prepared, result);
   } catch (error) {
     if (error instanceof HttpsError3) throw error;
     throw new HttpsError3("unavailable", "AI could not complete this request. Please retry later.");
   }
 });
+async function aiTaskStream(request) {
+  const prepared = await prepareAndAuthorizeAiTask(
+    request
+  );
+  const encoder = new TextEncoder();
+  const formatEvent = (event, payload) => encoder.encode(`event: ${event}
+data: ${JSON.stringify(payload)}
+
+`);
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        const result = await requestAiStream(
+          prepared.task,
+          prepared.aiApiKey,
+          prepared.messages,
+          (deltaText) => {
+            controller.enqueue(formatEvent("delta", { text: deltaText }));
+          },
+          fetch,
+          process.env,
+          {
+            geminiApiKey: prepared.geminiKey,
+            serviceRoleKey: prepared.serviceRoleKey
+          }
+        );
+        const safeOutput = await finalizeAiOutput(prepared, result);
+        controller.enqueue(formatEvent("done", { data: safeOutput }));
+      } catch (error) {
+        const safe = error;
+        const code = safe?.code || "unavailable";
+        const message = code === "unavailable" ? "AI could not complete this request. Please retry later." : safe?.message || "Request failed.";
+        controller.enqueue(formatEvent("error", { code, message }));
+      } finally {
+        controller.close();
+      }
+    }
+  });
+}
 
 // src/alternatives.ts
 import { onCall as onCall2, HttpsError as HttpsError4 } from "firebase-functions/v2/https";
@@ -1910,6 +2187,7 @@ var requestAccountDeletion = onCall4({
 });
 export {
   aiTask,
+  aiTaskStream,
   alternatives,
   requestAccountDeletion,
   scanProduct

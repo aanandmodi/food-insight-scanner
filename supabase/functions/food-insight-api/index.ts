@@ -56,6 +56,12 @@ Deno.serve(createHandler({
   // The shared handlers read only data/auth/app/ipHash, populated above by this bridge.
   invoke: (name, request) => {
     const handler = handlers[name as keyof typeof handlers];
-    return handler.run(request as unknown as Parameters<typeof handler.run>[0]);
+    return (handler as { run: (req: unknown) => Promise<unknown> }).run(request);
+  },
+  invokeStream: async (name, request) => {
+    if (name !== 'aiTask' || typeof handlers.aiTaskStream !== 'function') {
+      throw { code: 'invalid-argument', message: 'Streaming is unavailable for this operation.' };
+    }
+    return handlers.aiTaskStream(request);
   },
 }));

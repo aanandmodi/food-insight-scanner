@@ -4,6 +4,7 @@ type Dependencies = {
   authenticate: (token: string) => Promise<Identity>;
   attest: (token: string) => Promise<{ appId: string }>;
   invoke: (name: string, request: Record<string, unknown>) => Promise<unknown>;
+  invokeStream?: (name: string, request: Record<string, unknown>) => Promise<ReadableStream<Uint8Array>>;
   checkIpRateLimit?: (ipHash: string, operation: string) => Promise<IpRateCheckResult>;
   ipHashSalt?: string;
 };
@@ -11,6 +12,11 @@ const status: Record<string, number> = { 'invalid-argument': 400, unauthenticate
   'permission-denied': 403, 'not-found': 404, 'failed-precondition': 412,
   'resource-exhausted': 429, unavailable: 503, 'deadline-exceeded': 504 };
 const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+const sseHeaders = {
+  'Content-Type': 'text/event-stream; charset=utf-8',
+  'Cache-Control': 'no-cache, no-store',
+  'Connection': 'keep-alive',
+};
 const reply = (data: unknown, code = 200) => new Response(JSON.stringify(data), { status: code, headers });
 
 export async function extractHashedIp(request: Request, salt = 'food-insight-ip-v1'): Promise<string | undefined> {
@@ -78,13 +84,20 @@ export function createHandler(deps: Dependencies) {
         ipCheckedAtGateway = true;
       }
 
-      const data = await deps.invoke(body.operation, {
+      const payload = {
         data: body.data ?? {},
         auth,
         app,
         ...(ipHash ? { ipHash } : {}),
         ...(ipCheckedAtGateway ? { ipCheckedAtGateway: true } : {}),
-      });
+      };
+
+      if (body.operation === 'aiTask' && body.stream === true && deps.invokeStream) {
+        const stream = await deps.invokeStream(body.operation, payload);
+        return new Response(stream, { status: 200, headers: sseHeaders });
+      }
+
+      const data = await deps.invoke(body.operation, payload);
       return reply({ data });
     } catch (error) {
       const safe = error as { code?: string; message?: string; details?: {retryAfterSeconds?:number} };

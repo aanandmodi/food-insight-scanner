@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-import { requestAi } from "./aiProvider";
+import { requestAi, requestAiStream } from "./aiProvider";
 import { aiMessages } from "./aiMessages";
 import { macroBaseline, validateMacroAdjustment } from "./macroSafety";
 import { AiTask, boundedString, validateOutput, requiresEmailVerification } from "./aiValidation";
@@ -14,7 +14,7 @@ import {
   sanitizeUntrustedText,
 } from "./promptShield";
 import { consumeAiQuota, hashClientIp } from "./quotaService";
-import { resolveServerContext } from "./serverContext";
+import { AuthoritativeServerContext, resolveServerContext } from "./serverContext";
 import { enforceOutputSafety } from "./outputSafety";
 import { geminiApiKey, groqApiKey, readSecretOrEnv, supabaseAdminKey } from "./secrets";
 
@@ -44,13 +44,24 @@ function compactProductForModel(product: Record<string, any> | null): Record<str
   };
 }
 
-export const aiTask = onCall({
-  region: "asia-south1",
-  timeoutSeconds: 60,
-  enforceAppCheck: true,
-  secrets: [groqApiKey, geminiApiKey, supabaseAdminKey],
-  maxInstances: 10,
-}, async (request) => {
+interface PreparedAiRequest {
+  uid: string;
+  task: AiTask;
+  config: Record<string, any>;
+  serviceRoleKey: string | undefined;
+  aiApiKey: string;
+  geminiKey: string;
+  authoritative: AuthoritativeServerContext;
+  messages: { role: string; content: string }[];
+}
+
+async function prepareAndAuthorizeAiTask(request: {
+  auth?: { uid: string; token?: Record<string, unknown> };
+  data?: unknown;
+  ipHash?: string;
+  ipCheckedAtGateway?: boolean;
+  rawRequest?: { ip?: string; headers?: Record<string, string | string[] | undefined> };
+}): Promise<PreparedAiRequest> {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to use AI.");
   if ((await db.doc(`accountDeletionGuards/${request.auth.uid}`).get()).exists) {
     throw new HttpsError("permission-denied", "Account deletion is in progress.");
@@ -146,7 +157,7 @@ export const aiTask = onCall({
   }
 
   // Zero-Trust Server Context: prefer Supabase user records and Firestore canonical products over client claims.
-  let authoritative;
+  let authoritative: AuthoritativeServerContext;
   try {
     authoritative = await resolveServerContext(
       request.auth.uid,
@@ -170,7 +181,6 @@ export const aiTask = onCall({
     }
   }
 
-  // Layer 3: Strict role separation + delimited untrusted data envelope built from authoritative context.
   let messages: { role: string; content: string }[];
   try {
     const modelProduct = compactProductForModel(authoritative.productFacts);
@@ -200,20 +210,15 @@ export const aiTask = onCall({
     throw new HttpsError("invalid-argument", "The request is too large or has invalid fields.");
   }
 
-  // Phase 4 Step 2: Scalable per-tier PostgreSQL sliding-window quota + IP flood shield.
-  const bridgeReq = request as unknown as {
-    ipHash?: string;
-    ipCheckedAtGateway?: boolean;
-    rawRequest?: { ip?: string; headers?: Record<string, string | string[] | undefined> };
-  };
-  const forwarded = bridgeReq.rawRequest?.headers?.["x-forwarded-for"];
+  const forwarded = request.rawRequest?.headers?.["x-forwarded-for"];
   const rawIp =
-    bridgeReq.rawRequest?.ip ||
+    request.rawRequest?.ip ||
     (Array.isArray(forwarded) ? forwarded[0] : forwarded);
-  const ipHashForQuota = bridgeReq.ipCheckedAtGateway
+  const ipHashForQuota = request.ipCheckedAtGateway
     ? null
-    : bridgeReq.ipHash || (await hashClientIp(rawIp));
-  const isGuest = request.auth.token.firebase?.sign_in_provider === "anonymous";
+    : request.ipHash || (await hashClientIp(rawIp));
+  const firebaseMeta = request.auth.token?.firebase as { sign_in_provider?: unknown } | undefined;
+  const isGuest = firebaseMeta?.sign_in_provider === "anonymous";
 
   await consumeAiQuota({
     uid: request.auth.uid,
@@ -225,65 +230,149 @@ export const aiTask = onCall({
     serviceRoleKey,
   });
 
-  // Execute primary Groq with automatic Gemini Flash Free fallback on 429/5xx/timeout.
-  try {
-    const result = await requestAi(task, aiApiKey, messages, fetch, process.env, {
-      geminiApiKey: geminiKey,
-      serviceRoleKey,
-    });
-    const validated = validateOutput(task, result);
-    const targetValidated = task === "macros"
-      ? validateMacroAdjustment(validated, authoritative.contextForModel, config.macroMaxAdjustmentPercent)
-      : validated;
+  return {
+    uid: request.auth.uid,
+    task,
+    config,
+    serviceRoleKey,
+    aiApiKey,
+    geminiKey,
+    authoritative,
+    messages,
+  };
+}
 
-    // Layer 4: Deterministic Allergen & Safety Output Cross-Check.
-    const safetyEvaluation = enforceOutputSafety(
-      task,
-      targetValidated,
+async function finalizeAiOutput(
+  prepared: PreparedAiRequest,
+  rawResult: unknown,
+): Promise<Record<string, any>> {
+  const validated = validateOutput(prepared.task, rawResult);
+  const targetValidated = prepared.task === "macros"
+    ? validateMacroAdjustment(
+        validated,
+        prepared.authoritative.contextForModel,
+        prepared.config.macroMaxAdjustmentPercent,
+      )
+    : validated;
+
+  const safetyEvaluation = enforceOutputSafety(
+    prepared.task,
+    targetValidated,
+    {
+      allergies: prepared.authoritative.profileForModel.allergies,
+      dietaryPreferences: prepared.authoritative.profileForModel.dietaryPreferences,
+      diseases: prepared.authoritative.diseasesForSafety,
+    },
+    prepared.authoritative.foodFit ?? undefined,
+  );
+
+  if (safetyEvaluation.blocked) {
+    await recordAbuseEvent(
       {
-        allergies: authoritative.profileForModel.allergies,
-        dietaryPreferences: authoritative.profileForModel.dietaryPreferences,
-        diseases: authoritative.diseasesForSafety,
+        userId: prepared.uid,
+        task: prepared.task,
+        category: "unsafe_output",
+        severity: "high",
+        ruleId: safetyEvaluation.ruleId || "output-safety-conflict",
+        snippet: safetyEvaluation.reason || "Output conflicted with user safety rules",
       },
-      authoritative.foodFit ?? undefined,
+      { serviceRoleKey: prepared.serviceRoleKey },
     );
+    throw new HttpsError(
+      "failed-precondition",
+      safetyEvaluation.reason || "This suggestion conflicted with your dietary or allergy settings. Please retry.",
+    );
+  }
 
-    if (safetyEvaluation.blocked) {
-      await recordAbuseEvent(
-        {
-          userId: request.auth.uid,
-          task,
-          category: "unsafe_output",
-          severity: "high",
-          ruleId: safetyEvaluation.ruleId || "output-safety-conflict",
-          snippet: safetyEvaluation.reason || "Output conflicted with user safety rules",
-        },
-        { serviceRoleKey },
-      );
-      throw new HttpsError(
-        "failed-precondition",
-        safetyEvaluation.reason || "This suggestion conflicted with your dietary or allergy settings. Please retry.",
-      );
-    }
+  if (safetyEvaluation.safetyFlags.some((f) => f.includes("removed") || f.includes("override"))) {
+    await recordAbuseEvent(
+      {
+        userId: prepared.uid,
+        task: prepared.task,
+        category: "unsafe_output",
+        severity: "medium",
+        ruleId: safetyEvaluation.safetyFlags.join(",").slice(0, 64),
+        snippet: "AI output adjusted by server safety cross-check",
+      },
+      { serviceRoleKey: prepared.serviceRoleKey },
+    );
+  }
 
-    if (safetyEvaluation.safetyFlags.some((f) => f.includes("removed") || f.includes("override"))) {
-      await recordAbuseEvent(
-        {
-          userId: request.auth.uid,
-          task,
-          category: "unsafe_output",
-          severity: "medium",
-          ruleId: safetyEvaluation.safetyFlags.join(",").slice(0, 64),
-          snippet: "AI output adjusted by server safety cross-check",
-        },
-        { serviceRoleKey },
-      );
-    }
+  return safetyEvaluation.value;
+}
 
-    return safetyEvaluation.value;
+export const aiTask = onCall({
+  region: "asia-south1",
+  timeoutSeconds: 60,
+  enforceAppCheck: true,
+  secrets: [groqApiKey, geminiApiKey, supabaseAdminKey],
+  maxInstances: 10,
+}, async (request) => {
+  const prepared = await prepareAndAuthorizeAiTask(
+    request as unknown as Parameters<typeof prepareAndAuthorizeAiTask>[0],
+  );
+  try {
+    const result = await requestAi(
+      prepared.task,
+      prepared.aiApiKey,
+      prepared.messages,
+      fetch,
+      process.env,
+      {
+        geminiApiKey: prepared.geminiKey,
+        serviceRoleKey: prepared.serviceRoleKey,
+      },
+    );
+    return await finalizeAiOutput(prepared, result);
   } catch (error) {
     if (error instanceof HttpsError) throw error;
-    // Neither model output nor user health data is logged.
     throw new HttpsError("unavailable", "AI could not complete this request. Please retry later.");
   }
 });
+
+/**
+ * Edge SSE streaming entrypoint: validates auth, prompt shield, context, and quota upfront
+ * before returning a ReadableStream emitting `delta`, `done`, and `error` SSE events.
+ */
+export async function aiTaskStream(
+  request: Record<string, unknown>,
+): Promise<ReadableStream<Uint8Array>> {
+  const prepared = await prepareAndAuthorizeAiTask(
+    request as unknown as Parameters<typeof prepareAndAuthorizeAiTask>[0],
+  );
+  const encoder = new TextEncoder();
+  const formatEvent = (event: string, payload: unknown): Uint8Array =>
+    encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        const result = await requestAiStream(
+          prepared.task,
+          prepared.aiApiKey,
+          prepared.messages,
+          (deltaText) => {
+            controller.enqueue(formatEvent("delta", { text: deltaText }));
+          },
+          fetch,
+          process.env,
+          {
+            geminiApiKey: prepared.geminiKey,
+            serviceRoleKey: prepared.serviceRoleKey,
+          },
+        );
+        const safeOutput = await finalizeAiOutput(prepared, result);
+        controller.enqueue(formatEvent("done", { data: safeOutput }));
+      } catch (error) {
+        const safe = error as { code?: string; message?: string };
+        const code = safe?.code || "unavailable";
+        const message = code === "unavailable"
+          ? "AI could not complete this request. Please retry later."
+          : (safe?.message || "Request failed.");
+        controller.enqueue(formatEvent("error", { code, message }));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+}

@@ -4,20 +4,22 @@ import '../../../theme/app_design_system.dart';
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController textController;
   final Function(String) onSendMessage;
-  final Function(String) onVoiceMessage;
   final bool isLoading;
-  const ChatInputWidget(
-      {super.key,
-      required this.textController,
-      required this.onSendMessage,
-      required this.onVoiceMessage,
-      this.isLoading = false});
+
+  const ChatInputWidget({
+    super.key,
+    required this.textController,
+    required this.onSendMessage,
+    this.isLoading = false,
+  });
+
   @override
   State<ChatInputWidget> createState() => _ChatInputWidgetState();
 }
 
 class _ChatInputWidgetState extends State<ChatInputWidget> {
   bool _hasText = false;
+
   @override
   void initState() {
     super.initState();
