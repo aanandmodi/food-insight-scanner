@@ -104,114 +104,124 @@ class DietLogPreview extends StatelessWidget {
     final timeStr = entry['time'] as String? ?? '';
     final imageUrl = entry['image'] as String? ?? '';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: FoodInsightRadius.mdAll,
-        border: Border.all(
-          color: FoodInsightColors.lightGray.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Food Image with premium skeuomorphic frame
-          Container(
-            width: 44,
-            height: 44,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onViewAll,
+          borderRadius: FoodInsightRadius.mdAll,
+          child: Ink(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              borderRadius: FoodInsightRadius.smAll,
-              color: FoodInsightColors.warmWhite,
+              color: const Color(0xFFF8FAFC),
+              borderRadius: FoodInsightRadius.mdAll,
               border: Border.all(
                 color: FoodInsightColors.lightGray.withValues(alpha: 0.3),
                 width: 1,
               ),
-            ),
-            child: ClipRRect(
-              borderRadius: FoodInsightRadius.smAll,
-              child: imageUrl.isNotEmpty
-                  ? CustomImageWidget(
-                      imageUrl: imageUrl,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.restaurant_rounded,
-                        size: 20,
-                        color: FoodInsightColors.midGray.withValues(alpha: 0.4),
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: FoodInsightTypography.body(
-                    size: 14,
-                    weight: FontWeight.w800,
-                    color: FoodInsightColors.deepCharcoal,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Text(
-                      '$calories kcal',
-                      style: FoodInsightTypography.caption(
-                        size: 11,
-                        weight: FontWeight.w700,
-                        color: FoodInsightColors.infoBlue,
-                      ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Food Image with premium skeuomorphic frame
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    borderRadius: FoodInsightRadius.smAll,
+                    color: FoodInsightColors.warmWhite,
+                    border: Border.all(
+                      color: FoodInsightColors.lightGray.withValues(alpha: 0.3),
+                      width: 1,
                     ),
-                    if (timeStr.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 3,
-                        height: 3,
-                        decoration: const BoxDecoration(
-                          color: FoodInsightColors.midGray,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: FoodInsightRadius.smAll,
+                    child: imageUrl.isNotEmpty
+                        ? CustomImageWidget(
+                            imageUrl: imageUrl,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                          )
+                        : Center(
+                            child: Icon(
+                              Icons.restaurant_rounded,
+                              size: 20,
+                              color: FoodInsightColors.midGray
+                                  .withValues(alpha: 0.4),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        timeStr,
-                        style: FoodInsightTypography.caption(
-                          size: 11,
-                          weight: FontWeight.w500,
-                          color: FoodInsightColors.midGray,
+                        name,
+                        style: FoodInsightTypography.body(
+                          size: 14,
+                          weight: FontWeight.w800,
+                          color: FoodInsightColors.deepCharcoal,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Text(
+                            '$calories kcal',
+                            style: FoodInsightTypography.caption(
+                              size: 11,
+                              weight: FontWeight.w700,
+                              color: FoodInsightColors.infoBlue,
+                            ),
+                          ),
+                          if (timeStr.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 3,
+                              height: 3,
+                              decoration: const BoxDecoration(
+                                color: FoodInsightColors.midGray,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              timeStr,
+                              style: FoodInsightTypography.caption(
+                                size: 11,
+                                weight: FontWeight.w500,
+                                color: FoodInsightColors.midGray,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
-                  ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: FoodInsightColors.midGray.withValues(alpha: 0.6),
+                  size: 20,
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: FoodInsightColors.midGray.withValues(alpha: 0.6),
-            size: 20,
-          ),
-        ],
+        ),
       ),
     ).animate().fadeIn(
           duration: 300.ms,

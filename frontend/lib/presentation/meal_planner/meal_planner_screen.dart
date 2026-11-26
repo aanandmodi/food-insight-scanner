@@ -3,13 +3,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../services/user_session.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
-import '../../theme/app_design_system.dart';
-import '../../services/cloud_function_service.dart';
-import '../../services/user_data_service.dart';
+
 import '../../data/providers/user_profile_provider.dart';
+import '../../services/analytics_service.dart';
+import '../../services/cloud_function_service.dart';
+import '../../services/feature_flag_service.dart';
+import '../../services/user_data_service.dart';
+import '../../services/user_session.dart';
+import '../../theme/app_design_system.dart';
+import 'widgets/planned_meal_card.dart';
 
 class MealPlannerScreen extends StatefulWidget {
   const MealPlannerScreen({super.key});
@@ -20,6 +24,9 @@ class MealPlannerScreen extends StatefulWidget {
 
 class _MealPlannerScreenState extends State<MealPlannerScreen> {
   bool _isLoading = false;
+  bool _isExportingAll = false;
+  int? _loggingIndex;
+  int? _addingIngredientsIndex;
   Map<String, dynamic>? _mealPlan;
   String _error = '';
   DateTime? _generatedAt;
@@ -62,14 +69,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     try {
       entries = await UserDataService().getDietLog(dateString);
     } catch (e) {
-      debugPrint('Cloud diet log unavailable for planner: $e');
-    }
-    if (entries.isEmpty) {
-      try {
-        entries = await UserDataService().getDietLog(dateString);
-      } catch (e) {
-        debugPrint('Local diet log unavailable for planner: $e');
-      }
+      debugPrint('Diet log unavailable for planner: $e');
     }
 
     double num0(Object? v) =>
@@ -94,6 +94,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
   Future<void> _generateNewPlan() async {
     if (_isLoading) return;
+    if (!context.read<FeatureFlagService>().mealPlannerEnabled) {
+      setState(() {
+        _error = 'AI Meal Planner is disabled by your current configuration.';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -146,9 +152,165 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     return '${diff.inDays} d ago';
   }
 
+  String _normalizeMealType(String? rawType) {
+    final normalized = rawType?.trim().toLowerCase() ?? '';
+    switch (normalized) {
+      case 'breakfast':
+        return 'Breakfast';
+      case 'lunch':
+        return 'Lunch';
+      case 'dinner':
+        return 'Dinner';
+      case 'snack':
+      case 'snacks':
+        return 'Snack';
+      default:
+        return 'Snack';
+    }
+  }
+
+  double _toDouble(Object? raw) =>
+      raw is num ? raw.toDouble() : double.tryParse('$raw') ?? 0.0;
+
+  Future<void> _logPlannedMeal(int index, Map<String, dynamic> meal) async {
+    if (_loggingIndex != null) return;
+    setState(() => _loggingIndex = index);
+    final session = UserSession.instance.capture();
+    try {
+      final name = meal['name']?.toString().trim().isNotEmpty == true
+          ? meal['name'].toString().trim()
+          : 'Planned Meal';
+      final portion = meal['portionDescription']?.toString().trim() ?? '';
+      await UserDataService().saveDietEntry({
+        'id': UserDataService.newId(),
+        'name': name,
+        'brand': 'Meal Planner',
+        'mealType': _normalizeMealType(meal['type']?.toString()),
+        'calories': _toDouble(meal['calories']).round(),
+        'protein': _toDouble(meal['protein']),
+        'carbs': _toDouble(meal['carbs']),
+        'fat': _toDouble(meal['fat']),
+        'sugar': _toDouble(meal['sugar']),
+        if (portion.isNotEmpty) 'portionDescription': portion,
+      });
+      AnalyticsService.record(UsageEvent.mealLogged);
+      if (!mounted || !session.isActive) return;
+      HapticFeedback.lightImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logged "$name" to today\'s Diet Log'),
+          backgroundColor: FoodInsightColors.scannerGreen,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not log planned meal: $e'),
+            backgroundColor: FoodInsightColors.healthRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loggingIndex = null);
+    }
+  }
+
+  Future<void> _addIngredientsToShoppingList(
+    List<String> rawIngredients, {
+    int? mealIndex,
+    String sourceLabel = 'Meal Plan',
+  }) async {
+    if (rawIngredients.isEmpty) return;
+    if (mealIndex != null && _addingIngredientsIndex != null) return;
+    if (mealIndex == null && _isExportingAll) return;
+
+    setState(() {
+      if (mealIndex != null) {
+        _addingIngredientsIndex = mealIndex;
+      } else {
+        _isExportingAll = true;
+      }
+    });
+
+    final session = UserSession.instance.capture();
+    try {
+      final existingItems = await UserDataService().getShoppingList();
+      if (!mounted || !session.isActive) return;
+
+      final existingNames = existingItems
+          .map((item) => (item['name']?.toString() ?? '').trim().toLowerCase())
+          .where((name) => name.isNotEmpty)
+          .toSet();
+
+      var addedCount = 0;
+      for (final raw in rawIngredients) {
+        final ingredient = raw.trim();
+        if (ingredient.isEmpty) continue;
+        final key = ingredient.toLowerCase();
+        if (!existingNames.add(key)) continue;
+
+        await UserDataService().addShoppingItem({
+          'id': UserDataService.newId(),
+          'name': ingredient,
+          'brand': sourceLabel,
+        });
+        addedCount++;
+      }
+
+      if (!mounted || !session.isActive) return;
+      HapticFeedback.lightImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            addedCount == 0
+                ? 'All ingredients are already in your Shopping List'
+                : 'Added $addedCount ${addedCount == 1 ? 'ingredient' : 'ingredients'} to Shopping List',
+          ),
+          backgroundColor: FoodInsightColors.scannerGreen,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not update Shopping List: $e'),
+            backgroundColor: FoodInsightColors.healthRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (mealIndex != null) {
+            _addingIngredientsIndex = null;
+          } else {
+            _isExportingAll = false;
+          }
+        });
+      }
+    }
+  }
+
+  List<String> _collectAllPlanIngredients(List meals) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final raw in meals) {
+      if (raw is! Map) continue;
+      final map = raw.map((k, v) => MapEntry(k.toString(), v));
+      for (final ingredient in extractMealIngredients(map)) {
+        final key = ingredient.toLowerCase();
+        if (seen.add(key)) out.add(ingredient);
+      }
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasPlan = _mealPlan != null;
+    final plannerEnabled =
+        context.watch<FeatureFlagService>().mealPlannerEnabled;
 
     return Scaffold(
       backgroundColor: FoodInsightColors.warmWhite,
@@ -169,7 +331,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (hasPlan)
+          if (hasPlan && plannerEnabled)
             IconButton(
               tooltip: 'Regenerate plan',
               icon: Icon(Icons.autorenew_rounded,
@@ -193,8 +355,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
               child: _isLoading
                   ? _buildLoadingState()
                   : !hasPlan
-                      ? _buildEmptyState()
-                      : _buildPlanView(),
+                      ? _buildEmptyState(plannerEnabled: plannerEnabled)
+                      : _buildPlanView(plannerEnabled: plannerEnabled),
             ),
           ],
         ),
@@ -250,17 +412,16 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
               color: FoodInsightColors.scannerGreen),
           SizedBox(height: 3.h),
           Text(
-            'Building a plan around what you ate today…',
-            textAlign: TextAlign.center,
+            'Crafting your personalized menu...',
             style: FoodInsightTypography.body(
-                size: 16, color: FoodInsightColors.midGray),
-          ).animate().fade().slideY(),
+                size: 16, color: FoodInsightColors.deepCharcoal),
+          ).animate().fadeIn().scale(),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({required bool plannerEnabled}) {
     return Center(
       child: SingleChildScrollView(
         padding: EdgeInsets.all(8.w),
@@ -272,22 +433,25 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                 color: FoodInsightColors.scannerGreen.withValues(alpha: 0.5)),
             SizedBox(height: 3.h),
             Text(
-              'No Meal Plan Yet',
+              plannerEnabled ? 'No Meal Plan Yet' : 'Meal Planner Unavailable',
               style: FoodInsightTypography.heading(
                   size: 24, color: FoodInsightColors.deepCharcoal),
             ),
             SizedBox(height: 1.h),
             Text(
-              'Generate a daily meal plan tailored to your macros, preferences and what you have already logged today.',
+              plannerEnabled
+                  ? 'Generate a daily meal plan tailored to your macros, preferences and what you have already logged today.'
+                  : 'Smart Meal Planner is currently turned off in your app configuration.',
               textAlign: TextAlign.center,
               style: FoodInsightTypography.body(
                   size: 14, color: FoodInsightColors.midGray),
             ),
             SizedBox(height: 5.h),
             ElevatedButton(
-              onPressed: _generateNewPlan,
+              onPressed: plannerEnabled ? _generateNewPlan : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: FoodInsightColors.scannerGreen,
+                disabledBackgroundColor: FoodInsightColors.lightGray,
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                 shape: RoundedRectangleBorder(
                     borderRadius: FoodInsightRadius.mdAll),
@@ -307,72 +471,115 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  Widget _buildPlanView() {
+  Widget _buildPlanView({required bool plannerEnabled}) {
     final plan = _mealPlan!;
     final meals = plan['meals'] as List? ?? const [];
+    final allIngredients = _collectAllPlanIngredients(meals);
 
+    final listView = ListView(
+      padding: EdgeInsets.all(5.w),
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Text(
+          'Your AI Plan',
+          style: FoodInsightTypography.heading(
+              size: 28,
+              weight: FontWeight.w900,
+              color: FoodInsightColors.deepCharcoal),
+        ).animate().fadeIn().slideX(),
+        if (_generatedAt != null) ...[
+          SizedBox(height: 0.4.h),
+          Text(
+            plannerEnabled
+                ? 'Generated ${_freshness(_generatedAt!)} · pull down to refresh'
+                : 'Generated ${_freshness(_generatedAt!)}',
+            style: FoodInsightTypography.caption(
+                size: 11, color: FoodInsightColors.midGray),
+          ),
+        ],
+        SizedBox(height: 1.h),
+        Text(
+          plan['summary']?.toString() ??
+              'Here is your optimized plan for the day.',
+          style: FoodInsightTypography.body(
+              size: 15, color: FoodInsightColors.midGray),
+        ).animate().fadeIn(delay: 100.ms).slideX(),
+        SizedBox(height: 3.h),
+        Row(
+          children: [
+            Expanded(
+                child: _buildTotalCard(
+                    'Calories', '${plan['totalCalories'] ?? 0} kcal')),
+            SizedBox(width: 3.w),
+            Expanded(
+                child: _buildTotalCard(
+                    'Protein', '${plan['totalProtein'] ?? 0} g')),
+          ],
+        ).animate().fadeIn(delay: 200.ms).slideY(),
+        if (allIngredients.isNotEmpty) ...[
+          SizedBox(height: 2.h),
+          OutlinedButton.icon(
+            onPressed: _isExportingAll
+                ? null
+                : () => _addIngredientsToShoppingList(allIngredients),
+            icon: const Icon(Icons.shopping_cart_checkout_rounded),
+            label: Text(
+              _isExportingAll
+                  ? 'Exporting Ingredients...'
+                  : 'Export ${allIngredients.length} Ingredients to Shopping List',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FoodInsightColors.scannerGreenDark,
+              side: BorderSide(
+                color: FoodInsightColors.scannerGreen.withValues(alpha: 0.45),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ],
+        SizedBox(height: 3.h),
+        if (meals.isEmpty)
+          Text(
+            plannerEnabled
+                ? 'The planner returned no meals. Pull down to try again.'
+                : 'This saved plan contains no meals.',
+            style: FoodInsightTypography.body(
+                size: 14, color: FoodInsightColors.midGray),
+          )
+        else
+          ...meals.asMap().entries.map((e) {
+            final idx = e.key;
+            final raw = e.value;
+            if (raw is! Map) return const SizedBox.shrink();
+            final meal = raw.map((k, v) => MapEntry(k.toString(), v));
+            final mealIngredients = extractMealIngredients(meal);
+            final mealName = meal['name']?.toString().trim() ?? 'Meal Plan';
+            return PlannedMealCard(
+              meal: meal,
+              isLogging: _loggingIndex == idx,
+              isAddingIngredients: _addingIngredientsIndex == idx,
+              onLogMeal: () => _logPlannedMeal(idx, meal),
+              onAddIngredients: mealIngredients.isEmpty
+                  ? null
+                  : () => _addIngredientsToShoppingList(
+                        mealIngredients,
+                        mealIndex: idx,
+                        sourceLabel: mealName,
+                      ),
+            )
+                .animate()
+                .fadeIn(delay: Duration(milliseconds: 300 + (idx * 100)))
+                .slideY();
+          }),
+        SizedBox(height: 12.h),
+      ],
+    );
+
+    if (!plannerEnabled) return listView;
     return RefreshIndicator(
       onRefresh: _generateNewPlan,
       color: FoodInsightColors.scannerGreen,
-      child: ListView(
-        padding: EdgeInsets.all(5.w),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          Text(
-            'Your AI Plan',
-            style: FoodInsightTypography.heading(
-                size: 28,
-                weight: FontWeight.w900,
-                color: FoodInsightColors.deepCharcoal),
-          ).animate().fadeIn().slideX(),
-          if (_generatedAt != null) ...[
-            SizedBox(height: 0.4.h),
-            Text(
-              'Generated ${_freshness(_generatedAt!)} · pull down to refresh',
-              style: FoodInsightTypography.caption(
-                  size: 11, color: FoodInsightColors.midGray),
-            ),
-          ],
-          SizedBox(height: 1.h),
-          Text(
-            plan['summary']?.toString() ??
-                'Here is your optimized plan for the day.',
-            style: FoodInsightTypography.body(
-                size: 15, color: FoodInsightColors.midGray),
-          ).animate().fadeIn(delay: 100.ms).slideX(),
-          SizedBox(height: 3.h),
-          Row(
-            children: [
-              Expanded(
-                  child: _buildTotalCard(
-                      'Calories', '${plan['totalCalories'] ?? 0} kcal')),
-              SizedBox(width: 3.w),
-              Expanded(
-                  child: _buildTotalCard(
-                      'Protein', '${plan['totalProtein'] ?? 0} g')),
-            ],
-          ).animate().fadeIn(delay: 200.ms).slideY(),
-          SizedBox(height: 4.h),
-          if (meals.isEmpty)
-            Text(
-              'The planner returned no meals. Pull down to try again.',
-              style: FoodInsightTypography.body(
-                  size: 14, color: FoodInsightColors.midGray),
-            )
-          else
-            ...meals.asMap().entries.map((e) {
-              final idx = e.key;
-              final raw = e.value;
-              if (raw is! Map) return const SizedBox.shrink();
-              final meal = raw.map((k, v) => MapEntry(k.toString(), v));
-              return _buildMealCard(meal)
-                  .animate()
-                  .fadeIn(delay: Duration(milliseconds: 300 + (idx * 100)))
-                  .slideY();
-            }),
-          SizedBox(height: 12.h),
-        ],
-      ),
+      child: listView,
     );
   }
 
@@ -396,77 +603,6 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                   size: 20,
                   weight: FontWeight.w800,
                   color: FoodInsightColors.scannerGreen)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealCard(Map<String, dynamic> meal) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 2.h),
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: FoodInsightRadius.lgAll,
-        border: Border.all(
-            color: FoodInsightColors.scannerGreen.withValues(alpha: 0.2)),
-        boxShadow: FoodInsightShadows.subtleCard,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
-                decoration: BoxDecoration(
-                  color: FoodInsightColors.scannerGreenLight,
-                  borderRadius: FoodInsightRadius.smAll,
-                ),
-                child: Text(
-                  meal['type']?.toString() ?? 'Meal',
-                  style: FoodInsightTypography.caption(
-                      size: 12,
-                      weight: FontWeight.w700,
-                      color: FoodInsightColors.scannerGreenDark),
-                ),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.local_fire_department_rounded,
-                      size: 14, color: FoodInsightColors.healthRed),
-                  SizedBox(width: 1.w),
-                  Text('${meal['calories'] ?? 0} kcal',
-                      style: FoodInsightTypography.caption(
-                          size: 12,
-                          weight: FontWeight.w600,
-                          color: FoodInsightColors.healthRed)),
-                  SizedBox(width: 2.w),
-                  const Icon(Icons.fitness_center_rounded,
-                      size: 14, color: FoodInsightColors.healthGreen),
-                  SizedBox(width: 1.w),
-                  Text('${meal['protein'] ?? 0}g P',
-                      style: FoodInsightTypography.caption(
-                          size: 12,
-                          weight: FontWeight.w600,
-                          color: FoodInsightColors.healthGreen)),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            meal['name']?.toString() ?? 'Unknown Meal',
-            style: FoodInsightTypography.heading(
-                size: 18, color: FoodInsightColors.deepCharcoal),
-          ),
-          SizedBox(height: 1.h),
-          Text(
-            meal['description']?.toString() ?? '',
-            style: FoodInsightTypography.body(
-                size: 14, color: FoodInsightColors.midGray),
-          ),
         ],
       ),
     );
