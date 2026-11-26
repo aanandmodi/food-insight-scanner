@@ -30,6 +30,7 @@ web/.next/
 web/node_modules/
 web/out/
 web/build/
+admin-web/dist/
 
 # iOS generated
 **/ios/Flutter/.last_build_id

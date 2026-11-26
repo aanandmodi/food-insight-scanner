@@ -57,6 +57,12 @@ jobs:
         working-directory: supabase/functions/food-insight-admin
       - run: deno test --allow-env --allow-read --allow-sys handler_test.ts runtime_test.ts
         working-directory: supabase/functions/food-insight-admin
+      - run: npm ci
+        working-directory: admin-web
+      - run: npm test
+        working-directory: admin-web
+      - run: npm run build
+        working-directory: admin-web
 
   android-build:
     runs-on: ubuntu-latest
