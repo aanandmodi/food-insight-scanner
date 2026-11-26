@@ -6,16 +6,17 @@ import { getFirestore } from "firebase-admin/firestore";
 import { requestAi } from "./aiProvider";
 import { aiMessages } from "./aiMessages";
 import { macroBaseline, validateMacroAdjustment } from "./macroSafety";
-import { AiTask, limits, boundedString, validateOutput, requiresEmailVerification } from "./aiValidation";
+import { AiTask, boundedString, validateOutput, requiresEmailVerification } from "./aiValidation";
 import {
   inspectPromptShield,
   moderateWithLlamaGuard,
   recordAbuseEvent,
   sanitizeUntrustedText,
 } from "./promptShield";
+import { consumeAiQuota, hashClientIp } from "./quotaService";
 import { resolveServerContext } from "./serverContext";
 import { enforceOutputSafety } from "./outputSafety";
-import { groqApiKey, readSecretOrEnv, supabaseAdminKey } from "./secrets";
+import { geminiApiKey, groqApiKey, readSecretOrEnv, supabaseAdminKey } from "./secrets";
 
 if (!getApps().length) initializeApp();
 const db = getFirestore();
@@ -47,7 +48,7 @@ export const aiTask = onCall({
   region: "asia-south1",
   timeoutSeconds: 60,
   enforceAppCheck: true,
-  secrets: [groqApiKey, supabaseAdminKey],
+  secrets: [groqApiKey, geminiApiKey, supabaseAdminKey],
   maxInstances: 10,
 }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to use AI.");
@@ -89,6 +90,10 @@ export const aiTask = onCall({
 
   const serviceRoleKey = readSecretOrEnv(supabaseAdminKey, "SUPABASE_SERVICE_ROLE_KEY");
   const aiApiKey = readSecretOrEnv(groqApiKey, "GROQ_API_KEY") ?? "";
+  const geminiKey = readSecretOrEnv(geminiApiKey, "GEMINI_API_KEY") ?? "";
+  if (!aiApiKey && !geminiKey) {
+    throw new HttpsError("failed-precondition", "AI is temporarily unavailable.");
+  }
 
   // Layer 2: Prompt injection & safety-override heuristic shield (+ optional Llama Guard).
   const shieldMatch = inspectPromptShield([content, rawBody.barcode]);
@@ -195,55 +200,37 @@ export const aiTask = onCall({
     throw new HttpsError("invalid-argument", "The request is too large or has invalid fields.");
   }
 
-  const configuredLimit = config.aiDailyLimits?.[task];
-  let dailyLimit = Number.isInteger(configuredLimit) && configuredLimit >= 0 && configuredLimit <= 200
-    ? configuredLimit : limits[task];
-  if (request.auth.token.firebase?.sign_in_provider === "anonymous") {
-    dailyLimit = Math.min(dailyLimit, task === "plan" ? 1 : 5);
-  }
+  // Phase 4 Step 2: Scalable per-tier PostgreSQL sliding-window quota + IP flood shield.
+  const bridgeReq = request as unknown as {
+    ipHash?: string;
+    ipCheckedAtGateway?: boolean;
+    rawRequest?: { ip?: string; headers?: Record<string, string | string[] | undefined> };
+  };
+  const forwarded = bridgeReq.rawRequest?.headers?.["x-forwarded-for"];
+  const rawIp =
+    bridgeReq.rawRequest?.ip ||
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded);
+  const ipHashForQuota = bridgeReq.ipCheckedAtGateway
+    ? null
+    : bridgeReq.ipHash || (await hashClientIp(rawIp));
+  const isGuest = request.auth.token.firebase?.sign_in_provider === "anonymous";
 
-  const day = new Date().toISOString().slice(0, 10);
-  const quota = db.doc(`users/${request.auth.uid}/aiUsage/current`);
-  const globalQuota = db.doc("serviceLimits/aiBudget");
-  await db.runTransaction(async (transaction) => {
-    const data = (await transaction.get(quota)).data() ?? {};
-    const globalData = (await transaction.get(globalQuota)).data() ?? {};
-    if (Number(globalData.cooldownUntil) > Date.now()) {
-      throw new HttpsError(
-        "resource-exhausted",
-        "AI capacity is busy. Your scans and Food Fit still work. Please try again shortly.",
-        { reason: "provider", retryAfterSeconds: Math.ceil((Number(globalData.cooldownUntil) - Date.now()) / 1000) },
-      );
-    }
-    const total = globalData.day === day ? Number(globalData.count) || 0 : 0;
-    const minute = Math.floor(Date.now() / 60000);
-    const minuteCount = globalData.minute === minute ? Number(globalData.minuteCount) || 0 : 0;
-    // Global caps also bound abuse through repeated anonymous account creation.
-    const globalLimit = Number.isInteger(config.aiGlobalDailyLimit)
-      ? Math.max(0, Math.min(200, config.aiGlobalDailyLimit)) : 200;
-    if (total >= globalLimit || minuteCount >= 10) {
-      throw new HttpsError("resource-exhausted", "AI capacity is reached. Please retry later.");
-    }
-    const count = data.day === day ? Number(data[task]) || 0 : 0;
-    const lastRequestAt = Number(task === "quickReplies" ? data.lastQuickReplyAt : data.lastRequestAt) || 0;
-    if (count >= dailyLimit) {
-      throw new HttpsError("resource-exhausted", "Daily AI limit reached. Try again tomorrow.", { reason: "daily-quota" });
-    }
-    if (Date.now() - lastRequestAt < 2000) {
-      throw new HttpsError("resource-exhausted", "Please wait a moment before another request.", { reason: "burst" });
-    }
-    transaction.set(quota, {
-      ...(data.day === day ? data : {}),
-      day,
-      [task]: count + 1,
-      [task === "quickReplies" ? "lastQuickReplyAt" : "lastRequestAt"]: Date.now(),
-    });
-    transaction.set(globalQuota, { day, count: total + 1, minute, minuteCount: minuteCount + 1 });
+  await consumeAiQuota({
+    uid: request.auth.uid,
+    task,
+    isGuest,
+    configuredLimit: config.aiDailyLimits?.[task],
+    ipHash: ipHashForQuota,
+    ipPerMinuteLimit: config.aiIpPerMinuteLimit,
+    serviceRoleKey,
   });
 
-  // Charge attempts, including provider failures, to bound cost under repeated retries.
+  // Execute primary Groq with automatic Gemini Flash Free fallback on 429/5xx/timeout.
   try {
-    const result = await requestAi(task, aiApiKey, messages);
+    const result = await requestAi(task, aiApiKey, messages, fetch, process.env, {
+      geminiApiKey: geminiKey,
+      serviceRoleKey,
+    });
     const validated = validateOutput(task, result);
     const targetValidated = task === "macros"
       ? validateMacroAdjustment(validated, authoritative.contextForModel, config.macroMaxAdjustmentPercent)
@@ -295,12 +282,6 @@ export const aiTask = onCall({
 
     return safetyEvaluation.value;
   } catch (error) {
-    if (error instanceof HttpsError && error.code === "resource-exhausted") {
-      const details = error.details as { reason?: string; retryAfterSeconds?: number } | undefined;
-      if (details?.reason === "provider") {
-        await globalQuota.set({ cooldownUntil: Date.now() + Math.max(1, Math.min(86400, details.retryAfterSeconds ?? 60)) * 1000 }, { merge: true });
-      }
-    }
     if (error instanceof HttpsError) throw error;
     // Neither model output nor user health data is logged.
     throw new HttpsError("unavailable", "AI could not complete this request. Please retry later.");

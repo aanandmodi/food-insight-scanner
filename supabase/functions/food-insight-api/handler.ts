@@ -1,14 +1,30 @@
 type Identity = { uid: string; token: Record<string, unknown> };
+type IpRateCheckResult = { allowed: boolean; retryAfterSeconds?: number };
 type Dependencies = {
   authenticate: (token: string) => Promise<Identity>;
   attest: (token: string) => Promise<{ appId: string }>;
   invoke: (name: string, request: Record<string, unknown>) => Promise<unknown>;
+  checkIpRateLimit?: (ipHash: string, operation: string) => Promise<IpRateCheckResult>;
+  ipHashSalt?: string;
 };
 const status: Record<string, number> = { 'invalid-argument': 400, unauthenticated: 401,
   'permission-denied': 403, 'not-found': 404, 'failed-precondition': 412,
   'resource-exhausted': 429, unavailable: 503, 'deadline-exceeded': 504 };
 const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
 const reply = (data: unknown, code = 200) => new Response(JSON.stringify(data), { status: code, headers });
+
+export async function extractHashedIp(request: Request, salt = 'food-insight-ip-v1'): Promise<string | undefined> {
+  const raw =
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0] ??
+    request.headers.get('x-real-ip') ??
+    '';
+  const ip = raw.trim();
+  if (!ip || ip.length > 128 || !globalThis.crypto?.subtle) return undefined;
+  const bytes = new TextEncoder().encode(`${salt}:${ip}`);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export function createHandler(deps: Dependencies) {
   return async (request: Request): Promise<Response> => {
@@ -42,7 +58,33 @@ export function createHandler(deps: Dependencies) {
       let app;
       try { app = await deps.attest(request.headers.get('x-firebase-appcheck') ?? ''); }
       catch { return reply({ error: { code: 'permission-denied', message: 'This installation could not be verified.' } }, 403); }
-      const data = await deps.invoke(body.operation, { data: body.data ?? {}, auth, app });
+
+      const ipHash = await extractHashedIp(request, deps.ipHashSalt);
+      let ipCheckedAtGateway = false;
+      if (ipHash && deps.checkIpRateLimit && body.operation !== 'requestAccountDeletion') {
+        const ipStatus = await deps.checkIpRateLimit(ipHash, body.operation);
+        if (!ipStatus.allowed) {
+          const retry = typeof ipStatus.retryAfterSeconds === 'number' && Number.isFinite(ipStatus.retryAfterSeconds)
+            ? Math.max(1, Math.min(86400, Math.round(ipStatus.retryAfterSeconds)))
+            : 60;
+          return reply({
+            error: {
+              code: 'resource-exhausted',
+              message: 'Too many requests from this network. Please retry shortly.',
+              details: { reason: 'ip-flood', retryAfterSeconds: retry },
+            },
+          }, 429);
+        }
+        ipCheckedAtGateway = true;
+      }
+
+      const data = await deps.invoke(body.operation, {
+        data: body.data ?? {},
+        auth,
+        app,
+        ...(ipHash ? { ipHash } : {}),
+        ...(ipCheckedAtGateway ? { ipCheckedAtGateway: true } : {}),
+      });
       return reply({ data });
     } catch (error) {
       const safe = error as { code?: string; message?: string; details?: {retryAfterSeconds?:number} };

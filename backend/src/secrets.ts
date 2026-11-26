@@ -1,6 +1,7 @@
 import { defineSecret } from "firebase-functions/params";
 
 export const groqApiKey = defineSecret("GROQ_API_KEY");
+export const geminiApiKey = defineSecret("GEMINI_API_KEY");
 export const supabaseAdminKey = defineSecret("SUPABASE_SERVICE_ROLE_KEY");
 
 /**

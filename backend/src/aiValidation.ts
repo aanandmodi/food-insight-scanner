@@ -1,5 +1,5 @@
 export type AiTask = "meal" | "plan" | "chat" | "macros" | "analysis" | "quickReplies";
-export const limits: Record<AiTask, number> = { meal: 15, plan: 2, chat: 15, macros: 1, analysis: 10, quickReplies: 20 };
+export const limits: Record<AiTask, number> = { meal: 15, plan: 2, chat: 20, macros: 2, analysis: 15, quickReplies: 20 };
 
 export function requiresEmailVerification(
   token: { email_verified?: unknown; firebase?: { sign_in_provider?: unknown } } | undefined,

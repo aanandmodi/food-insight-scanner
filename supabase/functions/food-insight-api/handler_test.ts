@@ -46,3 +46,31 @@ Deno.test('quota errors preserve actionable status without retrying', async () =
     attest: async () => ({ appId: 'app' }), invoke: async () => { count++; throw { code: 'resource-exhausted', message: 'Daily limit reached.' }; } });
   assert((await handler(request({ operation: 'aiTask' }))).status === 429); assert(count === 1);
 });
+Deno.test('IP flood shield hashes client IP and blocks >30 req/min before invoking handlers', async () => {
+  let invoked = false;
+  let capturedHash = '';
+  const handler = createHandler({
+    authenticate: async () => ({ uid: 'alice', token: {} }),
+    attest: async () => ({ appId: 'app' }),
+    checkIpRateLimit: async (ipHash) => {
+      capturedHash = ipHash;
+      return { allowed: false, retryAfterSeconds: 45 };
+    },
+    invoke: async () => { invoked = true; return {}; },
+  });
+  const req = new Request('http://localhost', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer valid-user',
+      'x-firebase-appcheck': 'valid-app',
+      'x-forwarded-for': '198.51.100.77, 10.0.0.2',
+    },
+    body: JSON.stringify({ operation: 'aiTask', data: { task: 'chat', content: 'hi' } }),
+  });
+  const res = await handler(req);
+  assert(res.status === 429);
+  assert(invoked === false);
+  assert(capturedHash.length === 64);
+  assert(!capturedHash.includes('198.51.100.77'));
+});

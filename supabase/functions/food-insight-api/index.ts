@@ -12,7 +12,11 @@ const app = initializeApp({ credential: cert(credentials), projectId: credential
 initializeFirestore(app, { preferRest: true });
 // Load only after the explicit Admin credential is configured.
 const handlers = await import('./backend.js');
+const supabaseUrl = (Deno.env.get('SUPABASE_URL') ?? 'https://tslcgavpkujkfexzmisk.supabase.co').replace(/\/+$/, '');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
+
 Deno.serve(createHandler({
+  ipHashSalt: Deno.env.get('IP_HASH_SALT') ?? 'food-insight-ip-v1',
   authenticate: async token => {
     const decoded = await getAuth(app).verifyIdToken(token, true);
     return { uid: decoded.uid, token: decoded };
@@ -26,7 +30,30 @@ Deno.serve(createHandler({
     if (!allowed.includes(decoded.appId)) throw new Error('Wrong app');
     return { appId: decoded.appId };
   },
-  // The shared handlers read only data/auth/app, populated above by this bridge.
+  checkIpRateLimit: async ipHash => {
+    if (!supabaseServiceKey) return { allowed: true };
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/check_ip_rate_limit`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseServiceKey,
+          Authorization: `Bearer ${supabaseServiceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_ip_hash: ipHash, p_limit: 30 }),
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!response.ok) return { allowed: true };
+      const body = await response.json() as { allowed?: boolean; retryAfterSeconds?: number };
+      return {
+        allowed: body.allowed !== false,
+        retryAfterSeconds: body.retryAfterSeconds,
+      };
+    } catch {
+      return { allowed: true };
+    }
+  },
+  // The shared handlers read only data/auth/app/ipHash, populated above by this bridge.
   invoke: (name, request) => {
     const handler = handlers[name as keyof typeof handlers];
     return handler.run(request as unknown as Parameters<typeof handler.run>[0]);
