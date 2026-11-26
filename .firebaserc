@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "food-insight-scanner-app"
-  }
+  },
+  "targets": {
+    "food-insight-scanner-app": {
+      "hosting": {
+        "legal": [
+          "food-insight-scanner-app"
+        ],
+        "admin": [
+          "food-insight-scanner-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
