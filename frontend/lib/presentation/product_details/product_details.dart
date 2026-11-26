@@ -212,6 +212,7 @@ class _ProductDetailsState extends State<ProductDetails> {
   }
 
   void _discussProduct() {
+    if (!context.read<FeatureFlagService>().aiChatEnabled) return;
     final fit = FoodFitService.evaluate(productData,
         allergies: userAllergies,
         conditions: userConditions,
@@ -222,7 +223,7 @@ class _ProductDetailsState extends State<ProductDetails> {
       context,
       AppRoutes.aiChatAssistant,
       arguments: {
-        'product': productData,
+        'product': AIContextBuilder.productFacts(productData),
         'foodFit': fit.toMap(),
       },
     );
@@ -400,20 +401,6 @@ class _ProductDetailsState extends State<ProductDetails> {
     }
   }
 
-  void _navigateToAIChat() {
-    if (!context.read<FeatureFlagService>().aiChatEnabled) return;
-    Navigator.pushNamed(context, '/ai-chat-assistant', arguments: {
-      'product': AIContextBuilder.productFacts(productData),
-      'foodFit': FoodFitService.evaluate(productData,
-              allergies: userAllergies,
-              conditions: userConditions,
-              dietaryPreference: dietaryPreference,
-              healthGoal: healthGoal,
-              dailyContext: _dailyContext)
-          .toMap(),
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     if (productData.isNotEmpty && !_recordedFitView) {
@@ -547,7 +534,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                       GestureDetector(
                         onTap: () {
                           HapticFeedback.lightImpact();
-                          _navigateToAIChat();
+                          _discussProduct();
                         },
                         child: Container(
                           padding: EdgeInsets.all(2.w),

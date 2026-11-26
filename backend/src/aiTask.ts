@@ -12,6 +12,7 @@ import {
   moderateWithLlamaGuard,
   recordAbuseEvent,
   sanitizeUntrustedText,
+  scrubIndirectPromptInjections,
 } from "./promptShield";
 import { consumeAiQuota, hashClientIp } from "./quotaService";
 import { AuthoritativeServerContext, resolveServerContext } from "./serverContext";
@@ -34,10 +35,14 @@ function compactProductForModel(product: Record<string, any> | null): Record<str
   if (!product) return undefined;
   return {
     ...(typeof product.barcode === "string" ? { barcode: product.barcode } : {}),
-    ...(typeof product.name === "string" ? { name: boundedString(product.name, 160, true) } : {}),
+    ...(typeof product.name === "string"
+      ? { name: scrubIndirectPromptInjections(boundedString(product.name, 160, true), 160) }
+      : {}),
     ...(typeof product.nutriscore === "string" ? { nutriscore: product.nutriscore } : {}),
     ...(typeof product.novaGroup === "number" ? { novaGroup: product.novaGroup } : {}),
-    ...(typeof product.ingredientsText === "string" ? { ingredientsText: boundedString(product.ingredientsText, 1600, true) } : {}),
+    ...(typeof product.ingredientsText === "string"
+      ? { ingredientsText: scrubIndirectPromptInjections(boundedString(product.ingredientsText, 1600, true), 1600) }
+      : {}),
     ...(Array.isArray(product.allergens) ? { allergens: product.allergens.slice(0, 30) } : {}),
     ...(Array.isArray(product.traces) ? { traces: product.traces.slice(0, 30) } : {}),
     ...(product.nutrition && typeof product.nutrition === "object" ? { nutrition: product.nutrition } : {}),

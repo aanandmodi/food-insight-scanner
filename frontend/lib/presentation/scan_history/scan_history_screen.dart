@@ -196,7 +196,13 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
       child: GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();
-          if (barcode.isNotEmpty) {
+          if (scan['nutrition'] is Map) {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.productDetails,
+              arguments: scan,
+            );
+          } else if (barcode.isNotEmpty) {
             Navigator.pushNamed(
               context,
               AppRoutes.productDetails,

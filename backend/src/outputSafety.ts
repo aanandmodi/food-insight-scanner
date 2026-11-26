@@ -36,14 +36,14 @@ export interface OutputSafetyEvaluation {
 }
 
 const ALLERGEN_GROUPS: Record<string, string[]> = {
-  milk: ["milk", "dairy", "whey", "casein", "lactose", "cheese", "butter", "cream", "curd", "yogurt", "paneer", "ghee"],
-  peanut: ["peanut", "peanuts", "groundnut", "groundnuts"],
-  "tree nuts": ["tree nuts", "nuts", "almond", "almonds", "cashew", "cashews", "walnut", "walnuts", "pistachio", "pistachios", "hazelnut", "hazelnuts", "pecan", "pecans"],
+  milk: ["milk", "dairy", "whey", "casein", "lactose", "cheese", "butter", "cream", "curd", "yogurt", "dahi", "paneer", "ghee", "makkhan", "khoya", "mawa"],
+  peanut: ["peanut", "peanuts", "groundnut", "groundnuts", "moongfali", "singdana"],
+  "tree nuts": ["tree nuts", "nuts", "almond", "almonds", "badam", "cashew", "cashews", "kaju", "walnut", "walnuts", "akhrot", "pistachio", "pistachios", "pista", "hazelnut", "hazelnuts", "pecan", "pecans"],
   gluten: ["gluten", "wheat", "maida", "atta", "suji", "sooji", "rava", "semolina", "barley", "rye", "malt"],
   soy: ["soy", "soya", "soybean", "soybeans", "tofu"],
-  egg: ["egg", "eggs", "albumin"],
-  fish: ["fish", "salmon", "tuna", "anchovy", "anchovies"],
-  shellfish: ["shellfish", "shrimp", "prawn", "prawns", "crab", "lobster"],
+  egg: ["egg", "eggs", "albumin", "anda"],
+  fish: ["fish", "salmon", "tuna", "anchovy", "anchovies", "machli"],
+  shellfish: ["shellfish", "shrimp", "prawn", "prawns", "jhinga", "crab", "lobster"],
   sesame: ["sesame", "tahini", "til"],
 };
 

@@ -495,7 +495,15 @@ function sanitizeUntrustedText(raw, maxLength = 16e3) {
   return raw.replace(ZERO_WIDTH_AND_BIDI, "").replace(CONTROL_CHARS, "").replace(/\r\n?/g, "\n").trim().slice(0, maxLength);
 }
 function escapeDelimiters(raw) {
-  return sanitizeUntrustedText(raw, raw.length).replace(/END_UNTRUSTED_DATA/gi, "[end-data-marker]").replace(/UNTRUSTED_DATA/gi, "[data-marker]").replace(/<\|im_(?:start|end)\|>/gi, "[role-marker]").replace(/\[\/?INST\]/gi, "[inst-marker]");
+  return sanitizeUntrustedText(raw, raw.length).replace(/END_UNTRUSTED_DATA/gi, "[end-data-marker]").replace(/UNTRUSTED_DATA/gi, "[data-marker]").replace(/<\/?\s*untrusted_data\s*>/gi, "[data-marker]").replace(/<\|im_(?:start|end)\|>/gi, "[role-marker]").replace(/<\|(?:system|assistant|user|endoftext)\|>/gi, "[role-marker]").replace(/\[\/?INST\]/gi, "[inst-marker]");
+}
+function scrubIndirectPromptInjections(raw, maxLength = 1600) {
+  let cleaned = sanitizeUntrustedText(raw, maxLength);
+  for (const rule of RULES) {
+    const globalPattern = new RegExp(rule.pattern.source, "gi");
+    cleaned = cleaned.replace(globalPattern, "[filtered-text]");
+  }
+  return cleaned;
 }
 var RULES = [
   {
@@ -504,7 +512,7 @@ var RULES = [
     severity: "high",
     requiresModeration: false,
     blocked: true,
-    pattern: /(?:END_UNTRUSTED_DATA|<\|im_start\|>\s*system|<\|system\|>|\[INST\]|\[\s*SYSTEM\s*\])/i
+    pattern: /(?:END_UNTRUSTED_DATA|<\/?\s*untrusted_data\s*>|<\|im_(?:start|end)\|>|<\|(?:system|assistant|user|endoftext)\|>|\[\/?INST\]|\[\s*SYSTEM\s*\]|###\s*(?:SYSTEM|INSTRUCTION)\s*:)/i
   },
   {
     ruleId: "role-override",
@@ -512,7 +520,7 @@ var RULES = [
     severity: "high",
     requiresModeration: false,
     blocked: true,
-    pattern: /(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|your\s+|the\s+)?(?:previous|prior|above|system|developer|safety)\s+(?:instructions?|rules?|prompt|constraints?|directives?)/i
+    pattern: /(?:(?:ignore|disregard|forget|override|bypass|do\s+not\s+follow)\s+(?:all\s+|any\s+|your\s+|the\s+)?(?:(?:previous|prior|above|system|developer|safety|allerg(?:y|ies)|dietary|health)\s+)?(?:instructions?|rules?|prompt|constraints?|directives?|everything\s+(?:above|prior))|(?:ignore|disregard|forget)\s+(?:everything\s+)?(?:above|before\s+this))/i
   },
   {
     ruleId: "jailbreak-persona",
@@ -520,7 +528,7 @@ var RULES = [
     severity: "high",
     requiresModeration: true,
     blocked: true,
-    pattern: /(?:you\s+are\s+now\s+(?:DAN|an?\s+unrestricted|in\s+developer\s+mode|jailbroken)|enable\s+developer\s+mode|act\s+as\s+(?:a\s+hacker|an?\s+unfiltered\s+ai)|new\s+system\s+prompt\s*:)/i
+    pattern: /(?:you\s+are\s+(?:now\s+(?:DAN|an?\s+unrestricted|in\s+developer\s+mode|jailbroken)|no\s+longer\s+a)|from\s+now\s+on\s+you\s+(?:are|will\s+act)|enable\s+developer\s+mode|act\s+as\s+(?:a\s+hacker|an?\s+unfiltered\s+ai)|new\s+system\s+prompt\s*:)/i
   },
   {
     ruleId: "prompt-extract",
@@ -528,7 +536,7 @@ var RULES = [
     severity: "high",
     requiresModeration: false,
     blocked: true,
-    pattern: /(?:reveal|show|print|output|repeat|dump|leak|tell\s+me)\s+(?:your\s+)?(?:exact\s+|full\s+|hidden\s+)?(?:system\s+prompt|developer\s+prompt|hidden\s+instructions?|secret\s+instructions?|api[_\s-]?key)/i
+    pattern: /(?:(?:reveal|show|print|output|repeat|dump|leak|tell\s+me|translate|summarize)\s+(?:your\s+|the\s+)?(?:(?:exact|full)\s+)?(?:(?:system|developer|hidden|secret|initial|original)\s+(?:prompt|instructions?|rules?|message)|(?:exact|full)\s+(?:prompt|instructions?|rules?)|text\s+above|api[_\s-]?key)|what\s+(?:are|were)\s+your\s+(?:(?:exact|full)\s+)?(?:initial|original|hidden|system|developer|secret)\s+(?:instructions?|rules?|prompt))/i
   },
   {
     ruleId: "allergy-safety-bypass",
@@ -536,7 +544,7 @@ var RULES = [
     severity: "high",
     requiresModeration: true,
     blocked: true,
-    pattern: /(?:ignore|override|hide|omit|skip|pretend\s+i\s+don'?t\s+have)\s+(?:my\s+|the\s+|user'?s\s+)?(?:allerg(?:y|ies)|anaphylaxis|gluten|celiac|peanut|dietary\s+restrictions?)/i
+    pattern: /(?:ignore|override|hide|omit|skip|do\s+not\s+follow|pretend\s+i\s+don'?t\s+have)\s+(?:my\s+|your\s+|the\s+|user'?s\s+)?(?:allerg(?:y|ies)|anaphylaxis|gluten|celiac|peanut|dietary\s+restrictions?)/i
   },
   {
     ruleId: "off-topic-code-abuse",
@@ -925,14 +933,14 @@ function nutritionContext(task, value) {
 
 // src/outputSafety.ts
 var ALLERGEN_GROUPS = {
-  milk: ["milk", "dairy", "whey", "casein", "lactose", "cheese", "butter", "cream", "curd", "yogurt", "paneer", "ghee"],
-  peanut: ["peanut", "peanuts", "groundnut", "groundnuts"],
-  "tree nuts": ["tree nuts", "nuts", "almond", "almonds", "cashew", "cashews", "walnut", "walnuts", "pistachio", "pistachios", "hazelnut", "hazelnuts", "pecan", "pecans"],
+  milk: ["milk", "dairy", "whey", "casein", "lactose", "cheese", "butter", "cream", "curd", "yogurt", "dahi", "paneer", "ghee", "makkhan", "khoya", "mawa"],
+  peanut: ["peanut", "peanuts", "groundnut", "groundnuts", "moongfali", "singdana"],
+  "tree nuts": ["tree nuts", "nuts", "almond", "almonds", "badam", "cashew", "cashews", "kaju", "walnut", "walnuts", "akhrot", "pistachio", "pistachios", "pista", "hazelnut", "hazelnuts", "pecan", "pecans"],
   gluten: ["gluten", "wheat", "maida", "atta", "suji", "sooji", "rava", "semolina", "barley", "rye", "malt"],
   soy: ["soy", "soya", "soybean", "soybeans", "tofu"],
-  egg: ["egg", "eggs", "albumin"],
-  fish: ["fish", "salmon", "tuna", "anchovy", "anchovies"],
-  shellfish: ["shellfish", "shrimp", "prawn", "prawns", "crab", "lobster"],
+  egg: ["egg", "eggs", "albumin", "anda"],
+  fish: ["fish", "salmon", "tuna", "anchovy", "anchovies", "machli"],
+  shellfish: ["shellfish", "shrimp", "prawn", "prawns", "jhinga", "crab", "lobster"],
   sesame: ["sesame", "tahini", "til"]
 };
 var TRACE_MARKER = /may contain|traces of|made in a facility/i;
@@ -1614,10 +1622,10 @@ function compactProductForModel(product) {
   if (!product) return void 0;
   return {
     ...typeof product.barcode === "string" ? { barcode: product.barcode } : {},
-    ...typeof product.name === "string" ? { name: boundedString(product.name, 160, true) } : {},
+    ...typeof product.name === "string" ? { name: scrubIndirectPromptInjections(boundedString(product.name, 160, true), 160) } : {},
     ...typeof product.nutriscore === "string" ? { nutriscore: product.nutriscore } : {},
     ...typeof product.novaGroup === "number" ? { novaGroup: product.novaGroup } : {},
-    ...typeof product.ingredientsText === "string" ? { ingredientsText: boundedString(product.ingredientsText, 1600, true) } : {},
+    ...typeof product.ingredientsText === "string" ? { ingredientsText: scrubIndirectPromptInjections(boundedString(product.ingredientsText, 1600, true), 1600) } : {},
     ...Array.isArray(product.allergens) ? { allergens: product.allergens.slice(0, 30) } : {},
     ...Array.isArray(product.traces) ? { traces: product.traces.slice(0, 30) } : {},
     ...product.nutrition && typeof product.nutrition === "object" ? { nutrition: product.nutrition } : {}

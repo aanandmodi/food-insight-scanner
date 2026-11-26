@@ -53,8 +53,23 @@ export function escapeDelimiters(raw: string): string {
   return sanitizeUntrustedText(raw, raw.length)
     .replace(/END_UNTRUSTED_DATA/gi, "[end-data-marker]")
     .replace(/UNTRUSTED_DATA/gi, "[data-marker]")
+    .replace(/<\/?\s*untrusted_data\s*>/gi, "[data-marker]")
     .replace(/<\|im_(?:start|end)\|>/gi, "[role-marker]")
+    .replace(/<\|(?:system|assistant|user|endoftext)\|>/gi, "[role-marker]")
     .replace(/\[\/?INST\]/gi, "[inst-marker]");
+}
+
+/**
+ * Neutralizes suspected indirect prompt injections embedded inside third-party
+ * crowdsourced product metadata (Open Food Facts labels) without blocking the product view.
+ */
+export function scrubIndirectPromptInjections(raw: string, maxLength = 1600): string {
+  let cleaned = sanitizeUntrustedText(raw, maxLength);
+  for (const rule of RULES) {
+    const globalPattern = new RegExp(rule.pattern.source, "gi");
+    cleaned = cleaned.replace(globalPattern, "[filtered-text]");
+  }
+  return cleaned;
 }
 
 interface HeuristicRule {
@@ -73,7 +88,7 @@ const RULES: HeuristicRule[] = [
     severity: "high",
     requiresModeration: false,
     blocked: true,
-    pattern: /(?:END_UNTRUSTED_DATA|<\|im_start\|>\s*system|<\|system\|>|\[INST\]|\[\s*SYSTEM\s*\])/i,
+    pattern: /(?:END_UNTRUSTED_DATA|<\/?\s*untrusted_data\s*>|<\|im_(?:start|end)\|>|<\|(?:system|assistant|user|endoftext)\|>|\[\/?INST\]|\[\s*SYSTEM\s*\]|###\s*(?:SYSTEM|INSTRUCTION)\s*:)/i,
   },
   {
     ruleId: "role-override",
@@ -81,7 +96,7 @@ const RULES: HeuristicRule[] = [
     severity: "high",
     requiresModeration: false,
     blocked: true,
-    pattern: /(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|your\s+|the\s+)?(?:previous|prior|above|system|developer|safety)\s+(?:instructions?|rules?|prompt|constraints?|directives?)/i,
+    pattern: /(?:(?:ignore|disregard|forget|override|bypass|do\s+not\s+follow)\s+(?:all\s+|any\s+|your\s+|the\s+)?(?:(?:previous|prior|above|system|developer|safety|allerg(?:y|ies)|dietary|health)\s+)?(?:instructions?|rules?|prompt|constraints?|directives?|everything\s+(?:above|prior))|(?:ignore|disregard|forget)\s+(?:everything\s+)?(?:above|before\s+this))/i,
   },
   {
     ruleId: "jailbreak-persona",
@@ -89,7 +104,7 @@ const RULES: HeuristicRule[] = [
     severity: "high",
     requiresModeration: true,
     blocked: true,
-    pattern: /(?:you\s+are\s+now\s+(?:DAN|an?\s+unrestricted|in\s+developer\s+mode|jailbroken)|enable\s+developer\s+mode|act\s+as\s+(?:a\s+hacker|an?\s+unfiltered\s+ai)|new\s+system\s+prompt\s*:)/i,
+    pattern: /(?:you\s+are\s+(?:now\s+(?:DAN|an?\s+unrestricted|in\s+developer\s+mode|jailbroken)|no\s+longer\s+a)|from\s+now\s+on\s+you\s+(?:are|will\s+act)|enable\s+developer\s+mode|act\s+as\s+(?:a\s+hacker|an?\s+unfiltered\s+ai)|new\s+system\s+prompt\s*:)/i,
   },
   {
     ruleId: "prompt-extract",
@@ -97,7 +112,7 @@ const RULES: HeuristicRule[] = [
     severity: "high",
     requiresModeration: false,
     blocked: true,
-    pattern: /(?:reveal|show|print|output|repeat|dump|leak|tell\s+me)\s+(?:your\s+)?(?:exact\s+|full\s+|hidden\s+)?(?:system\s+prompt|developer\s+prompt|hidden\s+instructions?|secret\s+instructions?|api[_\s-]?key)/i,
+    pattern: /(?:(?:reveal|show|print|output|repeat|dump|leak|tell\s+me|translate|summarize)\s+(?:your\s+|the\s+)?(?:(?:exact|full)\s+)?(?:(?:system|developer|hidden|secret|initial|original)\s+(?:prompt|instructions?|rules?|message)|(?:exact|full)\s+(?:prompt|instructions?|rules?)|text\s+above|api[_\s-]?key)|what\s+(?:are|were)\s+your\s+(?:(?:exact|full)\s+)?(?:initial|original|hidden|system|developer|secret)\s+(?:instructions?|rules?|prompt))/i,
   },
   {
     ruleId: "allergy-safety-bypass",
@@ -105,7 +120,7 @@ const RULES: HeuristicRule[] = [
     severity: "high",
     requiresModeration: true,
     blocked: true,
-    pattern: /(?:ignore|override|hide|omit|skip|pretend\s+i\s+don'?t\s+have)\s+(?:my\s+|the\s+|user'?s\s+)?(?:allerg(?:y|ies)|anaphylaxis|gluten|celiac|peanut|dietary\s+restrictions?)/i,
+    pattern: /(?:ignore|override|hide|omit|skip|do\s+not\s+follow|pretend\s+i\s+don'?t\s+have)\s+(?:my\s+|your\s+|the\s+|user'?s\s+)?(?:allerg(?:y|ies)|anaphylaxis|gluten|celiac|peanut|dietary\s+restrictions?)/i,
   },
   {
     ruleId: "off-topic-code-abuse",
